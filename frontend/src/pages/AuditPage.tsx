@@ -220,7 +220,7 @@ export function AuditPage() {
         <DialogTitle>Audit Log Detail</DialogTitle>
         <DialogContent>
           {detail.data && (
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, pt: 1 }}>
               <TextField label="User" value={detail.data.userName ?? "-"} slotProps={{ input: { readOnly: true } }} size="small" />
               <TextField label="Action" value={detail.data.action} slotProps={{ input: { readOnly: true } }} size="small" />
               <TextField label="Entity Type" value={detail.data.entityType ?? "-"} slotProps={{ input: { readOnly: true } }} size="small" />
