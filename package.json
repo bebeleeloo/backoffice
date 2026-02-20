@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "cd frontend && npm test",
+    "test:ci": "cd frontend && npm run test:ci"
+  }
+}

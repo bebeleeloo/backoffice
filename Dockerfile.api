@@ -1,0 +1,33 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# 1. Copy project manifests for restore caching (runtime projects only)
+COPY backend/Directory.Build.props backend/
+COPY backend/src/Broker.Backoffice.Domain/Broker.Backoffice.Domain.csproj backend/src/Broker.Backoffice.Domain/
+COPY backend/src/Broker.Backoffice.Application/Broker.Backoffice.Application.csproj backend/src/Broker.Backoffice.Application/
+COPY backend/src/Broker.Backoffice.Infrastructure/Broker.Backoffice.Infrastructure.csproj backend/src/Broker.Backoffice.Infrastructure/
+COPY backend/src/Broker.Backoffice.Api/Broker.Backoffice.Api.csproj backend/src/Broker.Backoffice.Api/
+
+# 2. Restore (cached as long as csproj/props don't change)
+RUN dotnet restore backend/src/Broker.Backoffice.Api/Broker.Backoffice.Api.csproj
+
+# 3. Copy full backend (picks up NuGet.config, global.json, etc. if added later)
+#    .dockerignore excludes bin/obj so restored packages in /src are preserved
+COPY backend/ backend/
+
+# 4. Publish
+RUN dotnet publish backend/src/Broker.Backoffice.Api/Broker.Backoffice.Api.csproj \
+    -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+COPY --from=build /app/publish .
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
+ENTRYPOINT ["dotnet", "Broker.Backoffice.Api.dll"]

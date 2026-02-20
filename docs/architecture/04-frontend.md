@@ -1,0 +1,148 @@
+# 04. Frontend
+
+## Архитектура
+
+SPA на React 18 + TypeScript. Вся логика работы с данными вынесена в React Query хуки, UI построен на Material UI 6.
+
+### Иерархия провайдеров (main.tsx)
+
+```
+QueryClientProvider (retry: 1, refetchOnWindowFocus: false)
+  ThemeProvider (MUI theme)
+    CssBaseline
+      LocalizationProvider (DayJS)
+        AuthProvider (контекст аутентификации)
+          RouterProvider (React Router v6)
+```
+
+## Маршрутизация
+
+```
+/login                    -> LoginPage (публичный)
+/                         -> MainLayout (защищенный через RequireAuth)
+  / (index)              -> DashboardPage
+  /clients               -> ClientsPage
+  /clients/:id           -> ClientDetailsPage
+  /users                 -> UsersPage
+  /roles                 -> RolesPage
+  /audit                 -> AuditPage
+  /settings              -> SettingsPage
+```
+
+Все маршруты кроме `/login` обёрнуты в `<RequireAuth>`, который проверяет `isAuthenticated` из AuthContext и редиректит на `/login`.
+
+## Аутентификация
+
+### Поток логина
+
+```mermaid
+sequenceDiagram
+    participant U as Пользователь
+    participant LP as LoginPage
+    participant AC as AuthContext
+    participant API as /api/v1/auth
+
+    U->>LP: Вводит логин/пароль
+    LP->>AC: login(username, password)
+    AC->>API: POST /auth/login
+    API-->>AC: { accessToken, refreshToken, expiresAt }
+    AC->>AC: localStorage.setItem(tokens)
+    AC->>API: GET /auth/me
+    API-->>AC: UserProfile { permissions, roles, scopes }
+    AC-->>LP: Authenticated
+    LP->>LP: navigate(redirectUrl || "/")
+```
+
+### Автоматическое обновление токена
+
+Axios interceptor при получении 401:
+1. Ставит запрос в очередь
+2. Отправляет POST `/auth/refresh` (один раз, без thundering herd)
+3. При успехе: обновляет токены в localStorage, повторяет все запросы из очереди
+4. При неудаче: очищает localStorage, редиректит на `/login`
+
+### Хранение
+
+- `localStorage.accessToken` -- JWT access token
+- `localStorage.refreshToken` -- refresh token
+- Нет httpOnly cookies (SPA-подход)
+
+## API-клиент
+
+**Axios instance** (`src/api/client.ts`):
+
+```
+baseURL: import.meta.env.VITE_API_URL ?? "/api/v1"
+```
+
+Request interceptor:
+- Добавляет `Authorization: Bearer {token}`
+- Добавляет `X-Correlation-Id` (случайный UUID)
+
+## Хуки данных (React Query)
+
+Все хуки в `src/api/hooks.ts`:
+
+| Хук | Endpoint | Кеш |
+|-----|----------|-----|
+| `useMe(enabled)` | GET /auth/me | default |
+| `useUsers(params)` | GET /users | default |
+| `useUser(id)` | GET /users/{id} | default |
+| `useRoles(params)` | GET /roles | default |
+| `useRole(id)` | GET /roles/{id} | default |
+| `usePermissions()` | GET /permissions | staleTime: 10 мин |
+| `useClients(params)` | GET /clients | default |
+| `useClient(id)` | GET /clients/{id} | default |
+| `useAuditLogs(params)` | GET /audit | default |
+| `useAuditLog(id)` | GET /audit/{id} | default |
+| `useCountries()` | GET /countries | staleTime: 10 мин |
+
+Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser` и т.д.) инвалидируют соответствующий queryKey при успехе.
+
+Все хуки используют `cleanParams()` для удаления undefined/null/empty значений перед отправкой.
+
+## Страницы
+
+### Общие паттерны
+
+- **Server-side pagination/sorting/filtering** -- все таблицы
+- **URL state** -- фильтры и пагинация сохраняются в URLSearchParams
+- **Permission-based UI** -- кнопки/действия скрываются через `useHasPermission()`
+- **Debounced search** -- глобальный поиск 300ms задержка
+
+### Компоненты таблиц
+
+`FilteredDataGrid` -- обёртка над MUI X DataGrid:
+- Встроенная строка фильтров (`FilterRowProvider` + контекст)
+- Синхронизация скролла фильтров с таблицей
+- Inline-фильтры: `InlineTextFilter`, `CompactMultiSelect`, `CompactCountrySelect`, `DateRangePopover`, `InlineBooleanFilter`
+
+### Диалоги
+
+Каждая CRUD-страница имеет диалоги Create/Edit:
+- `UserDialogs` -- создание/редактирование пользователя
+- `RoleDialogs` -- создание/редактирование роли + управление permissions
+- `ClientDialogs` -- сложные формы с условными полями (Individual vs Corporate), адресами, инвестиционным профилем
+
+## Тема
+
+Два варианта MUI theme:
+- **Основная тема** -- `#1565c0` primary, `#7b1fa2` secondary, Inter/Roboto шрифт
+- **List theme** (для страниц со списками) -- компактные размеры: маленькие кнопки, чипы, строки таблицы 44px
+
+## Управление состоянием
+
+| Тип состояния | Инструмент |
+|---------------|------------|
+| Серверные данные | React Query |
+| Аутентификация | React Context (AuthContext) |
+| URL / фильтры | URLSearchParams |
+| Локальный UI | useState / useReducer |
+
+Redux, Zustand и другие стейт-менеджеры **не используются**.
+
+## Отсутствующие паттерны
+
+- **Error Boundaries** -- не реализованы
+- **Suspense / lazy loading** -- не используется (весь бандл загружается сразу, ~1.2 MB gzip ~370 KB)
+- **i18n** -- не реализовано (UI на английском)
