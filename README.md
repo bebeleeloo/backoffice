@@ -1,91 +1,92 @@
 # Broker Backoffice
 
-Production-ready monorepo: .NET 8 API + React frontend.
+Монорепозиторий: .NET 8 API + React-фронтенд.
 
-## Architecture
+## Архитектура
 
 ```
 backend/
   src/
     Broker.Backoffice.Api            — ASP.NET Core Web API (Swagger, health, middleware)
-    Broker.Backoffice.Application    — MediatR, FluentValidation, abstractions
-    Broker.Backoffice.Domain         — Domain entities, value objects
-    Broker.Backoffice.Infrastructure — EF Core, external services
+    Broker.Backoffice.Application    — MediatR, FluentValidation, абстракции
+    Broker.Backoffice.Domain         — Доменные сущности, value objects
+    Broker.Backoffice.Infrastructure — EF Core, внешние сервисы
   tests/
     Broker.Backoffice.Tests.Unit         — xUnit + FluentAssertions
     Broker.Backoffice.Tests.Integration  — WebApplicationFactory + Testcontainers
 frontend/                           — Vite + React + TypeScript + MUI
+docs/architecture/                  — Архитектурная документация, C4-диаграммы, ADR
 ```
 
-## Quick Start (Docker)
+## Быстрый старт (Docker)
 
 ```bash
-cp .env.example .env              # create local env (gitignored)
-docker compose up --build -d      # build & start all services
+cp .env.example .env              # создать локальный .env (в git не попадает)
+docker compose up --build -d      # собрать и запустить все сервисы
 ```
 
-| Service  | URL                          |
+| Сервис   | URL                          |
 |----------|------------------------------|
 | API      | http://localhost:5050/api/v1  |
 | Swagger  | http://localhost:5050/swagger |
-| Frontend | http://localhost:3000         |
+| Фронтенд | http://localhost:3000        |
 | MSSQL    | localhost:1433               |
 
-Database is created and migrations are applied automatically on API startup. No manual SQL steps required.
+База данных создаётся и миграции применяются автоматически при старте API. Ручных SQL-действий не требуется.
 
-## Login Credentials
+## Учётные данные
 
-Default admin account seeded on first startup:
+При первом запуске создаётся администратор:
 
-| Field    | Value       |
+| Поле     | Значение    |
 |----------|-------------|
-| Username | `admin`     |
-| Password | `Admin123!` |
+| Логин    | `admin`     |
+| Пароль   | `Admin123!` |
 
-Override via `ADMIN_PASSWORD` in `.env`.
+Пароль можно переопределить через `ADMIN_PASSWORD` в `.env`.
 
-**curl example (note the `!` character):**
+**Пример запроса (обратите внимание на `!`):**
 
 ```bash
-# Use single quotes around the JSON to prevent shell expansion of '!'
+# Используйте одинарные кавычки, чтобы shell не раскрывал '!'
 curl -s http://localhost:5050/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"Admin123!"}'
 ```
 
-> In zsh the `!` triggers history expansion inside double quotes.
-> Either use single quotes (as above), or `set +H` to disable it for the session.
+> В zsh символ `!` внутри двойных кавычек вызывает history expansion.
+> Используйте одинарные кавычки (как выше) или `set +H` для отключения.
 
-## Environment Variables
+## Переменные окружения
 
-All secrets are in `.env` (gitignored). Copy `.env.example` to get started:
+Все секреты хранятся в `.env` (игнорируется git). Скопируйте `.env.example` для начала:
 
-| Variable         | Description                          | Default in .env.example           |
+| Переменная       | Описание                             | Значение по умолчанию             |
 |------------------|--------------------------------------|-----------------------------------|
-| `SA_PASSWORD`    | SQL Server SA password (avoid `;` — it breaks the connection string) | `Your_Strong_Password123` |
-| `JWT_SECRET`     | HMAC-SHA256 key for JWT signing      | dev key (32+ chars)               |
-| `ADMIN_PASSWORD` | Seeded admin password                | `Admin123!`                       |
+| `SA_PASSWORD`    | Пароль SA для SQL Server (избегайте `;` — ломает connection string) | `Your_Strong_Password123` |
+| `JWT_SECRET`     | HMAC-SHA256 ключ для подписи JWT     | dev-ключ (32+ символов)           |
+| `ADMIN_PASSWORD` | Пароль администратора при seed        | `Admin123!`                       |
 
-## Scripts
+## Скрипты
 
 ```bash
-# Full smoke test: rebuild from scratch, check health/auth/API/frontend
+# Полный smoke-тест: пересборка с нуля, проверка health/auth/API/фронтенда
 ./scripts/smoke.sh --clean
 
-# Fast smoke test: checks only, no rebuild (services must be running)
+# Быстрый smoke-тест: только проверки, без пересборки (сервисы должны работать)
 ./scripts/smoke.sh --fast
 
-# Database check: verify tables, seed data, admin user/role
+# Проверка БД: таблицы, seed-данные, admin-пользователь/роль
 ./scripts/db_check.sh
 
-# Run backend unit tests in Docker (no local dotnet needed)
+# Запуск backend unit-тестов в Docker (локальный dotnet не нужен)
 ./scripts/test.sh unit
 
-# Run all backend tests
+# Запуск всех backend-тестов
 ./scripts/test.sh all
 ```
 
-## Local Development
+## Локальная разработка
 
 ### Backend
 
@@ -104,35 +105,35 @@ npm install
 npm run dev
 ```
 
-## Database Migrations
+## Миграции базы данных
 
 ```bash
 cd backend
 
-# Create migration
+# Создать миграцию
 dotnet ef migrations add MigrationName \
   --project src/Broker.Backoffice.Infrastructure \
   --startup-project src/Broker.Backoffice.Api
 
-# Apply migration
+# Применить миграцию
 dotnet ef database update \
   --project src/Broker.Backoffice.Infrastructure \
   --startup-project src/Broker.Backoffice.Api
 ```
 
-## Tests
+## Тесты
 
 ```bash
 cd backend
 
-# Unit tests
+# Unit-тесты
 dotnet test tests/Broker.Backoffice.Tests.Unit
 
-# Integration tests (requires Docker for Testcontainers)
+# Интеграционные тесты (требуется Docker для Testcontainers)
 dotnet test tests/Broker.Backoffice.Tests.Integration
 ```
 
 ## Health Checks
 
-- `GET /health/live` — Liveness (app is running)
-- `GET /health/ready` — Readiness (app + SQL Server)
+- `GET /health/live` — Liveness (приложение запущено)
+- `GET /health/ready` — Readiness (приложение + SQL Server)
