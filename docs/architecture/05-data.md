@@ -32,7 +32,7 @@ erDiagram
         string PasswordHash
         string FullName
         bool IsActive
-        byte[] RowVersion
+        binary RowVersion
         datetime CreatedAt
         string CreatedBy
     }
@@ -42,7 +42,7 @@ erDiagram
         string Name UK
         string Description
         bool IsSystem
-        byte[] RowVersion
+        binary RowVersion
         datetime CreatedAt
     }
 
@@ -67,7 +67,7 @@ erDiagram
         string CompanyName
         guid ResidenceCountryId FK
         guid CitizenshipCountryId FK
-        byte[] RowVersion
+        binary RowVersion
         datetime CreatedAt
     }
 
@@ -82,7 +82,7 @@ erDiagram
 
     InvestmentProfile {
         guid Id PK
-        guid ClientId FK_UK
+        guid ClientId UK
         enum Objective
         enum RiskTolerance
         enum TimeHorizon
