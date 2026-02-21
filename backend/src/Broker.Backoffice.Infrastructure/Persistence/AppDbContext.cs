@@ -1,4 +1,5 @@
 using Broker.Backoffice.Application.Abstractions;
+using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Audit;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
@@ -23,6 +24,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ClientAddress> ClientAddresses => Set<ClientAddress>();
     public DbSet<Country> Countries => Set<Country>();
     public DbSet<InvestmentProfile> InvestmentProfiles => Set<InvestmentProfile>();
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<AccountHolder> AccountHolders => Set<AccountHolder>();
+    public DbSet<Clearer> Clearers => Set<Clearer>();
+    public DbSet<TradePlatform> TradePlatforms => Set<TradePlatform>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

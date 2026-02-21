@@ -9,6 +9,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import GroupsIcon from "@mui/icons-material/Groups";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import SecurityIcon from "@mui/icons-material/Security";
 import HistoryIcon from "@mui/icons-material/History";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -25,6 +26,7 @@ export function MainLayout() {
   const { user, logout } = useAuth();
 
   const canViewClients = useHasPermission("clients.read");
+  const canViewAccounts = useHasPermission("accounts.read");
   const canViewUsers = useHasPermission("users.read");
   const canViewRoles = useHasPermission("roles.read");
   const canViewAudit = useHasPermission("audit.read");
@@ -32,6 +34,7 @@ export function MainLayout() {
   const menuItems = [
     { label: "Dashboard", path: "/", icon: <DashboardIcon />, visible: true },
     { label: "Clients", path: "/clients", icon: <GroupsIcon />, visible: canViewClients },
+    { label: "Accounts", path: "/accounts", icon: <AccountBalanceIcon />, visible: canViewAccounts },
     { label: "Users", path: "/users", icon: <PeopleIcon />, visible: canViewUsers },
     { label: "Roles", path: "/roles", icon: <SecurityIcon />, visible: canViewRoles },
     { label: "Audit Log", path: "/audit", icon: <HistoryIcon />, visible: canViewAudit },
@@ -144,7 +147,7 @@ export function MainLayout() {
         }}
       >
         <Toolbar />
-        <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
           <Outlet />
         </Box>
       </Box>

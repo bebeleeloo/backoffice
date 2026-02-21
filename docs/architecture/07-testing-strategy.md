@@ -49,10 +49,32 @@
 ### Backend
 
 **Проекты тестов:**
-- `Broker.Backoffice.Tests.Unit` -- unit-тесты
-- `Broker.Backoffice.Tests.Integration` -- интеграционные тесты
+- `Broker.Backoffice.Tests.Unit` -- xUnit + FluentAssertions
+- `Broker.Backoffice.Tests.Integration` -- WebApplicationFactory + Testcontainers (SQL Server)
 
-> Содержимое backend-тестов не анализировалось детально в рамках данного аудита.
+#### Unit-тесты (22 теста, ~34ms)
+
+| Файл | Тестов | Что тестирует |
+|------|--------|---------------|
+| `DateTimeProviderTests.cs` | 2 | Провайдер текущего времени |
+| `CorrelationIdAccessorTests.cs` | 3 | Accessor для correlation ID |
+| `PermissionsTests.cs` | 4 | Наличие и уникальность permissions |
+| `CreateAccountValidatorTests.cs` | 6 | Валидатор создания счёта (Number, Comment, ExternalId) |
+| `CreateClientValidatorTests.cs` | 7 | Валидатор создания клиента (Email, Phone, ExternalId, Ssn, Address) |
+
+#### Интеграционные тесты (33 теста, ~2s)
+
+| Файл | Тестов | Что тестирует |
+|------|--------|---------------|
+| `HealthCheckTests.cs` | 2 | /health/live, /health/ready |
+| `SwaggerTests.cs` | 1 | Доступность Swagger UI |
+| `AuthTests.cs` | 5 | Логин, refresh, /me, невалидные credentials |
+| `UsersTests.cs` | 6 | CRUD пользователей, дубликат username, аудит |
+| `RolesTests.cs` | 3 | Список ролей, создание/удаление, защита системных |
+| `AccountsTests.cs` | 8 | CRUD счетов, дубликат номера, невалидные данные |
+| `ClientsTests.cs` | 8 | CRUD клиентов (Individual/Corporate), невалидный email, без адресов |
+
+**Инфраструктура:** все интеграционные тесты используют общий `[Collection("Integration")]` с `ICollectionFixture<CustomWebApplicationFactory>`, что обеспечивает единый контейнер SQL Server на все тест-классы. Требуется Docker и .NET 8 SDK.
 
 ## Рекомендации
 
@@ -69,12 +91,10 @@
 
 3. **Рассмотреть Playwright/Cypress** для E2E-тестов критических путей:
    - Login flow
-   - CRUD клиента
+   - CRUD клиента / счёта
    - Назначение permissions роли
-
-4. **Рассмотреть API-тесты** (Supertest / dotnet integration tests) для проверки backend без UI
 
 ### Долгосрочные (60-90 дней)
 
-5. **Contract testing** (Pact) между frontend и backend
-6. **Visual regression** (Chromatic / Percy) для UI-компонентов
+4. **Contract testing** (Pact) между frontend и backend
+5. **Visual regression** (Chromatic / Percy) для UI-компонентов

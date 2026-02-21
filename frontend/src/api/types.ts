@@ -303,6 +303,131 @@ export interface UpdateClientRequest extends CreateClientRequest {
   rowVersion: string;
 }
 
+// Accounts
+export type AccountStatus = "Active" | "Blocked" | "Closed" | "Suspended";
+export type AccountType = "Individual" | "Corporate" | "Joint" | "Trust" | "IRA";
+export type MarginType = "Cash" | "MarginX1" | "MarginX2" | "MarginX4" | "DayTrader";
+export type OptionLevel = "Level0" | "Level1" | "Level2" | "Level3" | "Level4";
+export type Tariff = "Basic" | "Standard" | "Premium" | "VIP";
+export type DeliveryType = "Paper" | "Electronic";
+export type HolderRole = "Owner" | "Beneficiary" | "Trustee" | "PowerOfAttorney" | "Custodian" | "Authorized";
+
+export interface ClearerDto {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+}
+
+export interface TradePlatformDto {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+}
+
+export interface AccountHolderDto {
+  clientId: string;
+  clientDisplayName: string;
+  role: HolderRole;
+  isPrimary: boolean;
+  addedAt: string;
+}
+
+export interface AccountHolderInput {
+  clientId: string;
+  role: HolderRole;
+  isPrimary: boolean;
+}
+
+export interface ClientAccountDto {
+  accountId: string;
+  accountNumber: string;
+  accountStatus: AccountStatus;
+  role: HolderRole;
+  isPrimary: boolean;
+  addedAt: string;
+}
+
+export interface ClientAccountInput {
+  accountId: string;
+  role: HolderRole;
+  isPrimary: boolean;
+}
+
+export interface AccountDto {
+  id: string;
+  number: string;
+  clearerId: string | null;
+  clearerName: string | null;
+  tradePlatformId: string | null;
+  tradePlatformName: string | null;
+  status: AccountStatus;
+  accountType: AccountType;
+  marginType: MarginType;
+  optionLevel: OptionLevel;
+  tariff: Tariff;
+  deliveryType: DeliveryType | null;
+  openedAt: string | null;
+  closedAt: string | null;
+  comment: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+  holders: AccountHolderDto[];
+}
+
+export interface AccountListItemDto {
+  id: string;
+  number: string;
+  clearerName: string | null;
+  tradePlatformName: string | null;
+  status: AccountStatus;
+  accountType: AccountType;
+  marginType: MarginType;
+  optionLevel: OptionLevel;
+  tariff: Tariff;
+  deliveryType: DeliveryType | null;
+  openedAt: string | null;
+  closedAt: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+  holderCount: number;
+}
+
+export interface CreateAccountRequest {
+  number: string;
+  clearerId?: string;
+  tradePlatformId?: string;
+  status: AccountStatus;
+  accountType: AccountType;
+  marginType: MarginType;
+  optionLevel: OptionLevel;
+  tariff: Tariff;
+  deliveryType?: DeliveryType;
+  openedAt?: string;
+  closedAt?: string;
+  comment?: string;
+  externalId?: string;
+}
+
+export interface UpdateAccountRequest extends CreateAccountRequest {
+  id: string;
+  rowVersion: string;
+}
+
+export interface AccountsParams extends PagedParams {
+  number?: string;
+  status?: AccountStatus[];
+  accountType?: AccountType[];
+  marginType?: MarginType[];
+  tariff?: Tariff[];
+  clearerName?: string;
+  tradePlatformName?: string;
+  externalId?: string;
+}
+
 export interface ClientsParams extends PagedParams {
   name?: string;
   email?: string;

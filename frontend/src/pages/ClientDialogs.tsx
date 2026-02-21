@@ -3,17 +3,19 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, MenuItem, Box, Typography, Switch, FormControlLabel, Divider,
   IconButton, Autocomplete, Accordion, AccordionSummary, AccordionDetails,
+  Table, TableBody, TableCell, TableHead, TableRow, Checkbox,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useCreateClient, useUpdateClient, useClient, useCountries } from "../api/hooks";
+import { useCreateClient, useUpdateClient, useClient, useCountries, useClientAccounts, useSetClientAccounts, useAccounts } from "../api/hooks";
 import type {
   CreateClientRequest, UpdateClientRequest, CreateClientAddressRequest, CreateInvestmentProfileRequest,
   ClientType, ClientStatus, KycStatus, AddressType, Gender, MaritalStatus, Education,
   RiskLevel, CountryDto,
   InvestmentObjective, InvestmentRiskTolerance, LiquidityNeeds, InvestmentTimeHorizon,
   InvestmentKnowledge, InvestmentExperience,
+  ClientAccountInput, HolderRole, AccountListItemDto,
 } from "../api/types";
 
 const CLIENT_TYPES: ClientType[] = ["Individual", "Corporate"];
@@ -24,6 +26,8 @@ const GENDERS: Gender[] = ["Male", "Female", "Other", "Unspecified"];
 const ADDRESS_TYPES: AddressType[] = ["Legal", "Mailing", "Working"];
 const MARITAL_STATUSES: MaritalStatus[] = ["Single", "Married", "Divorced", "Widowed", "Separated", "CivilUnion", "Unspecified"];
 const EDUCATIONS: Education[] = ["None", "HighSchool", "Bachelor", "Master", "PhD", "Other", "Unspecified"];
+
+const HOLDER_ROLES: HolderRole[] = ["Owner", "Beneficiary", "Trustee", "PowerOfAttorney", "Custodian", "Authorized"];
 
 const INV_OBJECTIVES: InvestmentObjective[] = ["Preservation", "Income", "Growth", "Speculation", "Hedging", "Other"];
 const INV_RISK_TOLERANCES: InvestmentRiskTolerance[] = ["Low", "Medium", "High"];
@@ -203,8 +207,13 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   const { data: client } = useClient(clientId ?? "");
   const update = useUpdateClient();
   const { data: countries = [] } = useCountries();
+  const { data: clientAccounts } = useClientAccounts(clientId ?? "");
+  const setClientAccounts = useSetClientAccounts();
+  const { data: accountsData } = useAccounts({ page: 1, pageSize: 200 });
+  const allAccounts = accountsData?.items ?? [];
   const [form, setForm] = useState<UpdateClientRequest | null>(null);
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
+  const [accounts, setAccounts] = useState<ClientAccountInput[]>([]);
 
   useEffect(() => {
     if (client && open) {
@@ -257,6 +266,12 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
     }
   }, [client, open]);
 
+  useEffect(() => {
+    if (clientAccounts && open) {
+      setAccounts(clientAccounts.map((a) => ({ accountId: a.accountId, role: a.role, isPrimary: a.isPrimary })));
+    }
+  }, [clientAccounts, open]);
+
   if (!form) return null;
 
   const set = <K extends keyof UpdateClientRequest>(k: K, v: UpdateClientRequest[K]) =>
@@ -271,14 +286,26 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   const addAddress = () => setForm((f) => f ? { ...f, addresses: [...f.addresses, emptyAddress("Legal")] } : f);
   const removeAddress = (idx: number) => setForm((f) => f ? { ...f, addresses: f.addresses.filter((_, i) => i !== idx) } : f);
 
+  const addAccountRow = () => {
+    setAccounts((prev) => [...prev, { accountId: "", role: "Owner", isPrimary: false }]);
+  };
+  const removeAccountRow = (index: number) => {
+    setAccounts((prev) => prev.filter((_, i) => i !== index));
+  };
+  const updateAccountRow = (index: number, patch: Partial<ClientAccountInput>) => {
+    setAccounts((prev) => prev.map((a, i) => (i === index ? { ...a, ...patch } : a)));
+  };
+
   const setIp = <K extends keyof CreateInvestmentProfileRequest>(k: K, v: CreateInvestmentProfileRequest[K]) =>
     setForm((f) => f ? { ...f, investmentProfile: { ...f.investmentProfile, [k]: v } } : f);
 
   const handleSubmit = async () => {
-    if (!form) return;
+    if (!form || !clientId) return;
     const payload = { ...form };
     if (!showInvestmentProfile) delete payload.investmentProfile;
     await update.mutateAsync(payload);
+    const validAccounts = accounts.filter((a) => a.accountId);
+    await setClientAccounts.mutateAsync({ clientId, accounts: validAccounts });
     onClose();
   };
 
@@ -368,6 +395,60 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
           ))}
 
           <Divider />
+          <Box>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+              <Typography variant="subtitle2">Accounts</Typography>
+              <Button size="small" startIcon={<AddIcon />} onClick={addAccountRow}>Add</Button>
+            </Box>
+            {accounts.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No accounts.</Typography>
+            ) : (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: "40%" }}>Account</TableCell>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Primary</TableCell>
+                    <TableCell sx={{ width: 50 }} />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {accounts.map((a, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <AccountAutocomplete
+                          accounts={allAccounts}
+                          value={a.accountId}
+                          onChange={(id) => updateAccountRow(i, { accountId: id })}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          select size="small" fullWidth value={a.role}
+                          onChange={(e) => updateAccountRow(i, { role: e.target.value as HolderRole })}
+                        >
+                          {HOLDER_ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+                        </TextField>
+                      </TableCell>
+                      <TableCell>
+                        <FormControlLabel
+                          control={<Checkbox checked={a.isPrimary} onChange={(e) => updateAccountRow(i, { isPrimary: e.target.checked })} size="small" />}
+                          label=""
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton size="small" onClick={() => removeAccountRow(i)} color="error">
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Box>
+
+          <Divider />
           <Accordion
             expanded={showInvestmentProfile}
             onChange={(_, expanded) => {
@@ -387,7 +468,7 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={update.isPending}>Save</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={update.isPending || setClientAccounts.isPending}>Save</Button>
       </DialogActions>
     </Dialog>
   );
@@ -438,6 +519,29 @@ function AddressFields({ addr, countries, onChange, onRemove }: {
         <CountryAutocomplete countries={countries} value={addr.countryId || null} onChange={(id) => onChange("countryId", id ?? "")} label="Country" />
       </Box>
     </Box>
+  );
+}
+
+/* ── Account Autocomplete (strict, for account selection) ── */
+
+function AccountAutocomplete({ accounts, value, onChange }: {
+  accounts: AccountListItemDto[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const selected = accounts.find((a) => a.id === value) ?? null;
+  return (
+    <Autocomplete
+      size="small"
+      options={accounts}
+      getOptionLabel={(o) => o.number}
+      value={selected}
+      onChange={(_, v) => onChange(v?.id ?? "")}
+      renderInput={(params) => <TextField {...params} placeholder="Select account..." />}
+      isOptionEqualToValue={(o, v) => o.id === v.id}
+      autoHighlight
+      openOnFocus
+    />
   );
 }
 

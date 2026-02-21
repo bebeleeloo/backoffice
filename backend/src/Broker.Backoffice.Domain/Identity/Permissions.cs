@@ -21,6 +21,11 @@ public static class Permissions
     public const string ClientsUpdate = "clients.update";
     public const string ClientsDelete = "clients.delete";
 
+    public const string AccountsRead = "accounts.read";
+    public const string AccountsCreate = "accounts.create";
+    public const string AccountsUpdate = "accounts.update";
+    public const string AccountsDelete = "accounts.delete";
+
     public static readonly (string Code, string Name, string Group)[] All =
     [
         (UsersRead, "View users", "Users"),
@@ -37,5 +42,9 @@ public static class Permissions
         (ClientsCreate, "Create clients", "Clients"),
         (ClientsUpdate, "Update clients", "Clients"),
         (ClientsDelete, "Delete clients", "Clients"),
+        (AccountsRead, "View accounts", "Accounts"),
+        (AccountsCreate, "Create accounts", "Accounts"),
+        (AccountsUpdate, "Update accounts", "Accounts"),
+        (AccountsDelete, "Delete accounts", "Accounts"),
     ];
 }

@@ -1,3 +1,4 @@
+using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
@@ -20,12 +21,13 @@ public static class SeedDemoData
 
         var usersCreated = await SeedUsersAsync(db, password, logger);
         var clientsCreated = await SeedClientsAsync(db, logger);
+        var accountsCreated = await SeedAccountsAsync(db, logger);
 
         await tx.CommitAsync();
 
-        if (usersCreated + clientsCreated > 0)
-            logger.LogInformation("Demo seed complete: {Users} users, {Clients} clients created",
-                usersCreated, clientsCreated);
+        if (usersCreated + clientsCreated + accountsCreated > 0)
+            logger.LogInformation("Demo seed complete: {Users} users, {Clients} clients, {Accounts} accounts created",
+                usersCreated, clientsCreated, accountsCreated);
         else
             logger.LogInformation("Demo seed: all data already present, 0 created");
     }
@@ -48,20 +50,22 @@ public static class SeedDemoData
 
     private static readonly Dictionary<string, (string Desc, string[] Perms)> RoleDefinitions = new()
     {
-        ["Manager"] = ("Manage clients and view everything", new[]
+        ["Manager"] = ("Manage clients, accounts, and view everything", new[]
         {
             Permissions.UsersRead, Permissions.RolesRead, Permissions.PermissionsRead,
             Permissions.AuditRead,
             Permissions.ClientsRead, Permissions.ClientsCreate, Permissions.ClientsUpdate, Permissions.ClientsDelete,
+            Permissions.AccountsRead, Permissions.AccountsCreate, Permissions.AccountsUpdate, Permissions.AccountsDelete,
         }),
         ["Viewer"] = ("Read-only access", new[]
         {
             Permissions.UsersRead, Permissions.RolesRead, Permissions.PermissionsRead,
-            Permissions.AuditRead, Permissions.ClientsRead,
+            Permissions.AuditRead, Permissions.ClientsRead, Permissions.AccountsRead,
         }),
-        ["Operator"] = ("Client operations", new[]
+        ["Operator"] = ("Client and account operations", new[]
         {
             Permissions.ClientsRead, Permissions.ClientsCreate, Permissions.ClientsUpdate,
+            Permissions.AccountsRead, Permissions.AccountsCreate, Permissions.AccountsUpdate,
         }),
     };
 
@@ -318,6 +322,133 @@ public static class SeedDemoData
         }
 
         return created;
+    }
+
+    // ── Accounts ──────────────────────────────────────────────────────
+
+    private const int AccountCount = 150;
+
+    private static async Task<int> SeedAccountsAsync(AppDbContext db, ILogger logger)
+    {
+        if (await db.Accounts.AnyAsync())
+            return 0;
+
+        var clearerIds = await db.Clearers.Where(c => c.IsActive).Select(c => c.Id).ToArrayAsync();
+        var platformIds = await db.TradePlatforms.Where(t => t.IsActive).Select(t => t.Id).ToArrayAsync();
+        var clientIds = await db.Clients.OrderBy(c => c.CreatedAt).Select(c => c.Id).ToArrayAsync();
+
+        if (clearerIds.Length == 0 || platformIds.Length == 0 || clientIds.Length == 0)
+        {
+            logger.LogWarning("Demo seed: skipping accounts — no clearers, platforms, or clients found");
+            return 0;
+        }
+
+        var accountIds = new List<Guid>();
+
+        for (var i = 0; i < AccountCount; i++)
+        {
+            var rng = new Random(77 * 1000 + i);
+            var accountId = Guid.NewGuid();
+            accountIds.Add(accountId);
+
+            var account = new Account
+            {
+                Id = accountId,
+                Number = $"ACC-{i + 1:D5}",
+                ClearerId = clearerIds[rng.Next(clearerIds.Length)],
+                TradePlatformId = rng.Next(3) == 0 ? null : platformIds[rng.Next(platformIds.Length)],
+                Status = PickWeighted(rng,
+                    (AccountStatus.Active, 60),
+                    (AccountStatus.Blocked, 10),
+                    (AccountStatus.Closed, 15),
+                    (AccountStatus.Suspended, 15)),
+                AccountType = PickRandom(rng,
+                    AccountType.Individual, AccountType.Corporate, AccountType.Joint,
+                    AccountType.Trust, AccountType.IRA),
+                MarginType = PickRandom(rng, MarginType.Cash, MarginType.MarginX1, MarginType.MarginX2, MarginType.MarginX4, MarginType.DayTrader),
+                OptionLevel = PickRandom(rng,
+                    OptionLevel.Level0, OptionLevel.Level1, OptionLevel.Level2,
+                    OptionLevel.Level3, OptionLevel.Level4),
+                Tariff = PickWeighted(rng,
+                    (Tariff.Basic, 30), (Tariff.Standard, 40),
+                    (Tariff.Premium, 20), (Tariff.VIP, 10)),
+                DeliveryType = rng.Next(3) == 0 ? null : PickRandom(rng, DeliveryType.Paper, DeliveryType.Electronic),
+                OpenedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 730)),
+                ClosedAt = rng.Next(8) == 0 ? DateTime.UtcNow.AddDays(-rng.Next(1, 30)) : null,
+                Comment = rng.Next(4) == 0 ? "Demo seeded account" : null,
+                ExternalId = rng.Next(3) == 0 ? $"EXT-ACC-{rng.Next(10000, 99999)}" : null,
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 730)),
+                CreatedBy = "seed",
+            };
+
+            db.Accounts.Add(account);
+
+            if (i % 50 == 49)
+                await db.SaveChangesAsync();
+        }
+
+        await db.SaveChangesAsync();
+
+        // Seed AccountHolders: assign 1-3 clients to each account
+        var holderCount = 0;
+        var clientsWithAccounts = new HashSet<Guid>();
+
+        for (var i = 0; i < accountIds.Count; i++)
+        {
+            var rng = new Random(88 * 1000 + i);
+            var numHolders = rng.Next(1, 4); // 1 to 3
+            var usedClientIndices = new HashSet<int>();
+
+            for (var h = 0; h < numHolders; h++)
+            {
+                int clientIdx;
+                do { clientIdx = rng.Next(clientIds.Length); }
+                while (!usedClientIndices.Add(clientIdx));
+
+                db.AccountHolders.Add(new AccountHolder
+                {
+                    AccountId = accountIds[i],
+                    ClientId = clientIds[clientIdx],
+                    Role = h == 0
+                        ? HolderRole.Owner
+                        : PickRandom(rng, HolderRole.Beneficiary, HolderRole.Trustee,
+                            HolderRole.PowerOfAttorney, HolderRole.Custodian, HolderRole.Authorized),
+                    IsPrimary = h == 0,
+                    AddedAt = DateTime.UtcNow.AddDays(-rng.Next(1, 365)),
+                });
+                clientsWithAccounts.Add(clientIds[clientIdx]);
+                holderCount++;
+            }
+
+            if (i % 20 == 19)
+                await db.SaveChangesAsync();
+        }
+
+        // Ensure every client has at least one account
+        var orphanRng = new Random(99_000);
+        foreach (var clientId in clientIds)
+        {
+            if (clientsWithAccounts.Contains(clientId))
+                continue;
+
+            var accountIdx = orphanRng.Next(accountIds.Count);
+            db.AccountHolders.Add(new AccountHolder
+            {
+                AccountId = accountIds[accountIdx],
+                ClientId = clientId,
+                Role = HolderRole.Owner,
+                IsPrimary = false,
+                AddedAt = DateTime.UtcNow.AddDays(-orphanRng.Next(1, 365)),
+            });
+            clientsWithAccounts.Add(clientId);
+            holderCount++;
+        }
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("Demo seed: created {Accounts} accounts with {Holders} holders (all {Clients} clients linked)",
+            accountIds.Count, holderCount, clientsWithAccounts.Count);
+
+        return accountIds.Count;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

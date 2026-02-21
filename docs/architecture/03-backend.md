@@ -73,8 +73,37 @@ Response
 | POST | `/clients` | clients.create | Да |
 | PUT | `/clients/{id}` | clients.update | Да |
 | DELETE | `/clients/{id}` | clients.delete | Да |
+| GET | `/clients/{id}/accounts` | clients.read | - |
+| PUT | `/clients/{id}/accounts` | clients.update | Да |
 
 **Расширенные фильтры GET /clients:** Name, Email, Phone, ExternalId, Status[], ClientType[], KycStatus[], RiskLevel[], ResidenceCountryIds[], CitizenshipCountryIds[], CreatedFrom, CreatedTo, PepStatus.
+
+**Фильтр Name** поддерживает поиск по полному имени (FirstName + LastName), а также по CompanyName.
+
+### Счета (AccountsController)
+
+| Метод | Маршрут | Permission | Аудит |
+|-------|---------|-----------|-------|
+| GET | `/accounts` | accounts.read | - |
+| GET | `/accounts/{id}` | accounts.read | - |
+| POST | `/accounts` | accounts.create | Да |
+| PUT | `/accounts/{id}` | accounts.update | Да |
+| DELETE | `/accounts/{id}` | accounts.delete | Да |
+| PUT | `/accounts/{id}/holders` | accounts.update | Да |
+
+**Фильтры GET /accounts:** Number, Status[], AccountType[], MarginType[], Tariff[].
+
+### Клиринговые компании (ClearersController)
+
+| Метод | Маршрут | Permission |
+|-------|---------|-----------|
+| GET | `/clearers` | accounts.read |
+
+### Торговые платформы (TradePlatformsController)
+
+| Метод | Маршрут | Permission |
+|-------|---------|-----------|
+| GET | `/trade-platforms` | accounts.read |
 
 ### Страны (CountriesController)
 
@@ -131,7 +160,7 @@ sequenceDiagram
 
 ## Оптимистичная конкурентность
 
-Все мутирующие операции над User, Role, Client используют `RowVersion` (SQL Server `rowversion`):
+Все мутирующие операции над User, Role, Client, Account используют `RowVersion` (SQL Server `rowversion`):
 
 1. Клиент получает сущность с `RowVersion`
 2. При обновлении передает `RowVersion` обратно

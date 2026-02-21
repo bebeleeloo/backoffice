@@ -8,8 +8,8 @@ using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
 
+[Collection("Integration")]
 public class UsersTests(CustomWebApplicationFactory factory)
-    : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 

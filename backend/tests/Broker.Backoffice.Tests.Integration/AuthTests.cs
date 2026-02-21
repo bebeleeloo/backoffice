@@ -6,8 +6,8 @@ using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
 
+[Collection("Integration")]
 public class AuthTests(CustomWebApplicationFactory factory)
-    : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 

@@ -23,6 +23,8 @@ QueryClientProvider (retry: 1, refetchOnWindowFocus: false)
   / (index)              -> DashboardPage
   /clients               -> ClientsPage
   /clients/:id           -> ClientDetailsPage
+  /accounts              -> AccountsPage
+  /accounts/:id          -> AccountDetailsPage
   /users                 -> UsersPage
   /roles                 -> RolesPage
   /audit                 -> AuditPage
@@ -93,11 +95,16 @@ Request interceptor:
 | `usePermissions()` | GET /permissions | staleTime: 10 мин |
 | `useClients(params)` | GET /clients | default |
 | `useClient(id)` | GET /clients/{id} | default |
+| `useClientAccounts(clientId)` | GET /clients/{id}/accounts | default |
+| `useAccounts(params)` | GET /accounts | default |
+| `useAccount(id)` | GET /accounts/{id} | default |
 | `useAuditLogs(params)` | GET /audit | default |
 | `useAuditLog(id)` | GET /audit/{id} | default |
 | `useCountries()` | GET /countries | staleTime: 10 мин |
+| `useClearers()` | GET /clearers | staleTime: 10 мин |
+| `useTradePlatforms()` | GET /trade-platforms | staleTime: 10 мин |
 
-Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser` и т.д.) инвалидируют соответствующий queryKey при успехе.
+Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useCreateAccount`, `useUpdateAccount`, `useDeleteAccount`, `useSetAccountHolders`, `useSetClientAccounts` и т.д.) инвалидируют соответствующий queryKey при успехе.
 
 Все хуки используют `cleanParams()` для удаления undefined/null/empty значений перед отправкой.
 
@@ -122,7 +129,12 @@ Request interceptor:
 Каждая CRUD-страница имеет диалоги Create/Edit:
 - `UserDialogs` -- создание/редактирование пользователя
 - `RoleDialogs` -- создание/редактирование роли + управление permissions
-- `ClientDialogs` -- сложные формы с условными полями (Individual vs Corporate), адресами, инвестиционным профилем
+- `ClientDialogs` -- сложные формы с условными полями (Individual vs Corporate), адресами, инвестиционным профилем, привязкой счетов
+- `AccountDialogs` -- создание/редактирование счёта с Autocomplete для Clearer/TradePlatform, управление холдерами
+
+Страницы деталей:
+- `ClientDetailsPage` -- просмотр клиента со связанными счетами (с навигацией на счёт)
+- `AccountDetailsPage` -- просмотр счёта со связанными холдерами (с навигацией на клиента)
 
 ## Тема
 

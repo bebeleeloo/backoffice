@@ -8,6 +8,8 @@ import { RolesPage } from "../pages/RolesPage";
 import { AuditPage } from "../pages/AuditPage";
 import { ClientsPage } from "../pages/ClientsPage";
 import { ClientDetailsPage } from "../pages/ClientDetailsPage";
+import { AccountsPage } from "../pages/AccountsPage";
+import { AccountDetailsPage } from "../pages/AccountDetailsPage";
 import { RequireAuth } from "../auth/RequireAuth";
 
 export const router = createBrowserRouter([
@@ -23,6 +25,8 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: "clients", element: <ClientsPage /> },
       { path: "clients/:id", element: <ClientDetailsPage /> },
+      { path: "accounts", element: <AccountsPage /> },
+      { path: "accounts/:id", element: <AccountDetailsPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "roles", element: <RolesPage /> },
       { path: "audit", element: <AuditPage /> },

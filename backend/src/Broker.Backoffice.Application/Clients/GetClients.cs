@@ -47,7 +47,8 @@ public sealed class GetClientsQueryHandler(IAppDbContext db)
             query = query.Where(c =>
                 (c.FirstName != null && EF.Functions.Like(c.FirstName, $"%{request.Name}%")) ||
                 (c.LastName != null && EF.Functions.Like(c.LastName, $"%{request.Name}%")) ||
-                (c.CompanyName != null && EF.Functions.Like(c.CompanyName, $"%{request.Name}%")));
+                (c.CompanyName != null && EF.Functions.Like(c.CompanyName, $"%{request.Name}%")) ||
+                EF.Functions.Like((c.FirstName ?? "") + " " + (c.LastName ?? ""), $"%{request.Name}%"));
 
         if (!string.IsNullOrWhiteSpace(request.Email))
             query = query.Where(c => EF.Functions.Like(c.Email, $"%{request.Email}%"));

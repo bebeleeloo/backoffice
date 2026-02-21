@@ -1,4 +1,5 @@
 using Broker.Backoffice.Api.Filters;
+using Broker.Backoffice.Application.Accounts;
 using Broker.Backoffice.Application.Clients;
 using Broker.Backoffice.Application.Common;
 using Broker.Backoffice.Domain.Identity;
@@ -52,5 +53,21 @@ public sealed class ClientsController(ISender mediator) : ControllerBase
     {
         await mediator.Send(new DeleteClientCommand(id), ct);
         return NoContent();
+    }
+
+    [HttpGet("{id:guid}/accounts")]
+    [HasPermission(Permissions.ClientsRead)]
+    public async Task<ActionResult<IReadOnlyList<ClientAccountDto>>> GetAccounts(Guid id, CancellationToken ct)
+    {
+        return Ok(await mediator.Send(new GetClientAccountsQuery(id), ct));
+    }
+
+    [HttpPut("{id:guid}/accounts")]
+    [HasPermission(Permissions.ClientsUpdate)]
+    [ServiceFilter(typeof(AuditActionFilter))]
+    public async Task<ActionResult<IReadOnlyList<ClientAccountDto>>> SetAccounts(
+        Guid id, List<ClientAccountInput> accounts, CancellationToken ct)
+    {
+        return Ok(await mediator.Send(new SetClientAccountsCommand(id, accounts), ct));
     }
 }

@@ -6,6 +6,9 @@ import type {
   CreateRoleRequest, UpdateRoleRequest, UsersParams, RolesParams, AuditParams,
   ClientListItemDto, ClientDto, CreateClientRequest, UpdateClientRequest, ClientsParams,
   CountryDto,
+  AccountListItemDto, AccountDto, CreateAccountRequest, UpdateAccountRequest, AccountsParams,
+  ClearerDto, TradePlatformDto,
+  AccountHolderInput, ClientAccountDto, ClientAccountInput,
 } from "./types";
 
 // Auth
@@ -146,7 +149,25 @@ export const useCountries = () =>
     staleTime: 10 * 60 * 1000,
   });
 
-// Clients
+// Clearers
+export const useClearers = () =>
+  useQuery({
+    queryKey: ["clearers"],
+    queryFn: () =>
+      apiClient.get<ClearerDto[]>("/clearers").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
+  });
+
+// Trade Platforms
+export const useTradePlatforms = () =>
+  useQuery({
+    queryKey: ["trade-platforms"],
+    queryFn: () =>
+      apiClient.get<TradePlatformDto[]>("/trade-platforms").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
+  });
+
+// Helpers
 function cleanParams(params: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
@@ -157,6 +178,80 @@ function cleanParams(params: Record<string, unknown>): Record<string, unknown> {
   return result;
 }
 
+// Accounts
+export const useAccounts = (params: AccountsParams) =>
+  useQuery({
+    queryKey: ["accounts", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<AccountListItemDto>>("/accounts", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+  });
+
+export const useAccount = (id: string) =>
+  useQuery({
+    queryKey: ["accounts", id],
+    queryFn: () => apiClient.get<AccountDto>(`/accounts/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+export const useCreateAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateAccountRequest) =>
+      apiClient.post<AccountDto>("/accounts", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+  });
+};
+
+export const useUpdateAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateAccountRequest) =>
+      apiClient.put<AccountDto>(`/accounts/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+  });
+};
+
+export const useDeleteAccount = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/accounts/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+  });
+};
+
+export const useSetAccountHolders = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, holders }: { accountId: string; holders: AccountHolderInput[] }) =>
+      apiClient.put<AccountDto>(`/accounts/${accountId}/holders`, holders).then((r) => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["accounts", vars.accountId] });
+      qc.invalidateQueries({ queryKey: ["client-accounts"] });
+    },
+  });
+};
+
+export const useClientAccounts = (clientId: string) =>
+  useQuery({
+    queryKey: ["client-accounts", clientId],
+    queryFn: () =>
+      apiClient.get<ClientAccountDto[]>(`/clients/${clientId}/accounts`).then((r) => r.data),
+    enabled: !!clientId,
+  });
+
+export const useSetClientAccounts = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ clientId, accounts }: { clientId: string; accounts: ClientAccountInput[] }) =>
+      apiClient.put<ClientAccountDto[]>(`/clients/${clientId}/accounts`, accounts).then((r) => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["client-accounts", vars.clientId] });
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+    },
+  });
+};
+
+// Clients
 export const useClients = (params: ClientsParams) =>
   useQuery({
     queryKey: ["clients", params],

@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Typography, Paper,
+  Typography, Paper, Link,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
-import { useClient } from "../api/hooks";
+import { useClient, useClientAccounts } from "../api/hooks";
 import { useHasPermission } from "../auth/usePermission";
 import { EditClientDialog } from "./ClientDialogs";
 import { PageContainer } from "../components/PageContainer";
@@ -33,6 +33,7 @@ export function ClientDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: client, isLoading } = useClient(id ?? "");
+  const { data: clientAccounts } = useClientAccounts(id ?? "");
   const canUpdate = useHasPermission("clients.update");
   const [editOpen, setEditOpen] = useState(false);
 
@@ -196,6 +197,52 @@ export function ClientDetailsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Accounts */}
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="subtitle1" gutterBottom>Accounts</Typography>
+          {clientAccounts && clientAccounts.length > 0 ? (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Account Number</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Primary</TableCell>
+                    <TableCell>Added At</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {clientAccounts.map((a) => (
+                    <TableRow key={`${a.accountId}-${a.role}`}>
+                      <TableCell>
+                        <Link component={RouterLink} to={`/accounts/${a.accountId}`}>
+                          {a.accountNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={a.accountStatus} size="small" color={
+                          a.accountStatus === "Active" ? "success"
+                          : a.accountStatus === "Blocked" ? "error"
+                          : a.accountStatus === "Suspended" ? "warning"
+                          : "default"
+                        } />
+                      </TableCell>
+                      <TableCell>{a.role}</TableCell>
+                      <TableCell>{a.isPrimary ? "Yes" : "No"}</TableCell>
+                      <TableCell>{new Date(a.addedAt).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Typography variant="body2" color="text.secondary">No accounts.</Typography>
+          )}
+        </CardContent>
+      </Card>
 
       <EditClientDialog open={editOpen} onClose={() => setEditOpen(false)} clientId={client.id} />
     </PageContainer>

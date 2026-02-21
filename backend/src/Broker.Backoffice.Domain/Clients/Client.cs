@@ -1,3 +1,4 @@
+using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Common;
 using Broker.Backoffice.Domain.Countries;
 
@@ -44,4 +45,5 @@ public sealed class Client : AuditableEntity
 
     public ICollection<ClientAddress> Addresses { get; set; } = [];
     public InvestmentProfile? InvestmentProfile { get; set; }
+    public ICollection<AccountHolder> AccountHolders { get; set; } = [];
 }

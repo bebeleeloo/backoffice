@@ -1,3 +1,4 @@
+using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Audit;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
@@ -22,6 +23,10 @@ public interface IAppDbContext
     DbSet<ClientAddress> ClientAddresses { get; }
     DbSet<Country> Countries { get; }
     DbSet<InvestmentProfile> InvestmentProfiles { get; }
+    DbSet<Account> Accounts { get; }
+    DbSet<AccountHolder> AccountHolders { get; }
+    DbSet<Clearer> Clearers { get; }
+    DbSet<TradePlatform> TradePlatforms { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

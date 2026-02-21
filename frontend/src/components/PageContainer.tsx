@@ -34,9 +34,9 @@ export function PageContainer({
       sx={{
         display: "flex",
         flexDirection: "column",
-        flexGrow: 1,
-        minHeight: 0,
-        overflow: isList ? "hidden" : "auto",
+        ...(isList
+          ? { flexGrow: 1, minHeight: 0, overflow: "hidden" }
+          : {}),
         width: "100%",
         px: 2,
         pt: isList ? 1 : 1.5,

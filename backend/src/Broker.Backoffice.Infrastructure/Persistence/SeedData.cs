@@ -1,3 +1,4 @@
+using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,44 @@ public static class SeedData
     {
         // Seed countries reference data
         await SeedCountries.SeedAsync(db);
+
+        // Seed clearers
+        var clearerData = new (string Name, string Description)[]
+        {
+            ("Apex Clearing", "Full-service clearing and custody solutions"),
+            ("Pershing", "BNY Mellon subsidiary providing clearing services"),
+            ("Interactive Brokers", "Electronic brokerage and clearing"),
+            ("Hilltop Securities", "Clearing and settlement services"),
+        };
+        var existingClearerNames = (await db.Clearers.Select(c => c.Name).ToListAsync()).ToHashSet();
+        foreach (var (name, description) in clearerData)
+        {
+            if (existingClearerNames.Contains(name)) continue;
+            db.Clearers.Add(new Clearer
+            {
+                Id = Guid.NewGuid(), Name = name, Description = description, IsActive = true
+            });
+        }
+        await db.SaveChangesAsync();
+
+        // Seed trade platforms
+        var tradePlatformData = new (string Name, string Description)[]
+        {
+            ("MetaTrader 5", "Multi-asset trading platform"),
+            ("Sterling Trader", "Professional trading platform"),
+            ("DAS Trader", "Direct access trading software"),
+            ("Thinkorswim", "Advanced trading platform by TD Ameritrade"),
+        };
+        var existingPlatformNames = (await db.TradePlatforms.Select(t => t.Name).ToListAsync()).ToHashSet();
+        foreach (var (name, description) in tradePlatformData)
+        {
+            if (existingPlatformNames.Contains(name)) continue;
+            db.TradePlatforms.Add(new TradePlatform
+            {
+                Id = Guid.NewGuid(), Name = name, Description = description, IsActive = true
+            });
+        }
+        await db.SaveChangesAsync();
 
         // Seed permissions
         var existingCodes = (await db.Permissions.Select(p => p.Code).ToListAsync()).ToHashSet();
