@@ -2,6 +2,7 @@ using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
+using Broker.Backoffice.Domain.Instruments;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -22,12 +23,13 @@ public static class SeedDemoData
         var usersCreated = await SeedUsersAsync(db, password, logger);
         var clientsCreated = await SeedClientsAsync(db, logger);
         var accountsCreated = await SeedAccountsAsync(db, logger);
+        var instrumentsCreated = await SeedInstrumentsAsync(db, logger);
 
         await tx.CommitAsync();
 
-        if (usersCreated + clientsCreated + accountsCreated > 0)
-            logger.LogInformation("Demo seed complete: {Users} users, {Clients} clients, {Accounts} accounts created",
-                usersCreated, clientsCreated, accountsCreated);
+        if (usersCreated + clientsCreated + accountsCreated + instrumentsCreated > 0)
+            logger.LogInformation("Demo seed complete: {Users} users, {Clients} clients, {Accounts} accounts, {Instruments} instruments created",
+                usersCreated, clientsCreated, accountsCreated, instrumentsCreated);
         else
             logger.LogInformation("Demo seed: all data already present, 0 created");
     }
@@ -50,22 +52,24 @@ public static class SeedDemoData
 
     private static readonly Dictionary<string, (string Desc, string[] Perms)> RoleDefinitions = new()
     {
-        ["Manager"] = ("Manage clients, accounts, and view everything", new[]
+        ["Manager"] = ("Manage clients, accounts, instruments, and view everything", new[]
         {
             Permissions.UsersRead, Permissions.RolesRead, Permissions.PermissionsRead,
             Permissions.AuditRead,
             Permissions.ClientsRead, Permissions.ClientsCreate, Permissions.ClientsUpdate, Permissions.ClientsDelete,
             Permissions.AccountsRead, Permissions.AccountsCreate, Permissions.AccountsUpdate, Permissions.AccountsDelete,
+            Permissions.InstrumentsRead, Permissions.InstrumentsCreate, Permissions.InstrumentsUpdate, Permissions.InstrumentsDelete,
         }),
         ["Viewer"] = ("Read-only access", new[]
         {
             Permissions.UsersRead, Permissions.RolesRead, Permissions.PermissionsRead,
-            Permissions.AuditRead, Permissions.ClientsRead, Permissions.AccountsRead,
+            Permissions.AuditRead, Permissions.ClientsRead, Permissions.AccountsRead, Permissions.InstrumentsRead,
         }),
-        ["Operator"] = ("Client and account operations", new[]
+        ["Operator"] = ("Client, account, and instrument operations", new[]
         {
             Permissions.ClientsRead, Permissions.ClientsCreate, Permissions.ClientsUpdate,
             Permissions.AccountsRead, Permissions.AccountsCreate, Permissions.AccountsUpdate,
+            Permissions.InstrumentsRead, Permissions.InstrumentsCreate, Permissions.InstrumentsUpdate,
         }),
     };
 
@@ -449,6 +453,530 @@ public static class SeedDemoData
             accountIds.Count, holderCount, clientsWithAccounts.Count);
 
         return accountIds.Count;
+    }
+
+    // ── Instruments ────────────────────────────────────────────────────
+
+    private static readonly (string Symbol, string Name, string Exchange, string Currency, string Country, Sector Sector)[] StockData =
+    [
+        ("AAPL", "Apple Inc.", "NASDAQ", "USD", "US", Sector.Technology),
+        ("MSFT", "Microsoft Corporation", "NASDAQ", "USD", "US", Sector.Technology),
+        ("GOOGL", "Alphabet Inc.", "NASDAQ", "USD", "US", Sector.Communication),
+        ("AMZN", "Amazon.com Inc.", "NASDAQ", "USD", "US", Sector.ConsumerDiscretionary),
+        ("TSLA", "Tesla Inc.", "NASDAQ", "USD", "US", Sector.ConsumerDiscretionary),
+        ("META", "Meta Platforms Inc.", "NASDAQ", "USD", "US", Sector.Communication),
+        ("NVDA", "NVIDIA Corporation", "NASDAQ", "USD", "US", Sector.Technology),
+        ("BRK.B", "Berkshire Hathaway Inc.", "NYSE", "USD", "US", Sector.Finance),
+        ("JPM", "JPMorgan Chase & Co.", "NYSE", "USD", "US", Sector.Finance),
+        ("V", "Visa Inc.", "NYSE", "USD", "US", Sector.Finance),
+        ("JNJ", "Johnson & Johnson", "NYSE", "USD", "US", Sector.Healthcare),
+        ("UNH", "UnitedHealth Group Inc.", "NYSE", "USD", "US", Sector.Healthcare),
+        ("PG", "Procter & Gamble Co.", "NYSE", "USD", "US", Sector.ConsumerStaples),
+        ("MA", "Mastercard Inc.", "NYSE", "USD", "US", Sector.Finance),
+        ("HD", "The Home Depot Inc.", "NYSE", "USD", "US", Sector.ConsumerDiscretionary),
+        ("CVX", "Chevron Corporation", "NYSE", "USD", "US", Sector.Energy),
+        ("MRK", "Merck & Co. Inc.", "NYSE", "USD", "US", Sector.Healthcare),
+        ("ABBV", "AbbVie Inc.", "NYSE", "USD", "US", Sector.Healthcare),
+        ("PEP", "PepsiCo Inc.", "NASDAQ", "USD", "US", Sector.ConsumerStaples),
+        ("KO", "The Coca-Cola Co.", "NYSE", "USD", "US", Sector.ConsumerStaples),
+        ("AVGO", "Broadcom Inc.", "NASDAQ", "USD", "US", Sector.Technology),
+        ("COST", "Costco Wholesale Corp.", "NASDAQ", "USD", "US", Sector.ConsumerStaples),
+        ("TMO", "Thermo Fisher Scientific", "NYSE", "USD", "US", Sector.Healthcare),
+        ("WMT", "Walmart Inc.", "NYSE", "USD", "US", Sector.ConsumerStaples),
+        ("ADBE", "Adobe Inc.", "NASDAQ", "USD", "US", Sector.Technology),
+        ("CRM", "Salesforce Inc.", "NYSE", "USD", "US", Sector.Technology),
+        ("CSCO", "Cisco Systems Inc.", "NASDAQ", "USD", "US", Sector.Technology),
+        ("ACN", "Accenture plc", "NYSE", "USD", "US", Sector.Technology),
+        ("NFLX", "Netflix Inc.", "NASDAQ", "USD", "US", Sector.Communication),
+        ("AMD", "Advanced Micro Devices", "NASDAQ", "USD", "US", Sector.Technology),
+        ("INTC", "Intel Corporation", "NASDAQ", "USD", "US", Sector.Technology),
+        ("QCOM", "Qualcomm Inc.", "NASDAQ", "USD", "US", Sector.Technology),
+        ("TXN", "Texas Instruments Inc.", "NASDAQ", "USD", "US", Sector.Technology),
+        ("ORCL", "Oracle Corporation", "NYSE", "USD", "US", Sector.Technology),
+        ("IBM", "International Business Machines", "NYSE", "USD", "US", Sector.Technology),
+        ("NKE", "Nike Inc.", "NYSE", "USD", "US", Sector.ConsumerDiscretionary),
+        ("DIS", "The Walt Disney Co.", "NYSE", "USD", "US", Sector.Communication),
+        ("BA", "The Boeing Company", "NYSE", "USD", "US", Sector.Industrials),
+        ("CAT", "Caterpillar Inc.", "NYSE", "USD", "US", Sector.Industrials),
+        ("GS", "Goldman Sachs Group", "NYSE", "USD", "US", Sector.Finance),
+        ("XOM", "Exxon Mobil Corporation", "NYSE", "USD", "US", Sector.Energy),
+        ("LLY", "Eli Lilly and Company", "NYSE", "USD", "US", Sector.Healthcare),
+        ("PFE", "Pfizer Inc.", "NYSE", "USD", "US", Sector.Healthcare),
+        ("BMY", "Bristol-Myers Squibb", "NYSE", "USD", "US", Sector.Healthcare),
+        ("AMGN", "Amgen Inc.", "NASDAQ", "USD", "US", Sector.Healthcare),
+        ("GE", "General Electric Co.", "NYSE", "USD", "US", Sector.Industrials),
+        ("MMM", "3M Company", "NYSE", "USD", "US", Sector.Industrials),
+        ("HON", "Honeywell International", "NASDAQ", "USD", "US", Sector.Industrials),
+        ("UPS", "United Parcel Service", "NYSE", "USD", "US", Sector.Industrials),
+        ("RTX", "RTX Corporation", "NYSE", "USD", "US", Sector.Industrials),
+        ("NEE", "NextEra Energy Inc.", "NYSE", "USD", "US", Sector.Utilities),
+        ("DUK", "Duke Energy Corporation", "NYSE", "USD", "US", Sector.Utilities),
+        ("SO", "Southern Company", "NYSE", "USD", "US", Sector.Utilities),
+        ("AEP", "American Electric Power", "NASDAQ", "USD", "US", Sector.Utilities),
+        ("SHW", "Sherwin-Williams Co.", "NYSE", "USD", "US", Sector.Materials),
+        ("APD", "Air Products & Chemicals", "NYSE", "USD", "US", Sector.Materials),
+        ("ECL", "Ecolab Inc.", "NYSE", "USD", "US", Sector.Materials),
+        ("FCX", "Freeport-McMoRan Inc.", "NYSE", "USD", "US", Sector.Materials),
+        ("AMT", "American Tower Corp.", "NYSE", "USD", "US", Sector.RealEstate),
+        ("PLD", "Prologis Inc.", "NYSE", "USD", "US", Sector.RealEstate),
+        // International stocks
+        ("SHEL", "Shell plc", "LSE", "GBP", "GB", Sector.Energy),
+        ("AZN", "AstraZeneca plc", "LSE", "GBP", "GB", Sector.Healthcare),
+        ("HSBA", "HSBC Holdings plc", "LSE", "GBP", "GB", Sector.Finance),
+        ("BP", "BP plc", "LSE", "GBP", "GB", Sector.Energy),
+        ("GSK", "GSK plc", "LSE", "GBP", "GB", Sector.Healthcare),
+        ("ULVR", "Unilever plc", "LSE", "GBP", "GB", Sector.ConsumerStaples),
+        ("RIO", "Rio Tinto Group", "LSE", "GBP", "GB", Sector.Materials),
+        ("7203", "Toyota Motor Corp.", "TSE", "JPY", "JP", Sector.ConsumerDiscretionary),
+        ("6758", "Sony Group Corp.", "TSE", "JPY", "JP", Sector.Technology),
+        ("6861", "Keyence Corporation", "TSE", "JPY", "JP", Sector.Technology),
+        ("9984", "SoftBank Group Corp.", "TSE", "JPY", "JP", Sector.Communication),
+        ("SAP", "SAP SE", "XETRA", "EUR", "DE", Sector.Technology),
+        ("SIE", "Siemens AG", "XETRA", "EUR", "DE", Sector.Industrials),
+        ("ALV", "Allianz SE", "XETRA", "EUR", "DE", Sector.Finance),
+        ("BAS", "BASF SE", "XETRA", "EUR", "DE", Sector.Materials),
+        ("MC", "LVMH Moet Hennessy", "Euronext", "EUR", "FR", Sector.ConsumerDiscretionary),
+        ("OR", "L'Oreal SA", "Euronext", "EUR", "FR", Sector.ConsumerStaples),
+        ("TTE", "TotalEnergies SE", "Euronext", "EUR", "FR", Sector.Energy),
+        ("SAN", "Sanofi SA", "Euronext", "EUR", "FR", Sector.Healthcare),
+        ("NESN", "Nestle SA", "SIX", "CHF", "CH", Sector.ConsumerStaples),
+        ("ROG", "Roche Holding AG", "SIX", "CHF", "CH", Sector.Healthcare),
+        ("NOVN", "Novartis AG", "SIX", "CHF", "CH", Sector.Healthcare),
+        ("9988", "Alibaba Group", "HKEX", "HKD", "HK", Sector.Technology),
+        ("700", "Tencent Holdings", "HKEX", "HKD", "HK", Sector.Technology),
+        ("1299", "AIA Group Limited", "HKEX", "HKD", "HK", Sector.Finance),
+        ("RY", "Royal Bank of Canada", "TMX", "CAD", "CA", Sector.Finance),
+        ("TD", "Toronto-Dominion Bank", "TMX", "CAD", "CA", Sector.Finance),
+        ("SHOP", "Shopify Inc.", "TMX", "CAD", "CA", Sector.Technology),
+        ("BHP", "BHP Group Limited", "ASX", "AUD", "AU", Sector.Materials),
+        ("CBA", "Commonwealth Bank", "ASX", "AUD", "AU", Sector.Finance),
+        ("CSL", "CSL Limited", "ASX", "AUD", "AU", Sector.Healthcare),
+        ("RELIANCE", "Reliance Industries", "NSE", "INR", "IN", Sector.Energy),
+        ("TCS", "Tata Consultancy", "NSE", "INR", "IN", Sector.Technology),
+        ("INFY", "Infosys Limited", "NSE", "INR", "IN", Sector.Technology),
+        ("005930", "Samsung Electronics", "BSE", "KRW", "KR", Sector.Technology),
+        ("NPN", "Naspers Limited", "JSE", "ZAR", "ZA", Sector.Communication),
+        ("600519", "Kweichow Moutai", "SSE", "CNY", "CN", Sector.ConsumerStaples),
+        ("601318", "Ping An Insurance", "SSE", "CNY", "CN", Sector.Finance),
+        ("000858", "Wuliangye Yibin", "SZSE", "CNY", "CN", Sector.ConsumerStaples),
+        // Additional US stocks to reach ~100
+        ("PYPL", "PayPal Holdings Inc.", "NASDAQ", "USD", "US", Sector.Finance),
+        ("SQ", "Block Inc.", "NYSE", "USD", "US", Sector.Finance),
+        ("UBER", "Uber Technologies", "NYSE", "USD", "US", Sector.Technology),
+        ("ABNB", "Airbnb Inc.", "NASDAQ", "USD", "US", Sector.ConsumerDiscretionary),
+        ("SNOW", "Snowflake Inc.", "NYSE", "USD", "US", Sector.Technology),
+        ("PLTR", "Palantir Technologies", "NYSE", "USD", "US", Sector.Technology),
+        ("RIVN", "Rivian Automotive", "NASDAQ", "USD", "US", Sector.ConsumerDiscretionary),
+        ("COIN", "Coinbase Global", "NASDAQ", "USD", "US", Sector.Finance),
+        ("MRNA", "Moderna Inc.", "NASDAQ", "USD", "US", Sector.Healthcare),
+        ("ZM", "Zoom Video Comms", "NASDAQ", "USD", "US", Sector.Technology),
+        ("DDOG", "Datadog Inc.", "NASDAQ", "USD", "US", Sector.Technology),
+        ("NET", "Cloudflare Inc.", "NYSE", "USD", "US", Sector.Technology),
+        ("CRWD", "CrowdStrike Holdings", "NASDAQ", "USD", "US", Sector.Technology),
+        ("PANW", "Palo Alto Networks", "NASDAQ", "USD", "US", Sector.Technology),
+        ("SPOT", "Spotify Technology", "NYSE", "USD", "US", Sector.Communication),
+        ("RBLX", "Roblox Corporation", "NYSE", "USD", "US", Sector.Communication),
+        ("SNAP", "Snap Inc.", "NYSE", "USD", "US", Sector.Communication),
+        ("PINS", "Pinterest Inc.", "NYSE", "USD", "US", Sector.Communication),
+        ("ROKU", "Roku Inc.", "NASDAQ", "USD", "US", Sector.Communication),
+        ("SLB", "Schlumberger Limited", "NYSE", "USD", "US", Sector.Energy),
+    ];
+
+    private static readonly (string Symbol, string Name, string Exchange, string Currency, AssetClass AC)[] EtfData =
+    [
+        ("SPY", "SPDR S&P 500 ETF Trust", "NYSE", "USD", AssetClass.Equities),
+        ("QQQ", "Invesco QQQ Trust", "NASDAQ", "USD", AssetClass.Equities),
+        ("IWM", "iShares Russell 2000 ETF", "NYSE", "USD", AssetClass.Equities),
+        ("VTI", "Vanguard Total Stock Market ETF", "NYSE", "USD", AssetClass.Equities),
+        ("VOO", "Vanguard S&P 500 ETF", "NYSE", "USD", AssetClass.Equities),
+        ("EFA", "iShares MSCI EAFE ETF", "NYSE", "USD", AssetClass.Equities),
+        ("EEM", "iShares MSCI Emerging Markets ETF", "NYSE", "USD", AssetClass.Equities),
+        ("VWO", "Vanguard FTSE Emerging Markets ETF", "NYSE", "USD", AssetClass.Equities),
+        ("GLD", "SPDR Gold Shares", "NYSE", "USD", AssetClass.Commodities),
+        ("SLV", "iShares Silver Trust", "NYSE", "USD", AssetClass.Commodities),
+        ("TLT", "iShares 20+ Year Treasury Bond ETF", "NASDAQ", "USD", AssetClass.FixedIncome),
+        ("HYG", "iShares iBoxx High Yield Corporate Bond ETF", "NYSE", "USD", AssetClass.FixedIncome),
+        ("LQD", "iShares Investment Grade Corporate Bond ETF", "NYSE", "USD", AssetClass.FixedIncome),
+        ("AGG", "iShares Core U.S. Aggregate Bond ETF", "NYSE", "USD", AssetClass.FixedIncome),
+        ("BND", "Vanguard Total Bond Market ETF", "NASDAQ", "USD", AssetClass.FixedIncome),
+        ("XLF", "Financial Select Sector SPDR Fund", "NYSE", "USD", AssetClass.Equities),
+        ("XLE", "Energy Select Sector SPDR Fund", "NYSE", "USD", AssetClass.Equities),
+        ("XLK", "Technology Select Sector SPDR Fund", "NYSE", "USD", AssetClass.Equities),
+        ("XLV", "Health Care Select Sector SPDR Fund", "NYSE", "USD", AssetClass.Equities),
+        ("ARKK", "ARK Innovation ETF", "NYSE", "USD", AssetClass.Equities),
+        ("VNQ", "Vanguard Real Estate ETF", "NYSE", "USD", AssetClass.Equities),
+        ("SCHD", "Schwab US Dividend Equity ETF", "NYSE", "USD", AssetClass.Equities),
+        ("DIA", "SPDR Dow Jones Industrial Average ETF", "NYSE", "USD", AssetClass.Equities),
+        ("USO", "United States Oil Fund", "NYSE", "USD", AssetClass.Commodities),
+        ("XLP", "Consumer Staples Select Sector SPDR", "NYSE", "USD", AssetClass.Equities),
+        ("XLI", "Industrial Select Sector SPDR Fund", "NYSE", "USD", AssetClass.Equities),
+        ("IEMG", "iShares Core MSCI Emerging Markets ETF", "NYSE", "USD", AssetClass.Equities),
+        ("VEA", "Vanguard FTSE Developed Markets ETF", "NYSE", "USD", AssetClass.Equities),
+        ("IVV", "iShares Core S&P 500 ETF", "NYSE", "USD", AssetClass.Equities),
+        ("VXUS", "Vanguard Total International Stock ETF", "NASDAQ", "USD", AssetClass.Equities),
+    ];
+
+    private static readonly (string Symbol, string Name, string Currency)[] BondData =
+    [
+        ("US10Y", "US Treasury 10-Year Note", "USD"),
+        ("US30Y", "US Treasury 30-Year Bond", "USD"),
+        ("US5Y", "US Treasury 5-Year Note", "USD"),
+        ("US2Y", "US Treasury 2-Year Note", "USD"),
+        ("BUND10Y", "German Bund 10-Year", "EUR"),
+        ("GILT10Y", "UK Gilt 10-Year", "GBP"),
+        ("JGB10Y", "Japan Government Bond 10-Year", "JPY"),
+        ("AAPL-BD", "Apple Inc. Corporate Bond 2030", "USD"),
+        ("MSFT-BD", "Microsoft Corp. Bond 2028", "USD"),
+        ("JPM-BD", "JPMorgan Chase Bond 2032", "USD"),
+        ("GS-BD", "Goldman Sachs Bond 2029", "USD"),
+        ("T-BD", "AT&T Corporate Bond 2031", "USD"),
+        ("WMT-BD", "Walmart Inc. Bond 2027", "USD"),
+        ("PG-BD", "Procter & Gamble Bond 2033", "USD"),
+        ("XOM-BD", "Exxon Mobil Bond 2030", "USD"),
+        ("MUNI-NY", "New York Municipal Bond", "USD"),
+        ("MUNI-CA", "California Municipal Bond", "USD"),
+        ("MUNI-TX", "Texas Municipal Bond", "USD"),
+        ("EU-BD", "European Investment Bank Bond", "EUR"),
+        ("IBRD-BD", "World Bank Bond 2029", "USD"),
+        ("ADB-BD", "Asian Development Bank Bond", "USD"),
+        ("BRL-BD", "Brazil Government Bond", "BRL"),
+        ("ZAR-BD", "South Africa Government Bond", "ZAR"),
+        ("INR-BD", "India Government Bond", "INR"),
+        ("CAD-BD", "Canada Government Bond 10-Year", "CAD"),
+        ("AUD-BD", "Australia Government Bond", "AUD"),
+        ("CHF-BD", "Swiss Confederation Bond", "CHF"),
+        ("CNY-BD", "China Government Bond 10-Year", "CNY"),
+        ("KRW-BD", "South Korea Treasury Bond", "KRW"),
+        ("NZD-BD", "New Zealand Government Bond", "NZD"),
+    ];
+
+    private static readonly (string Symbol, string Name)[] OptionData =
+    [
+        ("AAPL240621C", "AAPL Call Jun 2024 $190"),
+        ("AAPL240621P", "AAPL Put Jun 2024 $180"),
+        ("MSFT240621C", "MSFT Call Jun 2024 $420"),
+        ("MSFT240621P", "MSFT Put Jun 2024 $400"),
+        ("TSLA240621C", "TSLA Call Jun 2024 $250"),
+        ("TSLA240621P", "TSLA Put Jun 2024 $220"),
+        ("AMZN240621C", "AMZN Call Jun 2024 $185"),
+        ("AMZN240621P", "AMZN Put Jun 2024 $170"),
+        ("GOOGL240621C", "GOOGL Call Jun 2024 $175"),
+        ("GOOGL240621P", "GOOGL Put Jun 2024 $160"),
+        ("NVDA240621C", "NVDA Call Jun 2024 $900"),
+        ("NVDA240621P", "NVDA Put Jun 2024 $800"),
+        ("META240621C", "META Call Jun 2024 $500"),
+        ("META240621P", "META Put Jun 2024 $460"),
+        ("SPY240621C", "SPY Call Jun 2024 $520"),
+        ("SPY240621P", "SPY Put Jun 2024 $500"),
+        ("QQQ240621C", "QQQ Call Jun 2024 $450"),
+        ("QQQ240621P", "QQQ Put Jun 2024 $430"),
+        ("JPM240621C", "JPM Call Jun 2024 $200"),
+        ("BA240621C", "BA Call Jun 2024 $200"),
+        ("XOM240621C", "XOM Call Jun 2024 $115"),
+        ("GLD240621C", "GLD Call Jun 2024 $220"),
+        ("IWM240621C", "IWM Call Jun 2024 $210"),
+        ("DIS240621C", "DIS Call Jun 2024 $115"),
+        ("NFLX240621C", "NFLX Call Jun 2024 $650"),
+        ("AMD240621C", "AMD Call Jun 2024 $180"),
+        ("COIN240621C", "COIN Call Jun 2024 $260"),
+        ("UBER240621C", "UBER Call Jun 2024 $80"),
+        ("SQ240621C", "SQ Call Jun 2024 $85"),
+        ("PLTR240621C", "PLTR Call Jun 2024 $25"),
+    ];
+
+    private static readonly (string Symbol, string Name, string Currency, AssetClass AC)[] FutureData =
+    [
+        ("ES", "E-mini S&P 500 Future", "USD", AssetClass.Derivatives),
+        ("NQ", "E-mini NASDAQ-100 Future", "USD", AssetClass.Derivatives),
+        ("YM", "E-mini Dow Jones Future", "USD", AssetClass.Derivatives),
+        ("RTY", "E-mini Russell 2000 Future", "USD", AssetClass.Derivatives),
+        ("CL", "Crude Oil WTI Future", "USD", AssetClass.Commodities),
+        ("NG", "Natural Gas Future", "USD", AssetClass.Commodities),
+        ("GC", "Gold Future", "USD", AssetClass.Commodities),
+        ("SI", "Silver Future", "USD", AssetClass.Commodities),
+        ("HG", "Copper Future", "USD", AssetClass.Commodities),
+        ("PL", "Platinum Future", "USD", AssetClass.Commodities),
+        ("ZB", "US Treasury Bond Future", "USD", AssetClass.FixedIncome),
+        ("ZN", "US 10-Year T-Note Future", "USD", AssetClass.FixedIncome),
+        ("ZC", "Corn Future", "USD", AssetClass.Commodities),
+        ("ZW", "Wheat Future", "USD", AssetClass.Commodities),
+        ("ZS", "Soybean Future", "USD", AssetClass.Commodities),
+        ("KC", "Coffee Future", "USD", AssetClass.Commodities),
+        ("CT", "Cotton Future", "USD", AssetClass.Commodities),
+        ("SB", "Sugar Future", "USD", AssetClass.Commodities),
+        ("LE", "Live Cattle Future", "USD", AssetClass.Commodities),
+        ("HE", "Lean Hogs Future", "USD", AssetClass.Commodities),
+        ("6E", "Euro FX Future", "USD", AssetClass.ForeignExchange),
+        ("6B", "British Pound Future", "USD", AssetClass.ForeignExchange),
+        ("6J", "Japanese Yen Future", "USD", AssetClass.ForeignExchange),
+        ("6A", "Australian Dollar Future", "USD", AssetClass.ForeignExchange),
+        ("6C", "Canadian Dollar Future", "USD", AssetClass.ForeignExchange),
+        ("VX", "VIX Future", "USD", AssetClass.Derivatives),
+        ("BTC", "Bitcoin Future", "USD", AssetClass.Derivatives),
+        ("ETH", "Ether Future", "USD", AssetClass.Derivatives),
+        ("FGBL", "Euro-Bund Future", "EUR", AssetClass.FixedIncome),
+        ("NK", "Nikkei 225 Future", "JPY", AssetClass.Derivatives),
+    ];
+
+    private static readonly (string Symbol, string Name, string BaseCurrency, string QuoteCurrency)[] ForexData =
+    [
+        ("EURUSD", "Euro / US Dollar", "EUR", "USD"),
+        ("GBPUSD", "British Pound / US Dollar", "GBP", "USD"),
+        ("USDJPY", "US Dollar / Japanese Yen", "USD", "JPY"),
+        ("USDCHF", "US Dollar / Swiss Franc", "USD", "CHF"),
+        ("AUDUSD", "Australian Dollar / US Dollar", "AUD", "USD"),
+        ("USDCAD", "US Dollar / Canadian Dollar", "USD", "CAD"),
+        ("NZDUSD", "New Zealand Dollar / US Dollar", "NZD", "USD"),
+        ("EURGBP", "Euro / British Pound", "EUR", "GBP"),
+        ("EURJPY", "Euro / Japanese Yen", "EUR", "JPY"),
+        ("GBPJPY", "British Pound / Japanese Yen", "GBP", "JPY"),
+        ("EURCHF", "Euro / Swiss Franc", "EUR", "CHF"),
+        ("AUDJPY", "Australian Dollar / Japanese Yen", "AUD", "JPY"),
+        ("EURAUD", "Euro / Australian Dollar", "EUR", "AUD"),
+        ("EURCAD", "Euro / Canadian Dollar", "EUR", "CAD"),
+        ("GBPCHF", "British Pound / Swiss Franc", "GBP", "CHF"),
+        ("CADJPY", "Canadian Dollar / Japanese Yen", "CAD", "JPY"),
+        ("AUDCAD", "Australian Dollar / Canadian Dollar", "AUD", "CAD"),
+        ("AUDCHF", "Australian Dollar / Swiss Franc", "AUD", "CHF"),
+        ("NZDJPY", "New Zealand Dollar / Japanese Yen", "NZD", "JPY"),
+        ("USDHKD", "US Dollar / Hong Kong Dollar", "USD", "HKD"),
+        ("USDSGD", "US Dollar / Singapore Dollar", "USD", "SGD"),
+        ("USDINR", "US Dollar / Indian Rupee", "USD", "INR"),
+        ("USDCNY", "US Dollar / Chinese Yuan", "USD", "CNY"),
+        ("USDBRL", "US Dollar / Brazilian Real", "USD", "BRL"),
+        ("USDZAR", "US Dollar / South African Rand", "USD", "ZAR"),
+    ];
+
+    private static readonly (string Symbol, string Name)[] CfdData =
+    [
+        ("US500", "US 500 Index CFD"), ("US100", "US Tech 100 CFD"),
+        ("US30", "US Wall Street 30 CFD"), ("UK100", "UK 100 Index CFD"),
+        ("DE40", "Germany 40 CFD"), ("JP225", "Japan 225 CFD"),
+        ("HK50", "Hong Kong 50 CFD"), ("AU200", "Australia 200 CFD"),
+        ("EU50", "Euro Stoxx 50 CFD"), ("FR40", "France 40 CFD"),
+        ("XAUUSD", "Gold CFD (USD/oz)"), ("XAGUSD", "Silver CFD (USD/oz)"),
+        ("USOIL", "US Crude Oil CFD"), ("UKOIL", "Brent Crude Oil CFD"),
+        ("NATGAS", "Natural Gas CFD"),
+    ];
+
+    private static readonly (string Symbol, string Name, string Currency)[] MutualFundData =
+    [
+        ("VFIAX", "Vanguard 500 Index Fund Admiral", "USD"),
+        ("FXAIX", "Fidelity 500 Index Fund", "USD"),
+        ("VTSAX", "Vanguard Total Stock Market Index Fund", "USD"),
+        ("VBTLX", "Vanguard Total Bond Market Index Fund", "USD"),
+        ("VTIAX", "Vanguard Total International Stock Index Fund", "USD"),
+        ("FBALX", "Fidelity Balanced Fund", "USD"),
+        ("PIMIX", "PIMCO Income Fund Institutional", "USD"),
+        ("VWELX", "Vanguard Wellington Fund", "USD"),
+        ("TRBCX", "T. Rowe Price Blue Chip Growth Fund", "USD"),
+        ("DODGX", "Dodge & Cox Stock Fund", "USD"),
+    ];
+
+    private static readonly (string Symbol, string Name)[] WarrantIndexData =
+    [
+        ("SPX", "S&P 500 Index"), ("NDX", "NASDAQ-100 Index"),
+        ("DJI", "Dow Jones Industrial Average"), ("RUT", "Russell 2000 Index"),
+        ("VIX", "CBOE Volatility Index"), ("FTSE", "FTSE 100 Index"),
+        ("DAX", "DAX 40 Index"), ("NKY", "Nikkei 225 Index"),
+        ("HSI", "Hang Seng Index"), ("STOXX50E", "Euro Stoxx 50 Index"),
+    ];
+
+    private static async Task<int> SeedInstrumentsAsync(AppDbContext db, ILogger logger)
+    {
+        if (await db.Instruments.AnyAsync())
+            return 0;
+
+        var exchangeMap = await db.Exchanges.ToDictionaryAsync(e => e.Code, e => e.Id);
+        var currencyMap = await db.Currencies.ToDictionaryAsync(c => c.Code, c => c.Id);
+        var countryMap = await db.Countries.Where(c => c.IsActive).ToDictionaryAsync(c => c.Iso2, c => c.Id);
+
+        Guid? ExId(string code) => exchangeMap.GetValueOrDefault(code);
+        Guid? CurId(string code) => currencyMap.GetValueOrDefault(code);
+        Guid? CntId(string iso2) => countryMap.GetValueOrDefault(iso2);
+
+        var created = 0;
+
+        // Stocks (~120)
+        foreach (var s in StockData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = s.Symbol, Name = s.Name,
+                ISIN = $"US{rng.Next(100000000, 999999999)}{rng.Next(0, 10)}",
+                CUSIP = $"{rng.Next(100000, 999999)}{rng.Next(100, 999)}",
+                Type = InstrumentType.Stock, AssetClass = AssetClass.Equities,
+                Status = PickWeighted(rng, (InstrumentStatus.Active, 85), (InstrumentStatus.Inactive, 5),
+                    (InstrumentStatus.Suspended, 5), (InstrumentStatus.Delisted, 5)),
+                ExchangeId = ExId(s.Exchange), CurrencyId = CurId(s.Currency), CountryId = CntId(s.Country),
+                Sector = s.Sector, LotSize = 1,
+                TickSize = 0.01m, MarginRequirement = rng.Next(25, 51),
+                IsMarginEligible = rng.Next(10) > 0,
+                ListingDate = DateTime.UtcNow.AddDays(-rng.Next(365, 3650)),
+                IssuerName = s.Name.Replace(" Inc.", "").Replace(" Corp.", "").Replace(" plc", ""),
+                ExternalId = rng.Next(3) == 0 ? $"EXT-{rng.Next(10000, 99999)}" : null,
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)), CreatedBy = "seed",
+            });
+            created++;
+            if (created % 50 == 0) await db.SaveChangesAsync();
+        }
+
+        // ETFs (~30)
+        foreach (var e in EtfData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = e.Symbol, Name = e.Name,
+                CUSIP = $"{rng.Next(100000, 999999)}{rng.Next(100, 999)}",
+                Type = InstrumentType.ETF, AssetClass = e.AC,
+                Status = InstrumentStatus.Active,
+                ExchangeId = ExId(e.Exchange), CurrencyId = CurId(e.Currency), CountryId = CntId("US"),
+                LotSize = 1, TickSize = 0.01m, MarginRequirement = rng.Next(20, 40),
+                IsMarginEligible = true,
+                ListingDate = DateTime.UtcNow.AddDays(-rng.Next(365, 5000)),
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)), CreatedBy = "seed",
+            });
+            created++;
+            if (created % 50 == 0) await db.SaveChangesAsync();
+        }
+
+        // Bonds (~30)
+        foreach (var b in BondData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = b.Symbol, Name = b.Name,
+                CUSIP = $"{rng.Next(100000, 999999)}{rng.Next(100, 999)}",
+                Type = InstrumentType.Bond, AssetClass = AssetClass.FixedIncome,
+                Status = InstrumentStatus.Active,
+                CurrencyId = CurId(b.Currency), CountryId = CntId("US"),
+                LotSize = 1000, TickSize = 0.001m, MarginRequirement = rng.Next(5, 20),
+                IsMarginEligible = true,
+                ListingDate = DateTime.UtcNow.AddDays(-rng.Next(365, 3650)),
+                ExpirationDate = DateTime.UtcNow.AddDays(rng.Next(365, 3650)),
+                IssuerName = b.Name.Split(" Bond")[0].Split(" Corporate")[0],
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)), CreatedBy = "seed",
+            });
+            created++;
+            if (created % 50 == 0) await db.SaveChangesAsync();
+        }
+
+        // Options (~30)
+        foreach (var o in OptionData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = o.Symbol, Name = o.Name,
+                Type = InstrumentType.Option, AssetClass = AssetClass.Derivatives,
+                Status = InstrumentStatus.Active,
+                ExchangeId = ExId("NASDAQ"), CurrencyId = CurId("USD"), CountryId = CntId("US"),
+                LotSize = 100, TickSize = 0.01m, MarginRequirement = rng.Next(20, 100),
+                IsMarginEligible = true,
+                ListingDate = DateTime.UtcNow.AddDays(-rng.Next(30, 180)),
+                ExpirationDate = DateTime.UtcNow.AddDays(rng.Next(30, 365)),
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(10, 180)), CreatedBy = "seed",
+            });
+            created++;
+            if (created % 50 == 0) await db.SaveChangesAsync();
+        }
+
+        // Futures (~30)
+        foreach (var f in FutureData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = f.Symbol, Name = f.Name,
+                Type = InstrumentType.Future, AssetClass = f.AC,
+                Status = InstrumentStatus.Active,
+                ExchangeId = ExId("NYSE"), CurrencyId = CurId(f.Currency),
+                CountryId = CntId("US"),
+                LotSize = f.Symbol is "ES" or "NQ" or "YM" or "RTY" ? 50 : 1000,
+                TickSize = 0.25m, MarginRequirement = rng.Next(5, 15),
+                IsMarginEligible = true,
+                ListingDate = DateTime.UtcNow.AddDays(-rng.Next(30, 365)),
+                ExpirationDate = DateTime.UtcNow.AddDays(rng.Next(30, 180)),
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(10, 180)), CreatedBy = "seed",
+            });
+            created++;
+            if (created % 50 == 0) await db.SaveChangesAsync();
+        }
+
+        // Forex (~25)
+        foreach (var fx in ForexData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = fx.Symbol, Name = fx.Name,
+                Type = InstrumentType.Forex, AssetClass = AssetClass.ForeignExchange,
+                Status = InstrumentStatus.Active,
+                CurrencyId = CurId(fx.BaseCurrency),
+                LotSize = 100_000, TickSize = 0.00001m,
+                MarginRequirement = rng.Next(2, 5), IsMarginEligible = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)), CreatedBy = "seed",
+            });
+            created++;
+            if (created % 50 == 0) await db.SaveChangesAsync();
+        }
+
+        // CFDs (~15)
+        foreach (var c in CfdData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = c.Symbol, Name = c.Name,
+                Type = InstrumentType.CFD, AssetClass = AssetClass.Derivatives,
+                Status = InstrumentStatus.Active,
+                CurrencyId = CurId("USD"),
+                LotSize = 1, TickSize = 0.1m, MarginRequirement = rng.Next(5, 20),
+                IsMarginEligible = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)), CreatedBy = "seed",
+            });
+            created++;
+        }
+
+        // Mutual Funds (~10)
+        foreach (var mf in MutualFundData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = mf.Symbol, Name = mf.Name,
+                Type = InstrumentType.MutualFund, AssetClass = AssetClass.Funds,
+                Status = InstrumentStatus.Active,
+                CurrencyId = CurId(mf.Currency), CountryId = CntId("US"),
+                LotSize = 1, IsMarginEligible = false,
+                ListingDate = DateTime.UtcNow.AddDays(-rng.Next(730, 7300)),
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)), CreatedBy = "seed",
+            });
+            created++;
+        }
+
+        // Warrants/Index (~10)
+        foreach (var wi in WarrantIndexData)
+        {
+            var rng = new Random(55_000 + created);
+            db.Instruments.Add(new Instrument
+            {
+                Id = Guid.NewGuid(), Symbol = wi.Symbol, Name = wi.Name,
+                Type = InstrumentType.Index, AssetClass = AssetClass.Equities,
+                Status = InstrumentStatus.Active,
+                CurrencyId = CurId("USD"),
+                LotSize = 1, IsMarginEligible = false,
+                CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)), CreatedBy = "seed",
+            });
+            created++;
+        }
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("Demo seed: created {Count} instruments", created);
+        return created;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

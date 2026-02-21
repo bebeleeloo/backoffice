@@ -9,6 +9,8 @@ import type {
   AccountListItemDto, AccountDto, CreateAccountRequest, UpdateAccountRequest, AccountsParams,
   ClearerDto, TradePlatformDto,
   AccountHolderInput, ClientAccountDto, ClientAccountInput,
+  ExchangeDto, CurrencyDto,
+  InstrumentListItemDto, InstrumentDto, CreateInstrumentRequest, UpdateInstrumentRequest, InstrumentsParams,
 } from "./types";
 
 // Auth
@@ -289,5 +291,64 @@ export const useDeleteClient = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/clients/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
+  });
+};
+
+// Exchanges
+export const useExchanges = () =>
+  useQuery({
+    queryKey: ["exchanges"],
+    queryFn: () =>
+      apiClient.get<ExchangeDto[]>("/exchanges").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
+  });
+
+// Currencies
+export const useCurrencies = () =>
+  useQuery({
+    queryKey: ["currencies"],
+    queryFn: () =>
+      apiClient.get<CurrencyDto[]>("/currencies").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
+  });
+
+// Instruments
+export const useInstruments = (params: InstrumentsParams) =>
+  useQuery({
+    queryKey: ["instruments", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<InstrumentListItemDto>>("/instruments", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+  });
+
+export const useInstrument = (id: string) =>
+  useQuery({
+    queryKey: ["instruments", id],
+    queryFn: () => apiClient.get<InstrumentDto>(`/instruments/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+export const useCreateInstrument = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateInstrumentRequest) =>
+      apiClient.post<InstrumentDto>("/instruments", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
+  });
+};
+
+export const useUpdateInstrument = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateInstrumentRequest) =>
+      apiClient.put<InstrumentDto>(`/instruments/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
+  });
+};
+
+export const useDeleteInstrument = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/instruments/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
   });
 };

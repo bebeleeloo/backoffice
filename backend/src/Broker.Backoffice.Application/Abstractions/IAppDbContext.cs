@@ -3,6 +3,7 @@ using Broker.Backoffice.Domain.Audit;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
+using Broker.Backoffice.Domain.Instruments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -27,6 +28,9 @@ public interface IAppDbContext
     DbSet<AccountHolder> AccountHolders { get; }
     DbSet<Clearer> Clearers { get; }
     DbSet<TradePlatform> TradePlatforms { get; }
+    DbSet<Instrument> Instruments { get; }
+    DbSet<Exchange> Exchanges { get; }
+    DbSet<Currency> Currencies { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

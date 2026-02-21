@@ -4,6 +4,7 @@ using Broker.Backoffice.Domain.Audit;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
+using Broker.Backoffice.Domain.Instruments;
 using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Backoffice.Infrastructure.Persistence;
@@ -28,6 +29,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AccountHolder> AccountHolders => Set<AccountHolder>();
     public DbSet<Clearer> Clearers => Set<Clearer>();
     public DbSet<TradePlatform> TradePlatforms => Set<TradePlatform>();
+    public DbSet<Instrument> Instruments => Set<Instrument>();
+    public DbSet<Exchange> Exchanges => Set<Exchange>();
+    public DbSet<Currency> Currencies => Set<Currency>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

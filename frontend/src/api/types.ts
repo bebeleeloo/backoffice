@@ -428,6 +428,123 @@ export interface AccountsParams extends PagedParams {
   externalId?: string;
 }
 
+// Instruments
+export type InstrumentType = "Stock" | "Bond" | "ETF" | "Option" | "Future" | "Forex" | "CFD" | "MutualFund" | "Warrant" | "Index";
+export type AssetClass = "Equities" | "FixedIncome" | "Derivatives" | "ForeignExchange" | "Commodities" | "Funds";
+export type InstrumentStatus = "Active" | "Inactive" | "Delisted" | "Suspended";
+export type Sector = "Technology" | "Healthcare" | "Finance" | "Energy" | "ConsumerDiscretionary" | "ConsumerStaples" | "Industrials" | "Materials" | "RealEstate" | "Utilities" | "Communication" | "Other";
+
+export interface ExchangeDto {
+  id: string;
+  code: string;
+  name: string;
+  countryId: string | null;
+  isActive: boolean;
+}
+
+export interface CurrencyDto {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string | null;
+  isActive: boolean;
+}
+
+export interface InstrumentListItemDto {
+  id: string;
+  symbol: string;
+  name: string;
+  isin: string | null;
+  cusip: string | null;
+  type: InstrumentType;
+  assetClass: AssetClass;
+  status: InstrumentStatus;
+  exchangeCode: string | null;
+  exchangeName: string | null;
+  currencyCode: string | null;
+  countryName: string | null;
+  countryFlagEmoji: string | null;
+  sector: Sector | null;
+  lotSize: number;
+  isMarginEligible: boolean;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface InstrumentDto {
+  id: string;
+  symbol: string;
+  name: string;
+  isin: string | null;
+  cusip: string | null;
+  type: InstrumentType;
+  assetClass: AssetClass;
+  status: InstrumentStatus;
+  exchangeId: string | null;
+  exchangeCode: string | null;
+  exchangeName: string | null;
+  currencyId: string | null;
+  currencyCode: string | null;
+  countryId: string | null;
+  countryName: string | null;
+  countryFlagEmoji: string | null;
+  sector: Sector | null;
+  lotSize: number;
+  tickSize: number | null;
+  marginRequirement: number | null;
+  isMarginEligible: boolean;
+  listingDate: string | null;
+  delistingDate: string | null;
+  expirationDate: string | null;
+  issuerName: string | null;
+  description: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface CreateInstrumentRequest {
+  symbol: string;
+  name: string;
+  isin?: string;
+  cusip?: string;
+  type: InstrumentType;
+  assetClass: AssetClass;
+  status: InstrumentStatus;
+  exchangeId?: string;
+  currencyId?: string;
+  countryId?: string;
+  sector?: Sector;
+  lotSize: number;
+  tickSize?: number;
+  marginRequirement?: number;
+  isMarginEligible: boolean;
+  listingDate?: string;
+  delistingDate?: string;
+  expirationDate?: string;
+  issuerName?: string;
+  description?: string;
+  externalId?: string;
+}
+
+export interface UpdateInstrumentRequest extends CreateInstrumentRequest {
+  id: string;
+  rowVersion: string;
+}
+
+export interface InstrumentsParams extends PagedParams {
+  symbol?: string;
+  name?: string;
+  type?: InstrumentType[];
+  assetClass?: AssetClass[];
+  status?: InstrumentStatus[];
+  sector?: Sector[];
+  exchangeName?: string;
+  currencyCode?: string;
+  isMarginEligible?: boolean;
+}
+
 export interface ClientsParams extends PagedParams {
   name?: string;
   email?: string;

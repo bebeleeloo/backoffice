@@ -13,6 +13,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import SecurityIcon from "@mui/icons-material/Security";
 import HistoryIcon from "@mui/icons-material/History";
 import SettingsIcon from "@mui/icons-material/Settings";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useAuth } from "../auth/useAuth";
 import { useHasPermission } from "../auth/usePermission";
@@ -27,6 +28,7 @@ export function MainLayout() {
 
   const canViewClients = useHasPermission("clients.read");
   const canViewAccounts = useHasPermission("accounts.read");
+  const canViewInstruments = useHasPermission("instruments.read");
   const canViewUsers = useHasPermission("users.read");
   const canViewRoles = useHasPermission("roles.read");
   const canViewAudit = useHasPermission("audit.read");
@@ -35,6 +37,7 @@ export function MainLayout() {
     { label: "Dashboard", path: "/", icon: <DashboardIcon />, visible: true },
     { label: "Clients", path: "/clients", icon: <GroupsIcon />, visible: canViewClients },
     { label: "Accounts", path: "/accounts", icon: <AccountBalanceIcon />, visible: canViewAccounts },
+    { label: "Instruments", path: "/instruments", icon: <ShowChartIcon />, visible: canViewInstruments },
     { label: "Users", path: "/users", icon: <PeopleIcon />, visible: canViewUsers },
     { label: "Roles", path: "/roles", icon: <SecurityIcon />, visible: canViewRoles },
     { label: "Audit Log", path: "/audit", icon: <HistoryIcon />, visible: canViewAudit },

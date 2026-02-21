@@ -1,5 +1,6 @@
 using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Identity;
+using Broker.Backoffice.Domain.Instruments;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -48,6 +49,61 @@ public static class SeedData
             db.TradePlatforms.Add(new TradePlatform
             {
                 Id = Guid.NewGuid(), Name = name, Description = description, IsActive = true
+            });
+        }
+        await db.SaveChangesAsync();
+
+        // Seed currencies
+        var currencyData = new (string Code, string Name, string? Symbol)[]
+        {
+            ("USD", "US Dollar", "$"), ("EUR", "Euro", "\u20ac"), ("GBP", "British Pound", "\u00a3"),
+            ("JPY", "Japanese Yen", "\u00a5"), ("CHF", "Swiss Franc", "CHF"), ("CAD", "Canadian Dollar", "C$"),
+            ("AUD", "Australian Dollar", "A$"), ("HKD", "Hong Kong Dollar", "HK$"),
+            ("SGD", "Singapore Dollar", "S$"), ("CNY", "Chinese Yuan", "\u00a5"),
+            ("INR", "Indian Rupee", "\u20b9"), ("KRW", "South Korean Won", "\u20a9"),
+            ("BRL", "Brazilian Real", "R$"), ("ZAR", "South African Rand", "R"),
+            ("NZD", "New Zealand Dollar", "NZ$"),
+        };
+        var existingCurrencyCodes = (await db.Currencies.Select(c => c.Code).ToListAsync()).ToHashSet();
+        foreach (var (code, name, symbol) in currencyData)
+        {
+            if (existingCurrencyCodes.Contains(code)) continue;
+            db.Currencies.Add(new Currency
+            {
+                Id = Guid.NewGuid(), Code = code, Name = name, Symbol = symbol, IsActive = true
+            });
+        }
+        await db.SaveChangesAsync();
+
+        // Seed exchanges
+        var countryMap = await db.Countries.Where(c => c.IsActive).ToDictionaryAsync(c => c.Iso2, c => c.Id);
+        var exchangeData = new (string Code, string Name, string CountryIso2)[]
+        {
+            ("NYSE", "New York Stock Exchange", "US"),
+            ("NASDAQ", "NASDAQ Stock Market", "US"),
+            ("LSE", "London Stock Exchange", "GB"),
+            ("TSE", "Tokyo Stock Exchange", "JP"),
+            ("HKEX", "Hong Kong Exchanges", "HK"),
+            ("Euronext", "Euronext", "NL"),
+            ("SSE", "Shanghai Stock Exchange", "CN"),
+            ("SZSE", "Shenzhen Stock Exchange", "CN"),
+            ("BSE", "Bombay Stock Exchange", "IN"),
+            ("NSE", "National Stock Exchange of India", "IN"),
+            ("ASX", "Australian Securities Exchange", "AU"),
+            ("TMX", "Toronto Stock Exchange", "CA"),
+            ("JSE", "Johannesburg Stock Exchange", "ZA"),
+            ("XETRA", "Deutsche Boerse Xetra", "DE"),
+            ("SIX", "SIX Swiss Exchange", "CH"),
+        };
+        var existingExchangeCodes = (await db.Exchanges.Select(e => e.Code).ToListAsync()).ToHashSet();
+        foreach (var (code, name, countryIso2) in exchangeData)
+        {
+            if (existingExchangeCodes.Contains(code)) continue;
+            db.Exchanges.Add(new Exchange
+            {
+                Id = Guid.NewGuid(), Code = code, Name = name,
+                CountryId = countryMap.GetValueOrDefault(countryIso2),
+                IsActive = true
             });
         }
         await db.SaveChangesAsync();

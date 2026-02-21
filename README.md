@@ -133,6 +133,89 @@ dotnet test tests/Broker.Backoffice.Tests.Unit
 dotnet test tests/Broker.Backoffice.Tests.Integration
 ```
 
+## Доменные сущности
+
+| Сущность    | CRUD | Тестовых данных | Описание                                         |
+|-------------|------|-----------------|--------------------------------------------------|
+| User        | CRUD | 10              | Пользователи системы, привязка к ролям           |
+| Role        | CRUD | 3               | Роли (Manager, Viewer, Operator) + Admin          |
+| Permission  | R    | 22              | Разрешения: clients/accounts/instruments/users/roles/audit/permissions |
+| Client      | CRUD | 100             | Клиенты (Individual/Corporate), KYC, адреса, инвест-профиль |
+| Account     | CRUD | 150             | Торговые счета, типы маржи, тарифы, холдеры       |
+| Instrument  | CRUD | 300             | Торговые инструменты: Stock, Bond, ETF, Option, Future, Forex, CFD, MutualFund, Warrant, Index |
+| Exchange    | R    | 15              | Биржи (NYSE, NASDAQ, LSE, TSE, HKEX и др.)       |
+| Currency    | R    | 15              | Валюты (USD, EUR, GBP, JPY и др.)                |
+| Country     | R    | 250             | Страны мира (ISO 3166)                           |
+| AuditLog    | R    | —               | Журнал аудита всех мутаций                       |
+
+### Instrument — поля
+
+| Поле              | Тип          | Описание                        |
+|-------------------|--------------|---------------------------------|
+| Symbol            | string(20)   | Тикер, уникальный               |
+| Name              | string(255)  | Полное название                  |
+| ISIN              | string(12)?  | International Securities ID      |
+| CUSIP             | string(9)?   | Committee on Uniform Securities ID |
+| Type              | enum         | Stock/Bond/ETF/Option/Future/Forex/CFD/MutualFund/Warrant/Index |
+| AssetClass        | enum         | Equities/FixedIncome/Derivatives/ForeignExchange/Commodities/Funds |
+| Status            | enum         | Active/Inactive/Delisted/Suspended |
+| Exchange          | FK?          | Биржа                           |
+| Currency          | FK?          | Валюта торгов                   |
+| Country           | FK?          | Страна                          |
+| Sector            | enum?        | 12 секторов (Technology, Healthcare, ...) |
+| LotSize           | int          | Размер лота (default 1)         |
+| TickSize          | decimal?     | Минимальный шаг цены            |
+| MarginRequirement | decimal?     | Требование маржи (%)            |
+| IsMarginEligible  | bool         | Доступен для маржинальной торговли |
+| ListingDate       | DateTime?    | Дата листинга                   |
+| ExpirationDate    | DateTime?    | Дата экспирации (опционы/фьючерсы) |
+| IssuerName        | string?      | Эмитент                         |
+| ExternalId        | string(64)?  | Внешний идентификатор            |
+
+## API-эндпоинты
+
+| Метод  | Путь                                | Разрешение          |
+|--------|-------------------------------------|---------------------|
+| POST   | `/api/v1/auth/login`                | —                   |
+| GET    | `/api/v1/auth/me`                   | authenticated       |
+| GET    | `/api/v1/users`                     | users.read          |
+| GET    | `/api/v1/users/:id`                 | users.read          |
+| POST   | `/api/v1/users`                     | users.create        |
+| PUT    | `/api/v1/users/:id`                 | users.update        |
+| DELETE | `/api/v1/users/:id`                 | users.delete        |
+| GET    | `/api/v1/roles`                     | roles.read          |
+| GET    | `/api/v1/roles/:id`                 | roles.read          |
+| POST   | `/api/v1/roles`                     | roles.create        |
+| PUT    | `/api/v1/roles/:id`                 | roles.update        |
+| DELETE | `/api/v1/roles/:id`                 | roles.delete        |
+| PUT    | `/api/v1/roles/:id/permissions`     | roles.update        |
+| GET    | `/api/v1/permissions`               | permissions.read    |
+| GET    | `/api/v1/clients`                   | clients.read        |
+| GET    | `/api/v1/clients/:id`               | clients.read        |
+| POST   | `/api/v1/clients`                   | clients.create      |
+| PUT    | `/api/v1/clients/:id`               | clients.update      |
+| DELETE | `/api/v1/clients/:id`               | clients.delete      |
+| GET    | `/api/v1/clients/:id/accounts`      | clients.read        |
+| PUT    | `/api/v1/clients/:id/accounts`      | clients.update      |
+| GET    | `/api/v1/accounts`                  | accounts.read       |
+| GET    | `/api/v1/accounts/:id`              | accounts.read       |
+| POST   | `/api/v1/accounts`                  | accounts.create     |
+| PUT    | `/api/v1/accounts/:id`              | accounts.update     |
+| DELETE | `/api/v1/accounts/:id`              | accounts.delete     |
+| PUT    | `/api/v1/accounts/:id/holders`      | accounts.update     |
+| GET    | `/api/v1/instruments`               | instruments.read    |
+| GET    | `/api/v1/instruments/:id`           | instruments.read    |
+| POST   | `/api/v1/instruments`               | instruments.create  |
+| PUT    | `/api/v1/instruments/:id`           | instruments.update  |
+| DELETE | `/api/v1/instruments/:id`           | instruments.delete  |
+| GET    | `/api/v1/exchanges`                 | instruments.read    |
+| GET    | `/api/v1/currencies`                | instruments.read    |
+| GET    | `/api/v1/countries`                 | clients.read        |
+| GET    | `/api/v1/clearers`                  | accounts.read       |
+| GET    | `/api/v1/trade-platforms`           | accounts.read       |
+| GET    | `/api/v1/audit`                     | audit.read          |
+| GET    | `/api/v1/audit/:id`                 | audit.read          |
+
 ## Health Checks
 
 - `GET /health/live` — Liveness (приложение запущено)
