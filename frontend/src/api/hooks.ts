@@ -12,6 +12,7 @@ import type {
   ExchangeDto, CurrencyDto,
   InstrumentListItemDto, InstrumentDto, CreateInstrumentRequest, UpdateInstrumentRequest, InstrumentsParams,
   OperationDto, EntityChangesParams,
+  GlobalOperationDto, AllEntityChangesParams,
 } from "./types";
 
 // Auth
@@ -361,4 +362,11 @@ export const useEntityChanges = (params: EntityChangesParams, enabled = true) =>
     queryFn: () =>
       apiClient.get<PagedResult<OperationDto>>("/entity-changes", { params }).then((r) => r.data),
     enabled: enabled && !!params.entityId,
+  });
+
+export const useAllEntityChanges = (params: AllEntityChangesParams) =>
+  useQuery({
+    queryKey: ["entity-changes-all", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<GlobalOperationDto>>("/entity-changes/all", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
   });

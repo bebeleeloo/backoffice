@@ -21,3 +21,14 @@ public sealed record OperationDto(
     string? EntityDisplayName,
     string ChangeType,
     IReadOnlyList<EntityChangeGroupDto> Changes);
+
+public sealed record GlobalOperationDto(
+    Guid OperationId,
+    DateTime Timestamp,
+    string? UserId,
+    string? UserName,
+    string EntityType,
+    string EntityId,
+    string? EntityDisplayName,
+    string ChangeType,
+    IReadOnlyList<EntityChangeGroupDto> Changes);

@@ -202,7 +202,7 @@ export function InstrumentsPage() {
     {
       field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
-        <>
+        <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/instruments/${row.id}`)}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
@@ -216,7 +216,7 @@ export function InstrumentsPage() {
               <DeleteIcon fontSize="small" />
             </IconButton>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -327,6 +327,7 @@ export function InstrumentsPage() {
           onSortModelChange={handleSort}
           pageSizeOptions={[10, 25, 50]}
           filterDefs={filterDefs}
+          onRowClick={(p) => navigate(`/instruments/${p.row.id}`)}
           initialState={{
             columns: {
               columnVisibilityModel: {
@@ -339,7 +340,7 @@ export function InstrumentsPage() {
               },
             },
           }}
-          sx={{ height: "100%", border: "none" }}
+          sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
 

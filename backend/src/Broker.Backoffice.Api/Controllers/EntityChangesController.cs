@@ -24,4 +24,11 @@ public sealed class EntityChangesController(ISender mediator) : ControllerBase
             new GetEntityChangesQuery(entityType, entityId, page, pageSize), ct);
         return Ok(result);
     }
+
+    [HttpGet("all")]
+    public async Task<ActionResult<PagedResult<GlobalOperationDto>>> All(
+        [FromQuery] GetAllEntityChangesQuery query, CancellationToken ct)
+    {
+        return Ok(await mediator.Send(query, ct));
+    }
 }

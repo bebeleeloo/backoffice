@@ -4,15 +4,13 @@ import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import HistoryIcon from "@mui/icons-material/History";
-import SecurityIcon from "@mui/icons-material/Security";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import SearchIcon from "@mui/icons-material/Search";
 import { useRoles, useDeleteRole } from "../api/hooks";
 import type { RoleDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
-import { CreateRoleDialog, EditRoleDialog, RolePermissionsDialog } from "./RoleDialogs";
-import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
-import { useSearchParams } from "react-router-dom";
+import { CreateRoleDialog } from "./RoleDialogs";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, InlineBooleanFilter } from "../components/grid";
 
@@ -36,18 +34,15 @@ function readParams(sp: URLSearchParams) {
 
 export function RolesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const params = readParams(searchParams);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [editRole, setEditRole] = useState<RoleDto | null>(null);
-  const [permsRole, setPermsRole] = useState<RoleDto | null>(null);
-  const [historyRoleId, setHistoryRoleId] = useState<string | null>(null);
   const [search, setSearch] = useState(params.q ?? "");
 
   const canCreate = useHasPermission("roles.create");
   const canUpdate = useHasPermission("roles.update");
   const canDelete = useHasPermission("roles.delete");
-  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useRoles(params);
   const deleteRole = useDeleteRole();
@@ -109,21 +104,14 @@ export function RolesPage() {
       renderCell: ({ value }) => <Chip label={`${(value as string[]).length} perms`} size="small" variant="outlined" />,
     },
     {
-      field: "actions", headerName: "", width: 170, sortable: false, filterable: false,
+      field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
-        <>
-          {canAudit && (
-            <IconButton size="small" onClick={() => setHistoryRoleId(row.id)} title="History">
-              <HistoryIcon fontSize="small" />
-            </IconButton>
-          )}
+        <div onClick={(e) => e.stopPropagation()}>
+          <IconButton size="small" onClick={() => navigate(`/roles/${row.id}`)}>
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
           {canUpdate && (
-            <IconButton size="small" onClick={() => setPermsRole(row)} title="Permissions" data-testid={`action-perms-${row.id}`}>
-              <SecurityIcon fontSize="small" />
-            </IconButton>
-          )}
-          {canUpdate && (
-            <IconButton size="small" onClick={() => setEditRole(row)} data-testid={`action-edit-${row.id}`}>
+            <IconButton size="small" onClick={() => navigate(`/roles/${row.id}`)} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
             </IconButton>
           )}
@@ -132,7 +120,7 @@ export function RolesPage() {
               <DeleteIcon fontSize="small" />
             </IconButton>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -214,14 +202,12 @@ export function RolesPage() {
           onSortModelChange={handleSort}
           pageSizeOptions={[10, 25, 50]}
           filterDefs={filterDefs}
-          sx={{ height: "100%", border: "none" }}
+          onRowClick={(p) => navigate(`/roles/${p.row.id}`)}
+          sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
 
       <CreateRoleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <EditRoleDialog open={!!editRole} onClose={() => setEditRole(null)} role={editRole} />
-      <RolePermissionsDialog open={!!permsRole} onClose={() => setPermsRole(null)} role={permsRole} />
-      <EntityHistoryDialog entityType="Role" entityId={historyRoleId ?? ""} open={!!historyRoleId} onClose={() => setHistoryRoleId(null)} />
     </PageContainer>
   );
 }

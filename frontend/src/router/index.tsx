@@ -5,6 +5,7 @@ import { SettingsPage } from "../pages/SettingsPage";
 import { LoginPage } from "../pages/LoginPage";
 import { UsersPage } from "../pages/UsersPage";
 import { RolesPage } from "../pages/RolesPage";
+import { RoleDetailsPage } from "../pages/RoleDetailsPage";
 import { AuditPage } from "../pages/AuditPage";
 import { ClientsPage } from "../pages/ClientsPage";
 import { ClientDetailsPage } from "../pages/ClientDetailsPage";
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
       { path: "instruments/:id", element: <InstrumentDetailsPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "roles", element: <RolesPage /> },
+      { path: "roles/:id", element: <RoleDetailsPage /> },
       { path: "audit", element: <AuditPage /> },
       { path: "settings", element: <SettingsPage /> },
     ],

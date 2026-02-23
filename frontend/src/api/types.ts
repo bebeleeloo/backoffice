@@ -596,3 +596,27 @@ export interface EntityChangesParams {
   page?: number;
   pageSize?: number;
 }
+
+export interface GlobalOperationDto {
+  operationId: string;
+  timestamp: string;
+  userId: string | null;
+  userName: string | null;
+  entityType: string;
+  entityId: string;
+  entityDisplayName: string | null;
+  changeType: string;
+  changes: EntityChangeGroupDto[];
+}
+
+export interface AllEntityChangesParams {
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  from?: string;
+  to?: string;
+  userName?: string[];
+  entityType?: string;
+  changeType?: string;
+  q?: string;
+}

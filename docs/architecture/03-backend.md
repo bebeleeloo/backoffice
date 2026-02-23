@@ -146,13 +146,14 @@ Response
 
 ### История изменений (EntityChangesController)
 
-| Метод | Маршрут | Permission |
-|-------|---------|-----------|
-| GET | `/entity-changes` | audit.read |
+| Метод | Маршрут | Permission | Описание |
+|-------|---------|-----------|----------|
+| GET | `/entity-changes` | audit.read | История конкретной сущности |
+| GET | `/entity-changes/all` | audit.read | Глобальная лента всех изменений |
 
-**Параметры:** EntityType, EntityId, Page, PageSize.
+**GET /entity-changes:** EntityType, EntityId, Page, PageSize — история конкретной сущности.
 
-Возвращает поле-уровневую историю изменений сущности (см. [Entity Change Tracking](#entity-change-tracking)).
+**GET /entity-changes/all:** Page, PageSize, Sort, From, To, UserName[] (массив), EntityType, ChangeType (Created/Modified/Deleted), Q — глобальная лента всех изменений (используется на странице Audit Log). Поддерживаемые поля сортировки: Timestamp (по умолчанию), EntityDisplayName, UserName, EntityType.
 
 ## CQRS Pattern
 

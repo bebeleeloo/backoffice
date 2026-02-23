@@ -29,6 +29,7 @@ QueryClientProvider (retry: 1, refetchOnWindowFocus: false)
   /instruments/:id       -> InstrumentDetailsPage
   /users                 -> UsersPage
   /roles                 -> RolesPage
+  /roles/:id             -> RoleDetailsPage
   /audit                 -> AuditPage
   /settings              -> SettingsPage
 ```
@@ -107,6 +108,7 @@ Request interceptor:
 | `useAuditLogs(params)` | GET /audit | default |
 | `useAuditLog(id)` | GET /audit/{id} | default |
 | `useEntityChanges(params, enabled)` | GET /entity-changes | default |
+| `useAllEntityChanges(params)` | GET /entity-changes/all | default |
 | `useCountries()` | GET /countries | staleTime: 10 мин |
 | `useClearers()` | GET /clearers | staleTime: 10 мин |
 | `useTradePlatforms()` | GET /trade-platforms | staleTime: 10 мин |
@@ -123,6 +125,7 @@ Request interceptor:
 - **URL state** -- фильтры и пагинация сохраняются в URLSearchParams
 - **Permission-based UI** -- кнопки/действия скрываются через `useHasPermission()`
 - **Debounced search** -- глобальный поиск 300ms задержка
+- **Row click** -- клик по строке DataGrid открывает карточку просмотра (Clients, Accounts, Instruments, Roles → navigate на detail page; Users → открытие EditDialog). Кнопки действий используют `e.stopPropagation()` чтобы не триггерить row click
 
 ### Компоненты таблиц
 
@@ -135,7 +138,7 @@ Request interceptor:
 
 Каждая CRUD-страница имеет диалоги Create/Edit:
 - `UserDialogs` -- создание/редактирование пользователя
-- `RoleDialogs` -- создание/редактирование роли + управление permissions
+- `RoleDialogs` -- создание/редактирование роли (EditRoleDialog включает секцию Permissions с чекбоксами по группам)
 - `ClientDialogs` -- сложные формы с условными полями (Individual vs Corporate), адресами, инвестиционным профилем, привязкой счетов
 - `AccountDialogs` -- создание/редактирование счёта с Autocomplete для Clearer/TradePlatform, управление холдерами
 - `InstrumentDialogs` -- создание/редактирование инструмента с Autocomplete для Exchange/Currency/Country
@@ -144,12 +147,23 @@ Request interceptor:
 - `ClientDetailsPage` -- просмотр клиента со связанными счетами (с навигацией на счёт)
 - `AccountDetailsPage` -- просмотр счёта со связанными холдерами (с навигацией на клиента)
 - `InstrumentDetailsPage` -- просмотр инструмента со всеми параметрами
+- `RoleDetailsPage` -- просмотр роли: общие данные + permissions с чекбоксами (read-only, сгруппированные по группам)
 
 ### EntityHistoryDialog
 
 Переиспользуемый компонент `EntityHistoryDialog` для просмотра поле-уровневой истории изменений сущности. Интегрирован в:
-- `ClientDetailsPage`, `AccountDetailsPage`, `InstrumentDetailsPage` — кнопка "History"
-- `UsersPage`, `RolesPage` — иконка History в строке DataGrid
+- `ClientDetailsPage`, `AccountDetailsPage`, `InstrumentDetailsPage`, `RoleDetailsPage` — кнопка "History"
+- `UsersPage` — иконка History в строке DataGrid
+
+### AuditPage (глобальная лента изменений)
+
+Страница Audit Log отображает глобальную ленту всех изменений сущностей в виде DataGrid с серверной пагинацией/сортировкой/фильтрацией (endpoint `GET /entity-changes/all`).
+
+**Колонки:** Timestamp, User, Entity Type, Name, Change Type.
+
+**Фильтры:** DateRangePopover (from/to), CompactMultiSelect для User/EntityType/ChangeType, InlineTextFilter для Name, глобальный поиск.
+
+**Row click** открывает `AuditDetailDialog` — диалог с детальным просмотром полей изменения (аналог EntityHistoryDialog для конкретной операции).
 
 **Особенности:**
 - Отображает операции в виде Accordion: дата/время (до секунд), ФИО пользователя, тип изменения

@@ -345,7 +345,7 @@ export function ClientsPage() {
       field: "actions", headerName: "", width: 120,
       sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
-        <>
+        <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/clients/${row.id}`)} data-testid={`action-view-${row.id}`}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
@@ -359,7 +359,7 @@ export function ClientsPage() {
               <DeleteIcon fontSize="small" />
             </IconButton>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -421,7 +421,8 @@ export function ClientsPage() {
           pageSizeOptions={[10, 25, 50]}
           initialState={{ columns: { columnVisibilityModel } }}
           filterDefs={filterDefs}
-          sx={{ height: "100%", border: "none" }}
+          onRowClick={(p) => navigate(`/clients/${p.row.id}`)}
+          sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
 

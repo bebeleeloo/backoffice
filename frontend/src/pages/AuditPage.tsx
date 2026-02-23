@@ -1,39 +1,52 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import {
-  Box, Chip, TextField, InputAdornment, IconButton, Paper,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button,
-} from "@mui/material";
+import { TextField, InputAdornment, IconButton, Paper, Chip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import { useAuditLogs, useAuditLog } from "../api/hooks";
-import type { AuditLogDto } from "../api/types";
+import { useAllEntityChanges, useUsers } from "../api/hooks";
+import type { GlobalOperationDto } from "../api/types";
 import { useSearchParams } from "react-router-dom";
-import dayjs from "dayjs";
 import { PageContainer } from "../components/PageContainer";
-import {
-  FilteredDataGrid,
-  InlineTextFilter,
-  InlineBooleanFilter,
-  DateRangePopover,
-} from "../components/grid";
+import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
+import { CHANGE_TYPE_COLORS, getEntityTypeLabel } from "../components/ChangeHistoryComponents";
+import { AuditDetailDialog } from "../components/AuditDetailDialog";
+
+const ENTITY_TYPE_OPTIONS = [
+  { value: "Client", label: "Client" },
+  { value: "Account", label: "Account" },
+  { value: "Instrument", label: "Instrument" },
+  { value: "User", label: "User" },
+  { value: "Role", label: "Role" },
+];
+
+const CHANGE_TYPE_OPTIONS = [
+  { value: "Created", label: "Created" },
+  { value: "Modified", label: "Modified" },
+  { value: "Deleted", label: "Deleted" },
+];
+
+function getAllOrUndefined(sp: URLSearchParams, key: string) {
+  const vals = sp.getAll(key);
+  return vals.length > 0 ? vals : undefined;
+}
 
 function readParams(sp: URLSearchParams) {
   return {
     page: Number(sp.get("page") || "1"),
     pageSize: Number(sp.get("pageSize") || "25"),
     sort: sp.get("sort") || undefined,
-    q: sp.get("q") || undefined,
     from: sp.get("from") || undefined,
     to: sp.get("to") || undefined,
-    action: sp.get("action") || undefined,
+    userName: getAllOrUndefined(sp, "userName"),
     entityType: sp.get("entityType") || undefined,
-    isSuccess: sp.get("isSuccess") !== null ? sp.get("isSuccess") === "true" : undefined,
-    userName: sp.get("userName") || undefined,
-    method: sp.get("method") || undefined,
-    path: sp.get("path") || undefined,
-    statusCode: sp.get("statusCode") ? Number(sp.get("statusCode")) : undefined,
+    changeType: sp.get("changeType") || undefined,
+    q: sp.get("q") || undefined,
   };
+}
+
+function formatTimestamp(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    + ", " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 export function AuditPage() {
@@ -41,10 +54,17 @@ export function AuditPage() {
   const params = readParams(searchParams);
 
   const [search, setSearch] = useState(params.q ?? "");
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [selectedOp, setSelectedOp] = useState<GlobalOperationDto | null>(null);
 
-  const { data, isLoading } = useAuditLogs(params);
-  const detail = useAuditLog(detailId ?? "");
+  const { data, isLoading } = useAllEntityChanges(params);
+  const { data: usersData } = useUsers({ page: 1, pageSize: 500 });
+
+  const userOptions = useMemo(
+    () => (usersData?.items ?? [])
+      .map((u) => ({ value: u.fullName ?? u.username, label: u.fullName ?? u.username }))
+      .filter((o): o is { value: string; label: string } => !!o.value),
+    [usersData],
+  );
 
   const setParam = useCallback(
     (patch: Record<string, string | undefined>) => {
@@ -73,6 +93,19 @@ export function AuditPage() {
     [setSearchParams],
   );
 
+  const setMultiFilterParam = useCallback(
+    (key: string, values: string[]) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete(key);
+        for (const v of values) next.append(key, v);
+        next.set("page", "1");
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+
   const handlePagination = (model: GridPaginationModel) => {
     setParam({ page: String(model.page + 1), pageSize: String(model.pageSize) });
   };
@@ -86,36 +119,34 @@ export function AuditPage() {
     setParam({ q: search || undefined, page: "1" });
   };
 
-  const columns: GridColDef<AuditLogDto>[] = [
+  const columns: GridColDef<GlobalOperationDto>[] = [
     {
-      field: "createdAt", headerName: "Time", width: 170,
-      valueFormatter: (value: string) => dayjs(value).format("YYYY-MM-DD HH:mm:ss"),
-    },
-    { field: "userName", headerName: "User", width: 120 },
-    { field: "action", headerName: "Action", width: 160 },
-    { field: "entityType", headerName: "Entity", width: 100 },
-    { field: "method", headerName: "Method", width: 80 },
-    { field: "path", headerName: "Path", flex: 1, minWidth: 200 },
-    { field: "statusCode", headerName: "Status", width: 80 },
-    {
-      field: "isSuccess", headerName: "Result", width: 90,
-      renderCell: ({ value }) => (
-        <Chip label={value ? "OK" : "Fail"} color={value ? "success" : "error"} size="small" />
-      ),
+      field: "timestamp", headerName: "Date & Time", width: 180,
+      renderCell: ({ value }) => formatTimestamp(value as string),
     },
     {
-      field: "actions", headerName: "", width: 60, sortable: false, filterable: false,
-      renderCell: ({ row }) => (
-        <IconButton size="small" onClick={() => setDetailId(row.id)} data-testid={`action-view-${row.id}`}>
-          <VisibilityIcon fontSize="small" />
-        </IconButton>
-      ),
+      field: "userName", headerName: "User", flex: 1, minWidth: 140,
+      renderCell: ({ value }) => value ?? "system",
+    },
+    {
+      field: "entityType", headerName: "Entity", width: 130,
+      renderCell: ({ value }) => getEntityTypeLabel(value as string) || value,
+    },
+    {
+      field: "entityDisplayName", headerName: "Name", flex: 1, minWidth: 160,
+    },
+    {
+      field: "changeType", headerName: "Change", width: 120,
+      renderCell: ({ value }) => {
+        const color = CHANGE_TYPE_COLORS[value as string] ?? "default";
+        return <Chip label={value as string} color={color} size="small" />;
+      },
     },
   ];
 
   const filterDefs = useMemo(() => {
     const m = new Map<string, () => ReactNode>();
-    m.set("createdAt", () => (
+    m.set("timestamp", () => (
       <DateRangePopover
         fromValue={params.from ?? ""}
         toValue={params.to ?? ""}
@@ -124,57 +155,35 @@ export function AuditPage() {
       />
     ));
     m.set("userName", () => (
-      <InlineTextFilter
-        value={params.userName ?? ""}
-        onChange={(v) => setFilterParam("userName", v || undefined)}
-        placeholder="User..."
-      />
-    ));
-    m.set("action", () => (
-      <InlineTextFilter
-        value={params.action ?? ""}
-        onChange={(v) => setFilterParam("action", v || undefined)}
-        placeholder="Action..."
+      <CompactMultiSelect
+        options={userOptions}
+        value={params.userName ?? []}
+        onChange={(v) => setMultiFilterParam("userName", v)}
       />
     ));
     m.set("entityType", () => (
-      <InlineTextFilter
-        value={params.entityType ?? ""}
-        onChange={(v) => setFilterParam("entityType", v || undefined)}
-        placeholder="Entity..."
+      <CompactMultiSelect
+        options={ENTITY_TYPE_OPTIONS}
+        value={params.entityType ? [params.entityType] : []}
+        onChange={(v) => setFilterParam("entityType", v.length === 1 ? v[0] : undefined)}
       />
     ));
-    m.set("method", () => (
+    m.set("entityDisplayName", () => (
       <InlineTextFilter
-        value={params.method ?? ""}
-        onChange={(v) => setFilterParam("method", v || undefined)}
-        placeholder="Method..."
+        value={params.q ?? ""}
+        onChange={(v) => setFilterParam("q", v || undefined)}
+        placeholder="Name..."
       />
     ));
-    m.set("path", () => (
-      <InlineTextFilter
-        value={params.path ?? ""}
-        onChange={(v) => setFilterParam("path", v || undefined)}
-        placeholder="Path..."
-      />
-    ));
-    m.set("statusCode", () => (
-      <InlineTextFilter
-        value={params.statusCode !== undefined ? String(params.statusCode) : ""}
-        onChange={(v) => setFilterParam("statusCode", v || undefined)}
-        placeholder="Status..."
-      />
-    ));
-    m.set("isSuccess", () => (
-      <InlineBooleanFilter
-        value={params.isSuccess}
-        onChange={(v) =>
-          setFilterParam("isSuccess", v === undefined ? undefined : String(v))
-        }
+    m.set("changeType", () => (
+      <CompactMultiSelect
+        options={CHANGE_TYPE_OPTIONS}
+        value={params.changeType ? [params.changeType] : []}
+        onChange={(v) => setFilterParam("changeType", v.length === 1 ? v[0] : undefined)}
       />
     ));
     return m;
-  }, [params.from, params.to, params.userName, params.action, params.entityType, params.method, params.path, params.statusCode, params.isSuccess, setFilterParam]);
+  }, [params.from, params.to, params.userName, params.entityType, params.q, params.changeType, setFilterParam, setMultiFilterParam, userOptions]);
 
   return (
     <PageContainer
@@ -183,7 +192,7 @@ export function AuditPage() {
       subheaderLeft={
         <TextField
           fullWidth
-          placeholder="Search..."
+          placeholder="Search audit log..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -203,6 +212,7 @@ export function AuditPage() {
         <FilteredDataGrid
           rows={data?.items ?? []}
           columns={columns}
+          getRowId={(row) => `${row.operationId}-${row.entityType}-${row.entityId}`}
           rowCount={data?.totalCount ?? 0}
           loading={isLoading}
           paginationMode="server"
@@ -212,37 +222,16 @@ export function AuditPage() {
           onSortModelChange={handleSort}
           pageSizeOptions={[10, 25, 50]}
           filterDefs={filterDefs}
-          sx={{ height: "100%", border: "none" }}
+          onRowClick={(p) => setSelectedOp(p.row as GlobalOperationDto)}
+          sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
 
-      <Dialog open={!!detailId} onClose={() => setDetailId(null)} maxWidth="md" fullWidth>
-        <DialogTitle>Audit Log Detail</DialogTitle>
-        <DialogContent>
-          {detail.data && (
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, pt: 1 }}>
-              <TextField label="User" value={detail.data.userName ?? "-"} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="Action" value={detail.data.action} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="Entity Type" value={detail.data.entityType ?? "-"} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="Entity ID" value={detail.data.entityId ?? "-"} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="Method" value={detail.data.method} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="Path" value={detail.data.path} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="Status Code" value={detail.data.statusCode} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="IP Address" value={detail.data.ipAddress ?? "-"} slotProps={{ input: { readOnly: true } }} size="small" />
-              <TextField label="Correlation ID" value={detail.data.correlationId ?? "-"} slotProps={{ input: { readOnly: true } }} size="small" fullWidth sx={{ gridColumn: "1 / -1" }} />
-              {detail.data.beforeJson && (
-                <TextField label="Before" value={detail.data.beforeJson} slotProps={{ input: { readOnly: true } }} size="small" multiline rows={6} fullWidth sx={{ gridColumn: "1 / -1" }} />
-              )}
-              {detail.data.afterJson && (
-                <TextField label="After" value={detail.data.afterJson} slotProps={{ input: { readOnly: true } }} size="small" multiline rows={6} fullWidth sx={{ gridColumn: "1 / -1" }} />
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailId(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+      <AuditDetailDialog
+        operation={selectedOp}
+        open={!!selectedOp}
+        onClose={() => setSelectedOp(null)}
+      />
     </PageContainer>
   );
 }

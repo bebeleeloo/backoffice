@@ -113,7 +113,7 @@ export function UsersPage() {
     {
       field: "actions", headerName: "", width: 130, sortable: false, filterable: false,
       renderCell: ({ row }) => (
-        <>
+        <div onClick={(e) => e.stopPropagation()}>
           {canAudit && (
             <IconButton size="small" onClick={() => setHistoryUserId(row.id)}>
               <HistoryIcon fontSize="small" />
@@ -129,7 +129,7 @@ export function UsersPage() {
               <DeleteIcon fontSize="small" />
             </IconButton>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -218,7 +218,8 @@ export function UsersPage() {
           onSortModelChange={handleSort}
           pageSizeOptions={[10, 25, 50]}
           filterDefs={filterDefs}
-          sx={{ height: "100%", border: "none" }}
+          onRowClick={(p) => setEditUser(p.row as UserDto)}
+          sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
 

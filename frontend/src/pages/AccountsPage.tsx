@@ -176,7 +176,7 @@ export function AccountsPage() {
     {
       field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
-        <>
+        <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/accounts/${row.id}`)} data-testid={`action-view-${row.id}`}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
@@ -190,7 +190,7 @@ export function AccountsPage() {
               <DeleteIcon fontSize="small" />
             </IconButton>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -301,6 +301,7 @@ export function AccountsPage() {
           onSortModelChange={handleSort}
           pageSizeOptions={[10, 25, 50]}
           filterDefs={filterDefs}
+          onRowClick={(p) => navigate(`/accounts/${p.row.id}`)}
           initialState={{
             columns: {
               columnVisibilityModel: {
@@ -310,7 +311,7 @@ export function AccountsPage() {
               },
             },
           }}
-          sx={{ height: "100%", border: "none" }}
+          sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
 
