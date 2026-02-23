@@ -609,6 +609,21 @@ export interface GlobalOperationDto {
   changes: EntityChangeGroupDto[];
 }
 
+// Dashboard
+export interface DashboardStatsDto {
+  totalClients: number;
+  clientsByStatus: Record<string, number>;
+  clientsByType: Record<string, number>;
+  totalAccounts: number;
+  accountsByStatus: Record<string, number>;
+  accountsByType: Record<string, number>;
+  totalInstruments: number;
+  instrumentsByStatus: Record<string, number>;
+  instrumentsByType: Record<string, number>;
+  totalUsers: number;
+  activeUsers: number;
+}
+
 export interface AllEntityChangesParams {
   page?: number;
   pageSize?: number;

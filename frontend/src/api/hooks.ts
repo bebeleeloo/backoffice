@@ -13,6 +13,7 @@ import type {
   InstrumentListItemDto, InstrumentDto, CreateInstrumentRequest, UpdateInstrumentRequest, InstrumentsParams,
   OperationDto, EntityChangesParams,
   GlobalOperationDto, AllEntityChangesParams,
+  DashboardStatsDto,
 } from "./types";
 
 // Auth
@@ -354,6 +355,14 @@ export const useDeleteInstrument = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
   });
 };
+
+// Dashboard
+export const useDashboardStats = () =>
+  useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () =>
+      apiClient.get<DashboardStatsDto>("/dashboard/stats").then((r) => r.data),
+  });
 
 // Entity Changes
 export const useEntityChanges = (params: EntityChangesParams, enabled = true) =>
