@@ -72,7 +72,7 @@ Frontend генерирует `X-Correlation-Id` (UUID без дефисов) в
 `EntityChanges` обеспечивает детальное отслеживание на уровне отдельных полей:
 - Автоматический захват через override `SaveChangesAsync` в `AppDbContext`
 - Записывает каждое изменённое поле: старое значение → новое значение
-- FK-значения автоматически резолвятся в имена (CountryId → "Germany", ClearerId → "Apex Clearing")
+- FK-значения автоматически резолвятся в имена (CountryId → "Germany", ClearerId → "Apex Clearing", PermissionId → "clients.read", RoleId → "Manager")
 - Группировка по OperationId (request-scoped) — все save в рамках одного запроса = одна операция
 - Поддержка связанных сущностей: адреса, холдеры, инвест-профиль, роли, права
 - Контекстные display names для сущностей ("Legal, 612 Oak Ave, Berlin", "Owner, Matthew Clark")

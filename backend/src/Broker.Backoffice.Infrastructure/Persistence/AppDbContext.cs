@@ -563,17 +563,23 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     {
         var roleId = entry.Property("RoleId").CurrentValue ?? entry.Property("RoleId").OriginalValue;
         if (roleId is not Guid id) return null;
-        return Set<Role>().Local.FirstOrDefault(r => r.Id == id)?.Name
-               ?? Roles.AsNoTracking().Where(r => r.Id == id).Select(r => r.Name).FirstOrDefault();
+        return ResolveRoleName(id);
     }
+
+    private string? ResolveRoleName(Guid id) =>
+        Set<Role>().Local.FirstOrDefault(r => r.Id == id)?.Name
+        ?? Roles.AsNoTracking().Where(r => r.Id == id).Select(r => r.Name).FirstOrDefault();
 
     private string? ResolvePermissionCode(EntityEntry entry)
     {
         var permId = entry.Property("PermissionId").CurrentValue ?? entry.Property("PermissionId").OriginalValue;
         if (permId is not Guid id) return null;
-        return Set<Permission>().Local.FirstOrDefault(p => p.Id == id)?.Code
-               ?? Permissions.AsNoTracking().Where(p => p.Id == id).Select(p => p.Code).FirstOrDefault();
+        return ResolvePermissionCode(id);
     }
+
+    private string? ResolvePermissionCode(Guid id) =>
+        Set<Permission>().Local.FirstOrDefault(p => p.Id == id)?.Code
+        ?? Permissions.AsNoTracking().Where(p => p.Id == id).Select(p => p.Code).FirstOrDefault();
 
     private string? ResolveCountryName(Guid id) =>
         Set<Country>().Local.FirstOrDefault(c => c.Id == id)?.Name
@@ -611,6 +617,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             "TradePlatformId" => ResolveTradePlatformName(id),
             "ExchangeId" => ResolveExchangeName(id),
             "CurrencyId" => ResolveCurrencyCode(id),
+            "PermissionId" => ResolvePermissionCode(id),
+            "RoleId" => ResolveRoleName(id),
             _ => null
         };
     }

@@ -247,8 +247,9 @@ SaveChangesAsync()
 **Ключевые механизмы:**
 
 - **Request-scoped OperationId** — все `SaveChangesAsync` вызовы в рамках одного HTTP-запроса делят один `OperationId` (через `IChangeTrackingContext`)
+- **Diff-подход для join-таблиц** — `SetRolePermissions` и `UpdateUser` используют diff (добавление/удаление только изменённых записей), а не "clear all + re-add", что обеспечивает точную историю: одна изменённая галочка = одна запись в истории
 - **Deduplication** — "clear all + re-add" паттерн (адреса, холдеры) автоматически определяется и преобразуется в "Modified" записи только для реально изменённых полей
-- **FK-разрешение** — значения FK-полей (ResidenceCountryId, ClearerId, ExchangeId и т.д.) автоматически резолвятся в человекочитаемые имена (название страны, клиринга и т.д.)
+- **FK-разрешение** — значения FK-полей (ResidenceCountryId, ClearerId, ExchangeId, PermissionId, RoleId и т.д.) автоматически резолвятся в человекочитаемые имена (название страны, клиринга, код permission, имя роли и т.д.)
 - **Display Names** — для каждой записи вычисляется контекстное имя: "Legal, 612 Oak Ave, Berlin" для адреса, "Owner, Matthew Clark" для холдера
 - **Dual parent (AccountHolder)** — изменения записываются в историю обоих родителей (Account и Client) с контекстно-зависимыми display names
 - **FullName** — в поле UserName записывается ФИО пользователя (из JWT-claim `full_name`), а не логин

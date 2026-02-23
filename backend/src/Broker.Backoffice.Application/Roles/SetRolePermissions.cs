@@ -21,18 +21,28 @@ public sealed class SetRolePermissionsCommandHandler(
 
         var before = JsonSerializer.Serialize(role.RolePermissions.Select(rp => rp.Permission.Code));
 
-        // Clear and replace
-        role.RolePermissions.Clear();
-        var permissions = await db.Permissions
-            .Where(p => request.PermissionIds.Contains(p.Id))
-            .ToListAsync(ct);
+        // Sync permissions (diff)
+        var currentPermIds = role.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
+        var toRemove = role.RolePermissions.Where(rp => !request.PermissionIds.Contains(rp.PermissionId)).ToList();
+        foreach (var rp in toRemove) role.RolePermissions.Remove(rp);
 
-        foreach (var perm in permissions)
-            role.RolePermissions.Add(new RolePermission
+        var newPermIds = request.PermissionIds.Where(id => !currentPermIds.Contains(id)).ToList();
+        if (newPermIds.Count > 0)
+        {
+            // Load permissions into context so EF fixup populates rp.Permission navigation
+            await db.Permissions.Where(p => newPermIds.Contains(p.Id)).LoadAsync(ct);
+        }
+
+        foreach (var permId in newPermIds)
+        {
+            var rp = new RolePermission
             {
-                Id = Guid.NewGuid(), RoleId = role.Id, PermissionId = perm.Id,
+                RoleId = role.Id, PermissionId = permId,
                 CreatedAt = clock.UtcNow, CreatedBy = currentUser.UserName
-            });
+            };
+            role.RolePermissions.Add(rp);
+            db.RolePermissions.Add(rp);
+        }
 
         role.UpdatedAt = clock.UtcNow;
         role.UpdatedBy = currentUser.UserName;
@@ -41,7 +51,7 @@ public sealed class SetRolePermissionsCommandHandler(
         audit.EntityType = "Role";
         audit.EntityId = role.Id.ToString();
         audit.BeforeJson = before;
-        audit.AfterJson = JsonSerializer.Serialize(permissions.Select(p => p.Code));
+        audit.AfterJson = JsonSerializer.Serialize(role.RolePermissions.Select(rp => rp.Permission.Code));
 
         return new RoleDto(role.Id, role.Name, role.Description, role.IsSystem,
             role.RolePermissions.Select(rp => rp.Permission.Code).ToList(),

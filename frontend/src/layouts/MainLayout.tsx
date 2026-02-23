@@ -76,7 +76,7 @@ export function MainLayout() {
       </List>
       <Divider />
       <Box sx={{ p: 2 }}>
-        <Typography variant="body2" color="text.secondary" noWrap data-testid="sidebar-username">{user?.username}</Typography>
+        <Typography variant="body2" color="text.secondary" noWrap data-testid="sidebar-username">{user?.fullName || user?.username}</Typography>
         <Button size="small" startIcon={<LogoutIcon />} onClick={handleLogout} sx={{ mt: 1 }}>
           Logout
         </Button>

@@ -48,12 +48,24 @@ public sealed class UpdateUserCommandHandler(
         var currentRoleIds = user.UserRoles.Select(ur => ur.RoleId).ToHashSet();
         var toRemove = user.UserRoles.Where(ur => !request.RoleIds.Contains(ur.RoleId)).ToList();
         foreach (var r in toRemove) user.UserRoles.Remove(r);
-        foreach (var roleId in request.RoleIds.Where(id => !currentRoleIds.Contains(id)))
-            user.UserRoles.Add(new UserRole
+
+        var newRoleIds = request.RoleIds.Where(id => !currentRoleIds.Contains(id)).ToList();
+        if (newRoleIds.Count > 0)
+        {
+            // Load roles into context so EF fixup populates ur.Role navigation
+            await db.Roles.Where(r => newRoleIds.Contains(r.Id)).LoadAsync(ct);
+        }
+
+        foreach (var roleId in newRoleIds)
+        {
+            var ur = new UserRole
             {
-                Id = Guid.NewGuid(), UserId = user.Id, RoleId = roleId,
+                UserId = user.Id, RoleId = roleId,
                 CreatedAt = clock.UtcNow, CreatedBy = currentUser.UserName
-            });
+            };
+            user.UserRoles.Add(ur);
+            db.UserRoles.Add(ur);
+        }
 
         await db.SaveChangesAsync(ct);
 

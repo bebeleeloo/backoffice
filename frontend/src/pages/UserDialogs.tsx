@@ -30,6 +30,7 @@ export function CreateUserDialog({ open, onClose }: CreateProps) {
         <FormControlLabel control={<Switch checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />} label="Active" />
         <Autocomplete
           multiple
+          disableCloseOnSelect={false}
           options={roles.data?.items ?? []}
           getOptionLabel={(o) => o.name}
           value={(roles.data?.items ?? []).filter((r) => form.roleIds.includes(r.id))}
@@ -82,6 +83,7 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
         <FormControlLabel control={<Switch checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />} label="Active" />
         <Autocomplete
           multiple
+          disableCloseOnSelect={false}
           options={roles.data?.items ?? []}
           getOptionLabel={(o) => o.name}
           value={(roles.data?.items ?? []).filter((r) => form.roleIds.includes(r.id))}

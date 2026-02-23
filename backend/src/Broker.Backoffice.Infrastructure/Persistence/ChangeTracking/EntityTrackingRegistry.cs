@@ -85,7 +85,7 @@ public static class EntityTrackingRegistry
             EntityTypeName = "UserRole",
             ClrType = typeof(UserRole),
             ParentMappings = [new() { ParentEntityTypeName = "User", ForeignKeyProperty = "UserId" }],
-            ExcludedProperties = ["Id", "UserId", "User", "Role"]
+            ExcludedProperties = ["Id", "UserId", "User", "Role", "CreatedAt", "CreatedBy"]
         },
         [typeof(Role)] = new TrackedEntityConfig
         {
@@ -99,7 +99,7 @@ public static class EntityTrackingRegistry
             EntityTypeName = "RolePermission",
             ClrType = typeof(RolePermission),
             ParentMappings = [new() { ParentEntityTypeName = "Role", ForeignKeyProperty = "RoleId" }],
-            ExcludedProperties = ["Id", "RoleId", "Role", "Permission"]
+            ExcludedProperties = ["Id", "RoleId", "Role", "Permission", "CreatedAt", "CreatedBy"]
         }
     };
 
