@@ -28,11 +28,39 @@ export function LoginPage() {
   };
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", bgcolor: "background.default" }}>
-      <Card sx={{ width: 400, p: 2 }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        position: "relative",
+        background: "url(/login-bg.jpg) center/cover no-repeat",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          bgcolor: "rgba(0, 0, 0, 0.55)",
+        },
+      }}
+    >
+      <Card
+        elevation={12}
+        sx={{
+          width: 420,
+          p: 2,
+          position: "relative",
+          zIndex: 1,
+          borderRadius: 3,
+        }}
+      >
         <CardContent>
-          <Typography variant="h5" gutterBottom align="center">Broker Backoffice</Typography>
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>Sign in to continue</Typography>
+          <Typography variant="h5" gutterBottom align="center" fontWeight={600}>
+            Broker Backoffice
+          </Typography>
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+            Sign in to continue
+          </Typography>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Box component="form" onSubmit={handleSubmit}>
             <TextField fullWidth label="Username" value={username} onChange={(e) => setUsername(e.target.value)} margin="normal" autoFocus />
