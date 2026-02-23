@@ -16,4 +16,34 @@ public sealed class ExchangesController(ISender mediator) : ControllerBase
     {
         return Ok(await mediator.Send(new GetExchangesQuery(), ct));
     }
+
+    [HttpGet("all")]
+    [HasPermission(Permissions.SettingsManage)]
+    public async Task<ActionResult<List<ExchangeDto>>> ListAll(CancellationToken ct)
+    {
+        return Ok(await mediator.Send(new GetAllExchangesQuery(), ct));
+    }
+
+    [HttpPost]
+    [HasPermission(Permissions.SettingsManage)]
+    public async Task<ActionResult<ExchangeDto>> Create(CreateExchangeCommand command, CancellationToken ct)
+    {
+        return Ok(await mediator.Send(command, ct));
+    }
+
+    [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.SettingsManage)]
+    public async Task<ActionResult<ExchangeDto>> Update(Guid id, UpdateExchangeCommand command, CancellationToken ct)
+    {
+        if (id != command.Id) return BadRequest();
+        return Ok(await mediator.Send(command, ct));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.SettingsManage)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await mediator.Send(new DeleteExchangeCommand(id), ct);
+        return NoContent();
+    }
 }

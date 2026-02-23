@@ -53,6 +53,7 @@ export function renderWithProviders(ui: ReactNode, options: Options = {}) {
     permissions,
     login: async () => {},
     logout: () => {},
+    refreshProfile: async () => {},
   };
 
   function Wrapper({ children }: { children: ReactNode }) {

@@ -68,7 +68,7 @@ flowchart LR
 
 Эффективные права пользователя = (права всех его ролей) + (персональные allow) - (персональные deny).
 
-### Полный список permissions (14 шт.)
+### Полный список permissions
 
 | Группа | Код | Описание |
 |--------|-----|----------|
@@ -86,6 +86,15 @@ flowchart LR
 | Clients | `clients.create` | Создание клиентов |
 | Clients | `clients.update` | Редактирование клиентов |
 | Clients | `clients.delete` | Удаление клиентов |
+| Accounts | `accounts.read` | Просмотр счетов |
+| Accounts | `accounts.create` | Создание счетов |
+| Accounts | `accounts.update` | Редактирование счетов |
+| Accounts | `accounts.delete` | Удаление счетов |
+| Instruments | `instruments.read` | Просмотр инструментов |
+| Instruments | `instruments.create` | Создание инструментов |
+| Instruments | `instruments.update` | Редактирование инструментов |
+| Instruments | `instruments.delete` | Удаление инструментов |
+| Settings | `settings.manage` | Управление справочниками (Clearers, Trade Platforms, Exchanges, Currencies) |
 
 ### Механизм авторизации (Backend)
 

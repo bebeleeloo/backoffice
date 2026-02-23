@@ -25,13 +25,15 @@ Response
 
 **Base URL:** `/api/v1`
 
-### Аутентификация (AuthController)
+### Аутентификация и профиль (AuthController)
 
 | Метод | Маршрут | Авторизация | Описание |
 |-------|---------|-------------|----------|
 | POST | `/auth/login` | Нет | Логин (username + password) -> tokens |
 | POST | `/auth/refresh` | Нет | Обновление access token по refresh token |
 | GET | `/auth/me` | Bearer | Текущий профиль (user, roles, permissions, scopes) |
+| PUT | `/auth/profile` | Bearer | Обновление профиля (fullName, email) -> UserProfileResponse |
+| POST | `/auth/change-password` | Bearer | Смена пароля (currentPassword, newPassword) -> 204 |
 
 ### Пользователи (UsersController)
 
@@ -93,17 +95,29 @@ Response
 
 **Фильтры GET /accounts:** Number, Status[], AccountType[], MarginType[], Tariff[].
 
+### Справочники (Clearers, TradePlatforms, Exchanges, Currencies)
+
+GET без `/all` возвращает только active-записи (для dropdown'ов). GET `/all` возвращает все записи, включая inactive (для управления справочниками). Delete защищён от удаления записей с FK-зависимостями (409 Conflict).
+
 ### Клиринговые компании (ClearersController)
 
 | Метод | Маршрут | Permission |
 |-------|---------|-----------|
 | GET | `/clearers` | accounts.read |
+| GET | `/clearers/all` | settings.manage |
+| POST | `/clearers` | settings.manage |
+| PUT | `/clearers/{id}` | settings.manage |
+| DELETE | `/clearers/{id}` | settings.manage |
 
 ### Торговые платформы (TradePlatformsController)
 
 | Метод | Маршрут | Permission |
 |-------|---------|-----------|
 | GET | `/trade-platforms` | accounts.read |
+| GET | `/trade-platforms/all` | settings.manage |
+| POST | `/trade-platforms` | settings.manage |
+| PUT | `/trade-platforms/{id}` | settings.manage |
+| DELETE | `/trade-platforms/{id}` | settings.manage |
 
 ### Страны (CountriesController)
 
@@ -128,12 +142,26 @@ Response
 | Метод | Маршрут | Permission |
 |-------|---------|-----------|
 | GET | `/exchanges` | instruments.read |
+| GET | `/exchanges/all` | settings.manage |
+| POST | `/exchanges` | settings.manage |
+| PUT | `/exchanges/{id}` | settings.manage |
+| DELETE | `/exchanges/{id}` | settings.manage |
 
 ### Валюты (CurrenciesController)
 
 | Метод | Маршрут | Permission |
 |-------|---------|-----------|
 | GET | `/currencies` | instruments.read |
+| GET | `/currencies/all` | settings.manage |
+| POST | `/currencies` | settings.manage |
+| PUT | `/currencies/{id}` | settings.manage |
+| DELETE | `/currencies/{id}` | settings.manage |
+
+### Дашборд (DashboardController)
+
+| Метод | Маршрут | Авторизация | Описание |
+|-------|---------|-------------|----------|
+| GET | `/dashboard/stats` | Bearer | Агрегированная статистика (клиенты, счета, инструменты, пользователи) |
 
 ### Аудит (AuditController)
 

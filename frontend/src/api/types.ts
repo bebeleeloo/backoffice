@@ -624,6 +624,70 @@ export interface DashboardStatsDto {
   activeUsers: number;
 }
 
+// Settings / Profile
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName?: string;
+  email: string;
+}
+
+// Reference data mutations
+export interface CreateClearerRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateClearerRequest {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface CreateTradePlatformRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateTradePlatformRequest {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface CreateExchangeRequest {
+  code: string;
+  name: string;
+  countryId?: string;
+}
+
+export interface UpdateExchangeRequest {
+  id: string;
+  code: string;
+  name: string;
+  countryId?: string;
+  isActive: boolean;
+}
+
+export interface CreateCurrencyRequest {
+  code: string;
+  name: string;
+  symbol?: string;
+}
+
+export interface UpdateCurrencyRequest {
+  id: string;
+  code: string;
+  name: string;
+  symbol?: string;
+  isActive: boolean;
+}
+
 export interface AllEntityChangesParams {
   page?: number;
   pageSize?: number;

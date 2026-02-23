@@ -14,6 +14,11 @@ import type {
   OperationDto, EntityChangesParams,
   GlobalOperationDto, AllEntityChangesParams,
   DashboardStatsDto,
+  ChangePasswordRequest, UpdateProfileRequest,
+  CreateClearerRequest, UpdateClearerRequest,
+  CreateTradePlatformRequest, UpdateTradePlatformRequest,
+  CreateExchangeRequest, UpdateExchangeRequest,
+  CreateCurrencyRequest, UpdateCurrencyRequest,
 } from "./types";
 
 // Auth
@@ -353,6 +358,154 @@ export const useDeleteInstrument = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/instruments/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
+  });
+};
+
+// Profile
+export const useChangePassword = () =>
+  useMutation({
+    mutationFn: (data: ChangePasswordRequest) =>
+      apiClient.post("/auth/change-password", data),
+  });
+
+export const useUpdateProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateProfileRequest) =>
+      apiClient.put<UserProfile>("/auth/profile", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+};
+
+// Reference Data — Clearers
+export const useAllClearers = () =>
+  useQuery({
+    queryKey: ["clearers", "all"],
+    queryFn: () => apiClient.get<ClearerDto[]>("/clearers/all").then((r) => r.data),
+  });
+
+export const useCreateClearer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateClearerRequest) =>
+      apiClient.post<ClearerDto>("/clearers", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["clearers"] }),
+  });
+};
+
+export const useUpdateClearer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateClearerRequest) =>
+      apiClient.put<ClearerDto>(`/clearers/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["clearers"] }),
+  });
+};
+
+export const useDeleteClearer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/clearers/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["clearers"] }),
+  });
+};
+
+// Reference Data — Trade Platforms
+export const useAllTradePlatforms = () =>
+  useQuery({
+    queryKey: ["trade-platforms", "all"],
+    queryFn: () => apiClient.get<TradePlatformDto[]>("/trade-platforms/all").then((r) => r.data),
+  });
+
+export const useCreateTradePlatform = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateTradePlatformRequest) =>
+      apiClient.post<TradePlatformDto>("/trade-platforms", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-platforms"] }),
+  });
+};
+
+export const useUpdateTradePlatform = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateTradePlatformRequest) =>
+      apiClient.put<TradePlatformDto>(`/trade-platforms/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-platforms"] }),
+  });
+};
+
+export const useDeleteTradePlatform = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/trade-platforms/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-platforms"] }),
+  });
+};
+
+// Reference Data — Exchanges
+export const useAllExchanges = () =>
+  useQuery({
+    queryKey: ["exchanges", "all"],
+    queryFn: () => apiClient.get<ExchangeDto[]>("/exchanges/all").then((r) => r.data),
+  });
+
+export const useCreateExchange = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateExchangeRequest) =>
+      apiClient.post<ExchangeDto>("/exchanges", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["exchanges"] }),
+  });
+};
+
+export const useUpdateExchange = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateExchangeRequest) =>
+      apiClient.put<ExchangeDto>(`/exchanges/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["exchanges"] }),
+  });
+};
+
+export const useDeleteExchange = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/exchanges/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["exchanges"] }),
+  });
+};
+
+// Reference Data — Currencies
+export const useAllCurrencies = () =>
+  useQuery({
+    queryKey: ["currencies", "all"],
+    queryFn: () => apiClient.get<CurrencyDto[]>("/currencies/all").then((r) => r.data),
+  });
+
+export const useCreateCurrency = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateCurrencyRequest) =>
+      apiClient.post<CurrencyDto>("/currencies", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["currencies"] }),
+  });
+};
+
+export const useUpdateCurrency = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateCurrencyRequest) =>
+      apiClient.put<CurrencyDto>(`/currencies/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["currencies"] }),
+  });
+};
+
+export const useDeleteCurrency = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/currencies/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["currencies"] }),
   });
 };
 

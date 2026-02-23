@@ -9,11 +9,12 @@ interface AuthState {
   permissions: string[];
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthState>({
   user: null, isAuthenticated: false, isLoading: true, permissions: [],
-  login: async () => {}, logout: () => {},
+  login: async () => {}, logout: () => {}, refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user, isAuthenticated: !!user, isLoading,
         permissions: user?.permissions ?? [],
-        login, logout,
+        login, logout, refreshProfile: fetchMe,
       }}
     >
       {children}

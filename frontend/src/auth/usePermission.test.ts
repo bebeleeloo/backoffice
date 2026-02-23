@@ -13,6 +13,7 @@ function wrapper(permissions: string[]) {
         permissions,
         login: async () => {},
         logout: () => {},
+        refreshProfile: async () => {},
       },
       children,
     });

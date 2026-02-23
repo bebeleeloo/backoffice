@@ -232,7 +232,7 @@ erDiagram
 |---------|------------|-------------------|
 | Users | Пользователи системы | Username, Email |
 | Roles | Роли (в т.ч. системные) | Name |
-| Permissions | Гранулярные права (18 шт.) | Code |
+| Permissions | Гранулярные права (23 шт.) | Code |
 | UserRoles | Связь M:N User <-> Role | (UserId, RoleId) |
 | RolePermissions | Связь M:N Role <-> Permission | (RoleId, PermissionId) |
 | UserPermissionOverrides | Персональные переопределения прав | (UserId, PermissionId) |
@@ -315,7 +315,7 @@ EF Core Code-First миграции:
 
 При первом запуске засеиваются:
 
-1. **Permissions** (18 прав) -- из массива `Permissions.All` в коде
+1. **Permissions** (23 права) -- из массива `Permissions.All` в коде
 2. **Countries** -- полный список стран с ISO-кодами и флагами
 3. **Admin user** -- логин `admin`, пароль из переменной окружения `ADMIN_PASSWORD`
 4. **Роль Administrator** -- системная роль со всеми permissions

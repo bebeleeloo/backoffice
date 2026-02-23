@@ -112,8 +112,13 @@ Request interceptor:
 | `useCountries()` | GET /countries | staleTime: 10 мин |
 | `useClearers()` | GET /clearers | staleTime: 10 мин |
 | `useTradePlatforms()` | GET /trade-platforms | staleTime: 10 мин |
+| `useDashboardStats()` | GET /dashboard/stats | default |
+| `useAllClearers()` | GET /clearers/all | default |
+| `useAllTradePlatforms()` | GET /trade-platforms/all | default |
+| `useAllExchanges()` | GET /exchanges/all | default |
+| `useAllCurrencies()` | GET /currencies/all | default |
 
-Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useCreateClient`, `useUpdateClient`, `useDeleteClient`, `useCreateAccount`, `useUpdateAccount`, `useDeleteAccount`, `useSetAccountHolders`, `useSetClientAccounts`, `useCreateInstrument`, `useUpdateInstrument`, `useDeleteInstrument` и т.д.) инвалидируют соответствующий queryKey при успехе.
+Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useCreateClient`, `useUpdateClient`, `useDeleteClient`, `useCreateAccount`, `useUpdateAccount`, `useDeleteAccount`, `useSetAccountHolders`, `useSetClientAccounts`, `useCreateInstrument`, `useUpdateInstrument`, `useDeleteInstrument`, `useUpdateProfile`, `useChangePassword`, `useCreateClearer`, `useUpdateClearer`, `useDeleteClearer`, `useCreateTradePlatform`, `useUpdateTradePlatform`, `useDeleteTradePlatform`, `useCreateExchange`, `useUpdateExchange`, `useDeleteExchange`, `useCreateCurrency`, `useUpdateCurrency`, `useDeleteCurrency` и т.д.) инвалидируют соответствующий queryKey при успехе.
 
 Все хуки используют `cleanParams()` для удаления undefined/null/empty значений перед отправкой.
 
@@ -142,6 +147,7 @@ Request interceptor:
 - `ClientDialogs` -- сложные формы с условными полями (Individual vs Corporate), адресами, инвестиционным профилем, привязкой счетов
 - `AccountDialogs` -- создание/редактирование счёта с Autocomplete для Clearer/TradePlatform, управление холдерами
 - `InstrumentDialogs` -- создание/редактирование инструмента с Autocomplete для Exchange/Currency/Country
+- `ClearerDialogs`, `TradePlatformDialogs`, `ExchangeDialogs`, `CurrencyDialogs` -- CRUD-диалоги для справочников (Settings → Reference Data)
 
 Страницы деталей:
 - `ClientDetailsPage` -- просмотр клиента со связанными счетами (с навигацией на счёт)
@@ -174,6 +180,29 @@ Request interceptor:
 - Маппинг имён полей → читаемые лейблы (ResidenceCountryId → "Residence Country")
 - Пагинация
 - Доступен только при наличии permission `audit.read`
+
+### DashboardPage
+
+Дашборд с 4 счётчиками (Clients, Accounts, Instruments, Users) и 4 графиками (Recharts):
+- 3 PieChart: распределение клиентов по типу, счетов по статусу, инструментов по классу активов
+- 1 BarChart: инструменты по типу
+
+Счётчики кликабельны — навигация на соответствующую страницу.
+
+### SettingsPage
+
+Два таба:
+
+**Profile** (доступен всем авторизованным):
+- Profile Info (read-only): username, роли (Chips)
+- Edit Profile: редактирование fullName и email
+- Change Password: текущий пароль + новый + подтверждение
+
+**Reference Data** (доступен с permission `settings.manage`):
+- 4 секции-аккордеона: Clearers, Trade Platforms, Exchanges, Currencies
+- Каждая секция — таблица с колонками Name/Code, Description/Symbol, Status (Active/Inactive)
+- CRUD через диалоги Add/Edit и кнопку Delete с подтверждением
+- Двухколоночный layout для Profile tab (Profile Info + Edit слева, Change Password справа)
 
 ## Тема
 
