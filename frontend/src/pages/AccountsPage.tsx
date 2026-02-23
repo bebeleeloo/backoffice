@@ -12,7 +12,7 @@ import { useHasPermission } from "../auth/usePermission";
 import { CreateAccountDialog, EditAccountDialog } from "./AccountDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { PageContainer } from "../components/PageContainer";
-import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect } from "../components/grid";
+import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
 
 const STATUS_OPTIONS: { value: AccountStatus; label: string }[] = [
   { value: "Active", label: "Active" },
@@ -70,6 +70,8 @@ function readParams(sp: URLSearchParams) {
     clearerName: sp.get("clearerName") || undefined,
     tradePlatformName: sp.get("tradePlatformName") || undefined,
     externalId: sp.get("externalId") || undefined,
+    createdFrom: sp.get("createdFrom") || undefined,
+    createdTo: sp.get("createdTo") || undefined,
   };
 }
 
@@ -253,9 +255,18 @@ export function AccountsPage() {
         placeholder="External ID..."
       />
     ));
+    m.set("createdAt", () => (
+      <DateRangePopover
+        fromValue={params.createdFrom ?? ""}
+        toValue={params.createdTo ?? ""}
+        onFromChange={(v) => setFilterParam("createdFrom", v || undefined)}
+        onToChange={(v) => setFilterParam("createdTo", v || undefined)}
+      />
+    ));
     return m;
   }, [params.number, params.status, params.accountType, params.marginType, params.tariff,
       params.clearerName, params.tradePlatformName, params.externalId,
+      params.createdFrom, params.createdTo,
       setFilterParam, setMultiFilterParam]);
 
   return (

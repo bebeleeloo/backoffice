@@ -14,7 +14,7 @@ import { useHasPermission } from "../auth/usePermission";
 import { CreateInstrumentDialog, EditInstrumentDialog } from "./InstrumentDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { PageContainer } from "../components/PageContainer";
-import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect } from "../components/grid";
+import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
 
 const STATUS_OPTIONS: { value: InstrumentStatus; label: string }[] = [
   { value: "Active", label: "Active" },
@@ -86,6 +86,8 @@ function readParams(sp: URLSearchParams) {
     sector: getAllOrUndefined(sp, "sector") as Sector[] | undefined,
     exchangeName: sp.get("exchangeName") || undefined,
     currencyCode: sp.get("currencyCode") || undefined,
+    createdFrom: sp.get("createdFrom") || undefined,
+    createdTo: sp.get("createdTo") || undefined,
   };
 }
 
@@ -279,9 +281,18 @@ export function InstrumentsPage() {
         placeholder="Currency..."
       />
     ));
+    m.set("createdAt", () => (
+      <DateRangePopover
+        fromValue={params.createdFrom ?? ""}
+        toValue={params.createdTo ?? ""}
+        onFromChange={(v) => setFilterParam("createdFrom", v || undefined)}
+        onToChange={(v) => setFilterParam("createdTo", v || undefined)}
+      />
+    ));
     return m;
   }, [params.symbol, params.name, params.type, params.assetClass, params.status,
       params.sector, params.exchangeName, params.currencyCode,
+      params.createdFrom, params.createdTo,
       setFilterParam, setMultiFilterParam]);
 
   return (
