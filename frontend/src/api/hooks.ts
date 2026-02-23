@@ -11,6 +11,7 @@ import type {
   AccountHolderInput, ClientAccountDto, ClientAccountInput,
   ExchangeDto, CurrencyDto,
   InstrumentListItemDto, InstrumentDto, CreateInstrumentRequest, UpdateInstrumentRequest, InstrumentsParams,
+  OperationDto, EntityChangesParams,
 } from "./types";
 
 // Auth
@@ -352,3 +353,12 @@ export const useDeleteInstrument = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
   });
 };
+
+// Entity Changes
+export const useEntityChanges = (params: EntityChangesParams, enabled = true) =>
+  useQuery({
+    queryKey: ["entity-changes", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<OperationDto>>("/entity-changes", { params }).then((r) => r.data),
+    enabled: enabled && !!params.entityId,
+  });

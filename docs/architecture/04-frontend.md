@@ -25,6 +25,8 @@ QueryClientProvider (retry: 1, refetchOnWindowFocus: false)
   /clients/:id           -> ClientDetailsPage
   /accounts              -> AccountsPage
   /accounts/:id          -> AccountDetailsPage
+  /instruments           -> InstrumentsPage
+  /instruments/:id       -> InstrumentDetailsPage
   /users                 -> UsersPage
   /roles                 -> RolesPage
   /audit                 -> AuditPage
@@ -98,13 +100,18 @@ Request interceptor:
 | `useClientAccounts(clientId)` | GET /clients/{id}/accounts | default |
 | `useAccounts(params)` | GET /accounts | default |
 | `useAccount(id)` | GET /accounts/{id} | default |
+| `useInstruments(params)` | GET /instruments | default |
+| `useInstrument(id)` | GET /instruments/{id} | default |
+| `useExchanges()` | GET /exchanges | staleTime: 10 мин |
+| `useCurrencies()` | GET /currencies | staleTime: 10 мин |
 | `useAuditLogs(params)` | GET /audit | default |
 | `useAuditLog(id)` | GET /audit/{id} | default |
+| `useEntityChanges(params, enabled)` | GET /entity-changes | default |
 | `useCountries()` | GET /countries | staleTime: 10 мин |
 | `useClearers()` | GET /clearers | staleTime: 10 мин |
 | `useTradePlatforms()` | GET /trade-platforms | staleTime: 10 мин |
 
-Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useCreateAccount`, `useUpdateAccount`, `useDeleteAccount`, `useSetAccountHolders`, `useSetClientAccounts` и т.д.) инвалидируют соответствующий queryKey при успехе.
+Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useCreateClient`, `useUpdateClient`, `useDeleteClient`, `useCreateAccount`, `useUpdateAccount`, `useDeleteAccount`, `useSetAccountHolders`, `useSetClientAccounts`, `useCreateInstrument`, `useUpdateInstrument`, `useDeleteInstrument` и т.д.) инвалидируют соответствующий queryKey при успехе.
 
 Все хуки используют `cleanParams()` для удаления undefined/null/empty значений перед отправкой.
 
@@ -131,10 +138,28 @@ Request interceptor:
 - `RoleDialogs` -- создание/редактирование роли + управление permissions
 - `ClientDialogs` -- сложные формы с условными полями (Individual vs Corporate), адресами, инвестиционным профилем, привязкой счетов
 - `AccountDialogs` -- создание/редактирование счёта с Autocomplete для Clearer/TradePlatform, управление холдерами
+- `InstrumentDialogs` -- создание/редактирование инструмента с Autocomplete для Exchange/Currency/Country
 
 Страницы деталей:
 - `ClientDetailsPage` -- просмотр клиента со связанными счетами (с навигацией на счёт)
 - `AccountDetailsPage` -- просмотр счёта со связанными холдерами (с навигацией на клиента)
+- `InstrumentDetailsPage` -- просмотр инструмента со всеми параметрами
+
+### EntityHistoryDialog
+
+Переиспользуемый компонент `EntityHistoryDialog` для просмотра поле-уровневой истории изменений сущности. Интегрирован в:
+- `ClientDetailsPage`, `AccountDetailsPage`, `InstrumentDetailsPage` — кнопка "History"
+- `UsersPage`, `RolesPage` — иконка History в строке DataGrid
+
+**Особенности:**
+- Отображает операции в виде Accordion: дата/время (до секунд), ФИО пользователя, тип изменения
+- Группировка: корневая сущность + связанные (адреса, холдеры, профиль и т.д.)
+- Контекстные display names: "Legal, 612 Oak Ave, Berlin" для адреса, "Owner, Matthew Clark" для холдера
+- FK-значения отображаются как человекочитаемые имена (название страны, а не GUID)
+- Цветовая маркировка: Created (зелёный), Modified (жёлтый), Deleted (красный)
+- Маппинг имён полей → читаемые лейблы (ResidenceCountryId → "Residence Country")
+- Пагинация
+- Доступен только при наличии permission `audit.read`
 
 ## Тема
 

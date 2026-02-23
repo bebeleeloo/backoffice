@@ -7,9 +7,11 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
+import HistoryIcon from "@mui/icons-material/History";
 import { useClient, useClientAccounts } from "../api/hooks";
 import { useHasPermission } from "../auth/usePermission";
 import { EditClientDialog } from "./ClientDialogs";
+import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { PageContainer } from "../components/PageContainer";
 
 const STATUS_COLORS: Record<string, "success" | "error" | "warning" | "default"> = {
@@ -35,7 +37,9 @@ export function ClientDetailsPage() {
   const { data: client, isLoading } = useClient(id ?? "");
   const { data: clientAccounts } = useClientAccounts(id ?? "");
   const canUpdate = useHasPermission("clients.update");
+  const canAudit = useHasPermission("audit.read");
   const [editOpen, setEditOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -66,6 +70,9 @@ export function ClientDetailsPage() {
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/clients")}>Back</Button>
+          {canAudit && (
+            <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
+          )}
           {canUpdate && (
             <Button variant="contained" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>Edit</Button>
           )}
@@ -101,7 +108,7 @@ export function ClientDetailsPage() {
                 <Field label="First Name" value={client.firstName} />
                 <Field label="Last Name" value={client.lastName} />
                 <Field label="Middle Name" value={client.middleName} />
-                <Field label="Date of Birth" value={client.dateOfBirth} />
+                <Field label="Date of Birth" value={client.dateOfBirth ? new Date(client.dateOfBirth + "T00:00:00").toLocaleDateString() : null} />
                 <Field label="Gender" value={client.gender} />
                 <Field label="Marital Status" value={client.maritalStatus} />
                 <Field label="Education" value={client.education} />
@@ -232,7 +239,7 @@ export function ClientDetailsPage() {
                       </TableCell>
                       <TableCell>{a.role}</TableCell>
                       <TableCell>{a.isPrimary ? "Yes" : "No"}</TableCell>
-                      <TableCell>{new Date(a.addedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(a.addedAt).toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -245,6 +252,7 @@ export function ClientDetailsPage() {
       </Card>
 
       <EditClientDialog open={editOpen} onClose={() => setEditOpen(false)} clientId={client.id} />
+      <EntityHistoryDialog entityType="Client" entityId={client.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </PageContainer>
   );
 }

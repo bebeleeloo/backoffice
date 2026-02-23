@@ -30,6 +30,12 @@ erDiagram
     Account }o--o| Clearer : "clearer"
     Account }o--o| TradePlatform : "platform"
 
+    Instrument }o--o| Exchange : "exchange"
+    Instrument }o--o| Currency : "currency"
+    Instrument }o--o| Country : "country"
+
+    EntityChange }o..o| User : "who changed"
+
     User {
         guid Id PK
         string Username UK
@@ -144,6 +150,46 @@ erDiagram
         bool IsActive
     }
 
+    Instrument {
+        guid Id PK
+        string Symbol UK
+        string Name
+        string ISIN
+        string CUSIP
+        enum InstrumentType
+        enum AssetClass
+        enum InstrumentStatus
+        guid ExchangeId FK
+        guid CurrencyId FK
+        guid CountryId FK
+        enum Sector
+        int LotSize
+        decimal TickSize
+        decimal MarginRequirement
+        bool IsMarginEligible
+        datetime ListingDate
+        datetime ExpirationDate
+        string ExternalId
+        binary RowVersion
+        datetime CreatedAt
+    }
+
+    Exchange {
+        guid Id PK
+        string Code UK
+        string Name
+        guid CountryId FK
+        bool IsActive
+    }
+
+    Currency {
+        guid Id PK
+        string Code UK
+        string Name
+        string Symbol
+        bool IsActive
+    }
+
     AuditLog {
         guid Id PK
         guid UserId IX
@@ -157,6 +203,24 @@ erDiagram
         datetime CreatedAt IX
         int StatusCode
         bool IsSuccess
+    }
+
+    EntityChange {
+        guid Id PK
+        guid OperationId IX
+        string EntityType IX
+        string EntityId IX
+        string EntityDisplayName
+        string RelatedEntityType
+        string RelatedEntityId
+        string RelatedEntityDisplayName
+        string ChangeType
+        string FieldName
+        string OldValue
+        string NewValue
+        string UserId
+        string UserName
+        datetime Timestamp IX
     }
 ```
 
@@ -193,11 +257,20 @@ erDiagram
 | Clearers | Справочник клиринговых компаний | Seed data |
 | TradePlatforms | Справочник торговых платформ | Seed data |
 
-### Аудит
+### Инструменты
 
 | Таблица | Назначение | Особенности |
 |---------|------------|-------------|
-| AuditLogs | Лог всех мутаций | Индексы: CreatedAt, UserId, Action, EntityType |
+| Instruments | Торговые инструменты (Stock, Bond, ETF, ...) | RowVersion, FK на Exchange/Currency/Country |
+| Exchanges | Справочник бирж | Seed data (NYSE, NASDAQ, LSE, TSE и др.) |
+| Currencies | Справочник валют | Seed data (USD, EUR, GBP, JPY и др.) |
+
+### Аудит и отслеживание изменений
+
+| Таблица | Назначение | Особенности |
+|---------|------------|-------------|
+| AuditLogs | HTTP-уровневый лог мутаций | Индексы: CreatedAt, UserId, Action, EntityType |
+| EntityChanges | Поле-уровневая история изменений | Индексы: (EntityType, EntityId), OperationId, Timestamp |
 
 ## Перечисления (Enums)
 
@@ -232,6 +305,9 @@ EF Core Code-First миграции:
 | 4 | 20260219120000_AddCountryFlagEmoji | Колонка FlagEmoji |
 | 5 | 20260220211449_AddAccounts | Accounts, Clearers, TradePlatforms |
 | 6 | 20260220213800_AddAccountHolders | AccountHolders (M:N Account <-> Client) |
+| 7 | 20260221... | Instruments, Exchanges, Currencies |
+| 8 | 20260222063356_AddEntityChanges | EntityChanges (поле-уровневый аудит) |
+| 9 | 20260222150000_AddEntityChangeDisplayNames | EntityDisplayName, RelatedEntityDisplayName в EntityChanges |
 
 Миграции применяются **автоматически** при старте приложения (`context.Database.MigrateAsync()`).
 

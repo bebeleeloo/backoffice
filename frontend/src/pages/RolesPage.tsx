@@ -4,12 +4,14 @@ import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
 import SecurityIcon from "@mui/icons-material/Security";
 import SearchIcon from "@mui/icons-material/Search";
 import { useRoles, useDeleteRole } from "../api/hooks";
 import type { RoleDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateRoleDialog, EditRoleDialog, RolePermissionsDialog } from "./RoleDialogs";
+import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, InlineBooleanFilter } from "../components/grid";
@@ -39,11 +41,13 @@ export function RolesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleDto | null>(null);
   const [permsRole, setPermsRole] = useState<RoleDto | null>(null);
+  const [historyRoleId, setHistoryRoleId] = useState<string | null>(null);
   const [search, setSearch] = useState(params.q ?? "");
 
   const canCreate = useHasPermission("roles.create");
   const canUpdate = useHasPermission("roles.update");
   const canDelete = useHasPermission("roles.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useRoles(params);
   const deleteRole = useDeleteRole();
@@ -105,9 +109,14 @@ export function RolesPage() {
       renderCell: ({ value }) => <Chip label={`${(value as string[]).length} perms`} size="small" variant="outlined" />,
     },
     {
-      field: "actions", headerName: "", width: 140, sortable: false, filterable: false,
+      field: "actions", headerName: "", width: 170, sortable: false, filterable: false,
       renderCell: ({ row }) => (
         <>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryRoleId(row.id)} title="History">
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setPermsRole(row)} title="Permissions" data-testid={`action-perms-${row.id}`}>
               <SecurityIcon fontSize="small" />
@@ -212,6 +221,7 @@ export function RolesPage() {
       <CreateRoleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditRoleDialog open={!!editRole} onClose={() => setEditRole(null)} role={editRole} />
       <RolePermissionsDialog open={!!permsRole} onClose={() => setPermsRole(null)} role={permsRole} />
+      <EntityHistoryDialog entityType="Role" entityId={historyRoleId ?? ""} open={!!historyRoleId} onClose={() => setHistoryRoleId(null)} />
     </PageContainer>
   );
 }

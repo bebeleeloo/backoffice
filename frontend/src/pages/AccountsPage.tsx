@@ -170,8 +170,8 @@ export function AccountsPage() {
     },
     { field: "externalId", headerName: "External ID", width: 120 },
     {
-      field: "createdAt", headerName: "Created", width: 110,
-      renderCell: ({ value }) => new Date(value as string).toLocaleDateString(),
+      field: "createdAt", headerName: "Created", width: 170,
+      renderCell: ({ value }) => new Date(value as string).toLocaleString(),
     },
     {
       field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,

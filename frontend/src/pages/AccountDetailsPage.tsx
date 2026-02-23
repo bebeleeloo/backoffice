@@ -7,9 +7,11 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
+import HistoryIcon from "@mui/icons-material/History";
 import { useAccount } from "../api/hooks";
 import { useHasPermission } from "../auth/usePermission";
 import { EditAccountDialog } from "./AccountDialogs";
+import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { PageContainer } from "../components/PageContainer";
 
 const STATUS_COLORS: Record<string, "success" | "error" | "default" | "warning"> = {
@@ -31,7 +33,9 @@ export function AccountDetailsPage() {
   const navigate = useNavigate();
   const { data: account, isLoading } = useAccount(id ?? "");
   const canUpdate = useHasPermission("accounts.update");
+  const canAudit = useHasPermission("audit.read");
   const [editOpen, setEditOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -58,6 +62,9 @@ export function AccountDetailsPage() {
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/accounts")}>Back</Button>
+          {canAudit && (
+            <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
+          )}
           {canUpdate && (
             <Button variant="contained" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>Edit</Button>
           )}
@@ -119,7 +126,7 @@ export function AccountDetailsPage() {
                       </TableCell>
                       <TableCell>{h.role}</TableCell>
                       <TableCell>{h.isPrimary ? "Yes" : "No"}</TableCell>
-                      <TableCell>{new Date(h.addedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(h.addedAt).toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -134,6 +141,7 @@ export function AccountDetailsPage() {
         onClose={() => setEditOpen(false)}
         account={account ? { id: account.id, number: account.number } as any : null}
       />
+      <EntityHistoryDialog entityType="Account" entityId={account.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </PageContainer>
   );
 }

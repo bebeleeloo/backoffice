@@ -111,6 +111,30 @@ Response
 |-------|---------|-----------|
 | GET | `/countries` | clients.read |
 
+### Инструменты (InstrumentsController)
+
+| Метод | Маршрут | Permission | Аудит |
+|-------|---------|-----------|-------|
+| GET | `/instruments` | instruments.read | - |
+| GET | `/instruments/{id}` | instruments.read | - |
+| POST | `/instruments` | instruments.create | Да |
+| PUT | `/instruments/{id}` | instruments.update | Да |
+| DELETE | `/instruments/{id}` | instruments.delete | Да |
+
+**Фильтры GET /instruments:** Symbol, Name, Type[], AssetClass[], Status[], Sector[], ExchangeName, CurrencyCode, IsMarginEligible.
+
+### Биржи (ExchangesController)
+
+| Метод | Маршрут | Permission |
+|-------|---------|-----------|
+| GET | `/exchanges` | instruments.read |
+
+### Валюты (CurrenciesController)
+
+| Метод | Маршрут | Permission |
+|-------|---------|-----------|
+| GET | `/currencies` | instruments.read |
+
 ### Аудит (AuditController)
 
 | Метод | Маршрут | Permission |
@@ -119,6 +143,16 @@ Response
 | GET | `/audit/{id}` | audit.read |
 
 **Фильтры GET /audit:** From, To, UserId, Action, EntityType, IsSuccess, UserName, Method, Path, StatusCode.
+
+### История изменений (EntityChangesController)
+
+| Метод | Маршрут | Permission |
+|-------|---------|-----------|
+| GET | `/entity-changes` | audit.read |
+
+**Параметры:** EntityType, EntityId, Page, PageSize.
+
+Возвращает поле-уровневую историю изменений сущности (см. [Entity Change Tracking](#entity-change-tracking)).
 
 ## CQRS Pattern
 
@@ -169,12 +203,55 @@ sequenceDiagram
 
 ## Аудит
 
+### HTTP-уровневый аудит (AuditLog)
+
 **AuditActionFilter** перехватывает POST/PUT/PATCH/DELETE:
 
 1. До выполнения action: сохраняет `BeforeJson` из `AuditContext`
 2. После выполнения: записывает `AuditLog` с UserId, UserName, Action, EntityType, EntityId, Before/AfterJson, CorrelationId, IP, UserAgent, Path, Method, StatusCode, IsSuccess
 3. JSON обрезается до 16384 байт
 4. Ошибки записи аудита логируются, но не прерывают запрос
+
+### Entity Change Tracking
+
+Автоматическое отслеживание изменений на уровне полей через override `SaveChangesAsync` в `AppDbContext`. Для каждой сущности сохраняется полная история: кто, когда, какое поле, старое → новое значение.
+
+**Архитектура:**
+
+```
+SaveChangesAsync()
+  ├── CaptureChanges()         — итерация ChangeTracker.Entries()
+  │     ├── CaptureCreated()   — все non-null свойства
+  │     ├── CaptureModified()  — только реально изменённые свойства
+  │     └── CaptureDeleted()   — все non-null оригинальные значения
+  ├── DeduplicateReplacedEntities()  — устранение phantom-изменений (clear+re-add)
+  ├── base.SaveChangesAsync()  — сохранение бизнес-данных
+  └── base.SaveChangesAsync()  — сохранение EntityChange записей (_suppressChangeTracking)
+```
+
+**Отслеживаемые сущности:**
+
+| Сущность | Тип | Родитель | Описание |
+|----------|-----|----------|----------|
+| Client | root | — | Клиенты |
+| ClientAddress | child | Client | Адреса клиентов |
+| InvestmentProfile | child | Client | Инвестиционный профиль |
+| Account | root | — | Счета |
+| AccountHolder | child | Account + Client | Связь счёт-клиент (dual parent) |
+| Instrument | root | — | Инструменты |
+| User | root | — | Пользователи (PasswordHash исключён) |
+| UserRole | child | User | Роли пользователя |
+| Role | root | — | Роли |
+| RolePermission | child | Role | Права роли |
+
+**Ключевые механизмы:**
+
+- **Request-scoped OperationId** — все `SaveChangesAsync` вызовы в рамках одного HTTP-запроса делят один `OperationId` (через `IChangeTrackingContext`)
+- **Deduplication** — "clear all + re-add" паттерн (адреса, холдеры) автоматически определяется и преобразуется в "Modified" записи только для реально изменённых полей
+- **FK-разрешение** — значения FK-полей (ResidenceCountryId, ClearerId, ExchangeId и т.д.) автоматически резолвятся в человекочитаемые имена (название страны, клиринга и т.д.)
+- **Display Names** — для каждой записи вычисляется контекстное имя: "Legal, 612 Oak Ave, Berlin" для адреса, "Owner, Matthew Clark" для холдера
+- **Dual parent (AccountHolder)** — изменения записываются в историю обоих родителей (Account и Client) с контекстно-зависимыми display names
+- **FullName** — в поле UserName записывается ФИО пользователя (из JWT-claim `full_name`), а не логин
 
 ## Конфигурация
 

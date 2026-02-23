@@ -4,11 +4,13 @@ import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
 import SearchIcon from "@mui/icons-material/Search";
 import { useUsers, useDeleteUser } from "../api/hooks";
 import type { UserDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateUserDialog, EditUserDialog } from "./UserDialogs";
+import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, InlineBooleanFilter } from "../components/grid";
@@ -38,11 +40,13 @@ export function UsersPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserDto | null>(null);
+  const [historyUserId, setHistoryUserId] = useState<string | null>(null);
   const [search, setSearch] = useState(params.q ?? "");
 
   const canCreate = useHasPermission("users.create");
   const canUpdate = useHasPermission("users.update");
   const canDelete = useHasPermission("users.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useUsers(params);
   const deleteUser = useDeleteUser();
@@ -107,9 +111,14 @@ export function UsersPage() {
       renderCell: ({ value }) => (value as string[]).map((r) => <Chip key={r} label={r} size="small" sx={{ mr: 0.5 }} />),
     },
     {
-      field: "actions", headerName: "", width: 100, sortable: false, filterable: false,
+      field: "actions", headerName: "", width: 130, sortable: false, filterable: false,
       renderCell: ({ row }) => (
         <>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryUserId(row.id)}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditUser(row)} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
@@ -215,6 +224,7 @@ export function UsersPage() {
 
       <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditUserDialog open={!!editUser} onClose={() => setEditUser(null)} user={editUser} />
+      <EntityHistoryDialog entityType="User" entityId={historyUserId ?? ""} open={!!historyUserId} onClose={() => setHistoryUserId(null)} />
     </PageContainer>
   );
 }

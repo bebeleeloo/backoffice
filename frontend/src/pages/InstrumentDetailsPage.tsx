@@ -5,9 +5,11 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
+import HistoryIcon from "@mui/icons-material/History";
 import { useInstrument } from "../api/hooks";
 import { useHasPermission } from "../auth/usePermission";
 import { EditInstrumentDialog } from "./InstrumentDialogs";
+import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { PageContainer } from "../components/PageContainer";
 import type { InstrumentStatus } from "../api/types";
 
@@ -30,7 +32,9 @@ export function InstrumentDetailsPage() {
   const navigate = useNavigate();
   const { data: instrument, isLoading } = useInstrument(id ?? "");
   const canUpdate = useHasPermission("instruments.update");
+  const canAudit = useHasPermission("audit.read");
   const [editOpen, setEditOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -57,6 +61,9 @@ export function InstrumentDetailsPage() {
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/instruments")}>Back</Button>
+          {canAudit && (
+            <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
+          )}
           {canUpdate && (
             <Button variant="contained" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>Edit</Button>
           )}
@@ -135,6 +142,7 @@ export function InstrumentDetailsPage() {
         onClose={() => setEditOpen(false)}
         instrument={instrument ? { id: instrument.id, symbol: instrument.symbol } as any : null}
       />
+      <EntityHistoryDialog entityType="Instrument" entityId={instrument.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </PageContainer>
   );
 }

@@ -3,6 +3,7 @@ using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Infrastructure.Auth;
 using Broker.Backoffice.Infrastructure.Persistence;
+using Broker.Backoffice.Infrastructure.Persistence.ChangeTracking;
 using Broker.Backoffice.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<ICorrelationIdAccessor, CorrelationIdAccessor>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditContext, AuditContext>();
+        services.AddScoped<IChangeTrackingContext, ChangeTrackingContext>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<PasswordHasher<User>>();
         services.AddHttpContextAccessor();

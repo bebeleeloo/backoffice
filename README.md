@@ -215,6 +215,7 @@ dotnet test tests/Broker.Backoffice.Tests.Integration
 | GET    | `/api/v1/trade-platforms`           | accounts.read       |
 | GET    | `/api/v1/audit`                     | audit.read          |
 | GET    | `/api/v1/audit/:id`                 | audit.read          |
+| GET    | `/api/v1/entity-changes`            | audit.read          |
 
 ## Health Checks
 

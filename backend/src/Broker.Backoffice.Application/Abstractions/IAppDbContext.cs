@@ -31,6 +31,7 @@ public interface IAppDbContext
     DbSet<Instrument> Instruments { get; }
     DbSet<Exchange> Exchanges { get; }
     DbSet<Currency> Currencies { get; }
+    DbSet<EntityChange> EntityChanges { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

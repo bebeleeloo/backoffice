@@ -563,3 +563,36 @@ export interface ClientsParams extends PagedParams {
   createdTo?: string;
   pepStatus?: boolean;
 }
+
+// Entity Change History
+export interface FieldChangeDto {
+  fieldName: string;
+  changeType: "Created" | "Modified" | "Deleted";
+  oldValue: string | null;
+  newValue: string | null;
+}
+
+export interface EntityChangeGroupDto {
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
+  relatedEntityDisplayName: string | null;
+  changeType: string;
+  fields: FieldChangeDto[];
+}
+
+export interface OperationDto {
+  operationId: string;
+  timestamp: string;
+  userId: string | null;
+  userName: string | null;
+  entityDisplayName: string | null;
+  changeType: string;
+  changes: EntityChangeGroupDto[];
+}
+
+export interface EntityChangesParams {
+  entityType: string;
+  entityId: string;
+  page?: number;
+  pageSize?: number;
+}

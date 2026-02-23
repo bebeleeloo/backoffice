@@ -316,7 +316,7 @@ export function ClientsPage() {
     {
       field: "createdAt", headerName: "Created", width: 180,
       valueFormatter: (value: string) =>
-        value ? new Date(value).toLocaleDateString() : "",
+        value ? new Date(value).toLocaleString() : "",
     },
     // Hidden by default
     { field: "phone", headerName: "Phone", width: 140 },

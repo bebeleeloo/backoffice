@@ -58,12 +58,26 @@ Frontend генерирует `X-Correlation-Id` (UUID без дефисов) в
 
 ## Аудит как наблюдаемость
 
+### HTTP-аудит (AuditLog)
+
 `AuditLog` служит дополнительным инструментом наблюдаемости:
 - Записываются все POST/PUT/PATCH/DELETE операции
 - Содержат before/after JSON (до 16 KB)
 - Привязаны к CorrelationId
 - Имеют StatusCode и IsSuccess
 - Доступны через UI (страница Audit Log с фильтрами)
+
+### Поле-уровневый аудит (EntityChanges)
+
+`EntityChanges` обеспечивает детальное отслеживание на уровне отдельных полей:
+- Автоматический захват через override `SaveChangesAsync` в `AppDbContext`
+- Записывает каждое изменённое поле: старое значение → новое значение
+- FK-значения автоматически резолвятся в имена (CountryId → "Germany", ClearerId → "Apex Clearing")
+- Группировка по OperationId (request-scoped) — все save в рамках одного запроса = одна операция
+- Поддержка связанных сущностей: адреса, холдеры, инвест-профиль, роли, права
+- Контекстные display names для сущностей ("Legal, 612 Oak Ave, Berlin", "Owner, Matthew Clark")
+- ФИО пользователя вместо логина (из JWT claim `full_name`)
+- Доступны через UI (кнопка History на страницах деталей) и API (`GET /api/v1/entity-changes`)
 
 ## Метрики и трейсинг
 
