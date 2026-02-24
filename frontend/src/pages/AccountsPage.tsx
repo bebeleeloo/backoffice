@@ -11,6 +11,10 @@ import type { AccountListItemDto, AccountStatus, AccountType, MarginType, Tariff
 import { useHasPermission } from "../auth/usePermission";
 import { CreateAccountDialog, EditAccountDialog } from "./AccountDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { ExportButton } from "../components/ExportButton";
+import type { ExcelColumn } from "../utils/exportToExcel";
+import { apiClient } from "../api/client";
+import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
 
@@ -269,16 +273,41 @@ export function AccountsPage() {
       params.createdFrom, params.createdTo,
       setFilterParam, setMultiFilterParam]);
 
+  const exportColumns: ExcelColumn<AccountListItemDto>[] = useMemo(() => [
+    { header: "Number", value: (r) => r.number },
+    { header: "Status", value: (r) => r.status },
+    { header: "Type", value: (r) => r.accountType },
+    { header: "Margin", value: (r) => r.marginType },
+    { header: "Tariff", value: (r) => r.tariff },
+    { header: "Option Level", value: (r) => r.optionLevel },
+    { header: "Clearer", value: (r) => r.clearerName },
+    { header: "Platform", value: (r) => r.tradePlatformName },
+    { header: "Opened", value: (r) => r.openedAt ? new Date(r.openedAt).toLocaleDateString() : "" },
+    { header: "External ID", value: (r) => r.externalId },
+    { header: "Created", value: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : "" },
+  ], []);
+
+  const fetchAllAccounts = useCallback(async () => {
+    const { page: _, pageSize: __, ...filters } = params;
+    const resp = await apiClient.get<PagedResult<AccountListItemDto>>("/accounts", {
+      params: { ...filters, page: 1, pageSize: 10000 },
+    });
+    return resp.data.items;
+  }, [params]);
+
   return (
     <PageContainer
       variant="list"
       title="Accounts"
       actions={
-        canCreate ? (
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            Create Account
-          </Button>
-        ) : undefined
+        <>
+          <ExportButton fetchData={fetchAllAccounts} columns={exportColumns} filename="accounts" />
+          {canCreate && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+              Create Account
+            </Button>
+          )}
+        </>
       }
       subheaderLeft={
         <TextField

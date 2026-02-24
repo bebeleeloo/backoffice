@@ -12,6 +12,10 @@ import { useHasPermission } from "../auth/usePermission";
 import { CreateUserDialog, EditUserDialog } from "./UserDialogs";
 import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { useSearchParams } from "react-router-dom";
+import { ExportButton } from "../components/ExportButton";
+import type { ExcelColumn } from "../utils/exportToExcel";
+import { apiClient } from "../api/client";
+import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, InlineBooleanFilter } from "../components/grid";
 
@@ -175,16 +179,36 @@ export function UsersPage() {
     return m;
   }, [params.username, params.email, params.fullName, params.isActive, params.role, setFilterParam]);
 
+  const exportColumns: ExcelColumn<UserDto>[] = useMemo(() => [
+    { header: "Username", value: (r) => r.username },
+    { header: "Email", value: (r) => r.email },
+    { header: "Full Name", value: (r) => r.fullName },
+    { header: "Status", value: (r) => r.isActive ? "Active" : "Inactive" },
+    { header: "Roles", value: (r) => r.roles.join(", ") },
+    { header: "Created", value: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : "" },
+  ], []);
+
+  const fetchAllUsers = useCallback(async () => {
+    const { page: _, pageSize: __, ...filters } = params;
+    const resp = await apiClient.get<PagedResult<UserDto>>("/users", {
+      params: { ...filters, page: 1, pageSize: 10000 },
+    });
+    return resp.data.items;
+  }, [params]);
+
   return (
     <PageContainer
       variant="list"
       title="Users"
       actions={
-        canCreate ? (
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            Create User
-          </Button>
-        ) : undefined
+        <>
+          <ExportButton fetchData={fetchAllUsers} columns={exportColumns} filename="users" />
+          {canCreate && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+              Create User
+            </Button>
+          )}
+        </>
       }
       subheaderLeft={
         <TextField

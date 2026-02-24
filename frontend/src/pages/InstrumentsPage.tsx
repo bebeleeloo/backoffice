@@ -13,6 +13,10 @@ import type {
 import { useHasPermission } from "../auth/usePermission";
 import { CreateInstrumentDialog, EditInstrumentDialog } from "./InstrumentDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { ExportButton } from "../components/ExportButton";
+import type { ExcelColumn } from "../utils/exportToExcel";
+import { apiClient } from "../api/client";
+import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
 
@@ -295,16 +299,45 @@ export function InstrumentsPage() {
       params.createdFrom, params.createdTo,
       setFilterParam, setMultiFilterParam]);
 
+  const exportColumns: ExcelColumn<InstrumentListItemDto>[] = useMemo(() => [
+    { header: "Symbol", value: (r) => r.symbol },
+    { header: "Name", value: (r) => r.name },
+    { header: "Type", value: (r) => r.type },
+    { header: "Asset Class", value: (r) => r.assetClass },
+    { header: "Status", value: (r) => r.status },
+    { header: "Sector", value: (r) => r.sector },
+    { header: "Exchange", value: (r) => r.exchangeCode },
+    { header: "Currency", value: (r) => r.currencyCode },
+    { header: "Country", value: (r) => r.countryName },
+    { header: "ISIN", value: (r) => r.isin },
+    { header: "CUSIP", value: (r) => r.cusip },
+    { header: "Lot Size", value: (r) => r.lotSize },
+    { header: "Margin Eligible", value: (r) => r.isMarginEligible ? "Yes" : "No" },
+    { header: "External ID", value: (r) => r.externalId },
+    { header: "Created", value: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : "" },
+  ], []);
+
+  const fetchAllInstruments = useCallback(async () => {
+    const { page: _, pageSize: __, ...filters } = params;
+    const resp = await apiClient.get<PagedResult<InstrumentListItemDto>>("/instruments", {
+      params: { ...filters, page: 1, pageSize: 10000 },
+    });
+    return resp.data.items;
+  }, [params]);
+
   return (
     <PageContainer
       variant="list"
       title="Instruments"
       actions={
-        canCreate ? (
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            Create Instrument
-          </Button>
-        ) : undefined
+        <>
+          <ExportButton fetchData={fetchAllInstruments} columns={exportColumns} filename="instruments" />
+          {canCreate && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+              Create Instrument
+            </Button>
+          )}
+        </>
       }
       subheaderLeft={
         <TextField

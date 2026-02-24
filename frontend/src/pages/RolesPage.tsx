@@ -11,6 +11,10 @@ import type { RoleDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateRoleDialog } from "./RoleDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { ExportButton } from "../components/ExportButton";
+import type { ExcelColumn } from "../utils/exportToExcel";
+import { apiClient } from "../api/client";
+import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, InlineBooleanFilter } from "../components/grid";
 
@@ -159,16 +163,34 @@ export function RolesPage() {
     return m;
   }, [params.name, params.description, params.isSystem, params.permission, setFilterParam]);
 
+  const exportColumns: ExcelColumn<RoleDto>[] = useMemo(() => [
+    { header: "Name", value: (r) => r.name },
+    { header: "Description", value: (r) => r.description },
+    { header: "Type", value: (r) => r.isSystem ? "System" : "Custom" },
+    { header: "Permissions", value: (r) => r.permissions.join(", ") },
+  ], []);
+
+  const fetchAllRoles = useCallback(async () => {
+    const { page: _, pageSize: __, ...filters } = params;
+    const resp = await apiClient.get<PagedResult<RoleDto>>("/roles", {
+      params: { ...filters, page: 1, pageSize: 10000 },
+    });
+    return resp.data.items;
+  }, [params]);
+
   return (
     <PageContainer
       variant="list"
       title="Roles"
       actions={
-        canCreate ? (
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            Create Role
-          </Button>
-        ) : undefined
+        <>
+          <ExportButton fetchData={fetchAllRoles} columns={exportColumns} filename="roles" />
+          {canCreate && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+              Create Role
+            </Button>
+          )}
+        </>
       }
       subheaderLeft={
         <TextField

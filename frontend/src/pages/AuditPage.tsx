@@ -3,8 +3,11 @@ import { TextField, InputAdornment, IconButton, Paper, Chip } from "@mui/materia
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
 import { useAllEntityChanges, useUsers } from "../api/hooks";
-import type { GlobalOperationDto } from "../api/types";
+import type { GlobalOperationDto, PagedResult } from "../api/types";
 import { useSearchParams } from "react-router-dom";
+import { ExportButton } from "../components/ExportButton";
+import type { ExcelColumn } from "../utils/exportToExcel";
+import { apiClient } from "../api/client";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
 import { CHANGE_TYPE_COLORS, getEntityTypeLabel } from "../components/ChangeHistoryComponents";
@@ -185,10 +188,29 @@ export function AuditPage() {
     return m;
   }, [params.from, params.to, params.userName, params.entityType, params.q, params.changeType, setFilterParam, setMultiFilterParam, userOptions]);
 
+  const exportColumns: ExcelColumn<GlobalOperationDto>[] = useMemo(() => [
+    { header: "Date & Time", value: (r) => formatTimestamp(r.timestamp) },
+    { header: "User", value: (r) => r.userName ?? "system" },
+    { header: "Entity", value: (r) => getEntityTypeLabel(r.entityType) || r.entityType },
+    { header: "Name", value: (r) => r.entityDisplayName },
+    { header: "Change", value: (r) => r.changeType },
+  ], []);
+
+  const fetchAllAudit = useCallback(async () => {
+    const { page: _, pageSize: __, ...filters } = params;
+    const resp = await apiClient.get<PagedResult<GlobalOperationDto>>("/entity-changes/all", {
+      params: { ...filters, page: 1, pageSize: 10000 },
+    });
+    return resp.data.items;
+  }, [params]);
+
   return (
     <PageContainer
       variant="list"
       title="Audit Log"
+      actions={
+        <ExportButton fetchData={fetchAllAudit} columns={exportColumns} filename="audit-log" />
+      }
       subheaderLeft={
         <TextField
           fullWidth

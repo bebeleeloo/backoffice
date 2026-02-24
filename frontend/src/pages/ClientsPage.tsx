@@ -25,6 +25,10 @@ import type {
 import { useHasPermission } from "../auth/usePermission";
 import { CreateClientDialog, EditClientDialog } from "./ClientDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { ExportButton } from "../components/ExportButton";
+import type { ExcelColumn } from "../utils/exportToExcel";
+import { apiClient } from "../api/client";
+import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
 import {
   FilteredDataGrid,
@@ -374,6 +378,31 @@ export function ClientsPage() {
     citizenshipCountryName: false,
   };
 
+  /* ── Export ── */
+
+  const exportColumns: ExcelColumn<ClientListItemDto>[] = useMemo(() => [
+    { header: "Name", value: (r) => r.displayName },
+    { header: "Type", value: (r) => r.clientType },
+    { header: "Email", value: (r) => r.email },
+    { header: "Phone", value: (r) => r.phone },
+    { header: "Status", value: (r) => r.status },
+    { header: "KYC", value: (r) => r.kycStatus },
+    { header: "Risk Level", value: (r) => r.riskLevel },
+    { header: "PEP", value: (r) => r.pepStatus ? "Yes" : "No" },
+    { header: "Residence Country", value: (r) => r.residenceCountryName },
+    { header: "Citizenship", value: (r) => r.citizenshipCountryName },
+    { header: "External ID", value: (r) => r.externalId },
+    { header: "Created", value: (r) => r.createdAt ? new Date(r.createdAt).toLocaleString() : "" },
+  ], []);
+
+  const fetchAllClients = useCallback(async () => {
+    const { page: _, pageSize: __, ...filters } = params;
+    const resp = await apiClient.get<PagedResult<ClientListItemDto>>("/clients", {
+      params: { ...filters, page: 1, pageSize: 10000 },
+    });
+    return resp.data.items;
+  }, [params]);
+
   /* ── Render ── */
 
   return (
@@ -389,6 +418,7 @@ export function ClientsPage() {
               </IconButton>
             </Tooltip>
           )}
+          <ExportButton fetchData={fetchAllClients} columns={exportColumns} filename="clients" />
           {canCreate && (
             <Button
               variant="contained"
