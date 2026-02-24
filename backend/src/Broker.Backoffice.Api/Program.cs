@@ -83,12 +83,13 @@ try
         .AddHealthChecks()
         .AddCheck<SqlServerHealthCheck>("sqlserver", tags: new[] { "ready" });
 
-    // CORS
+    // CORS — allow any origin so the app works when accessed by IP or domain name.
+    // The API is not exposed directly; nginx proxies /api/ requests.
     builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy =>
             policy
-                .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>())
+                .AllowAnyOrigin()
                 .AllowAnyHeader()
                 .AllowAnyMethod());
     });

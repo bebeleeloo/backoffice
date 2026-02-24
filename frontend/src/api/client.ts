@@ -7,7 +7,7 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  config.headers["X-Correlation-Id"] = crypto.randomUUID().replace(/-/g, "");
+  config.headers["X-Correlation-Id"] = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("");
   const token = localStorage.getItem("accessToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

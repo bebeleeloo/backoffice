@@ -20,8 +20,12 @@ export function LoginPage() {
     try {
       await login(username, password);
       navigate(from, { replace: true });
-    } catch {
-      setError("Invalid username or password");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { title?: string } } })?.response?.data?.title
+        || (err as Error)?.message
+        || "Invalid username or password";
+      setError(msg);
     } finally {
       setLoading(false);
     }
