@@ -59,6 +59,9 @@ export function LoginPage() {
         }}
       >
         <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
+            <Box component="img" src="/logo.svg" alt="Logo" sx={{ width: 56, height: 56 }} />
+          </Box>
           <Typography variant="h5" gutterBottom align="center" fontWeight={600}>
             Broker Backoffice
           </Typography>

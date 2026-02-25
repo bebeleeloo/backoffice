@@ -52,7 +52,8 @@ export function MainLayout() {
 
   const drawer = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Toolbar>
+      <Toolbar sx={{ gap: 1.5 }}>
+        <Box component="img" src="/logo.svg" alt="Logo" sx={{ width: 32, height: 32 }} />
         <Typography variant="h6" noWrap>
           Broker BO
         </Typography>
