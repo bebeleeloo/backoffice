@@ -196,64 +196,69 @@ backend/src/
 ## 5. Frontend Structure
 
 ```
-frontend/src/
-├── api/
-│   ├── client.ts           # Axios instance, interceptors, token refresh
-│   ├── hooks.ts            # React Query hooks for all entities
-│   └── types.ts            # TypeScript interfaces matching backend DTOs
-├── auth/
-│   ├── AuthContext.tsx      # Auth state provider (user, permissions, login/logout)
-│   └── usePermission.ts    # useHasPermission() hook
-├── components/
-│   ├── Breadcrumbs.tsx      # MUI breadcrumb navigation for detail pages
-│   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
-│   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant, breadcrumbs)
-│   ├── ExportButton.tsx     # Excel export button with loading state
-│   ├── ConfirmDialog.tsx    # MUI confirmation dialog for delete actions
-│   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
-│   ├── grid/
-│   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row
-│   │   ├── GridFilterRow.tsx      # Filter row rendering
-│   │   ├── InlineTextFilter.tsx   # Debounced text input (300ms)
-│   │   ├── CompactMultiSelect.tsx # Checkbox multi-select dropdown
-│   │   ├── CompactCountrySelect.tsx
-│   │   ├── DateRangePopover.tsx   # From/To date picker
-│   │   └── InlineBooleanFilter.tsx
-│   ├── EntityHistoryDialog.tsx    # Change history per entity
-│   ├── AuditDetailDialog.tsx      # Audit log entry detail
-│   └── ChangeHistoryComponents.tsx
-├── layouts/
-│   └── MainLayout.tsx      # Sidebar navigation + content area
-├── pages/
-│   ├── LoginPage.tsx
-│   ├── DashboardPage.tsx
-│   ├── ClientsPage.tsx / ClientDetailsPage.tsx / ClientDialogs.tsx
-│   ├── AccountsPage.tsx / AccountDetailsPage.tsx / AccountDialogs.tsx
-│   ├── InstrumentsPage.tsx / InstrumentDetailsPage.tsx / InstrumentDialogs.tsx
-│   ├── UsersPage.tsx / UserDialogs.tsx
-│   ├── RolesPage.tsx / RoleDetailsPage.tsx / RoleDialogs.tsx
-│   ├── AuditPage.tsx
-│   ├── NotFoundPage.tsx     # 404 page (wildcard route)
-│   └── settings/           # ProfileTab, AppearanceTab, ReferenceDataTab, CRUD dialogs
-├── router/
-│   └── index.tsx            # Route definitions with RequireAuth + React.lazy()
-├── theme/
-│   ├── index.ts             # createAppTheme(mode), createAppListTheme(base) — theme factories
-│   └── ThemeContext.tsx      # AppThemeProvider, useThemeMode, useListTheme — dark/light/system
-├── hooks/
-│   ├── useDebounce.ts
-│   └── useConfirm.ts       # Promise-based confirmation dialog hook
-├── types/
-│   └── react-query.d.ts    # Type augmentation for mutation meta
-├── utils/
-│   ├── exportToExcel.ts     # ExcelJS-based export utility
-│   ├── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
-│   └── validateFields.ts    # Inline form validation helpers (validateRequired, validateEmail)
-└── test/
-    ├── setupTests.ts
-    ├── renderWithProviders.tsx
-    ├── msw/                 # MSW handlers per entity
-    └── factories/           # Test data factories with faker
+frontend/
+├── public/
+│   ├── logo.svg              # App logo (SVG) — sidebar, login page, favicon
+│   └── login-bg.jpg          # Login page background image
+├── index.html                # Entry HTML (favicon → /logo.svg)
+└── src/
+    ├── api/
+    │   ├── client.ts           # Axios instance, interceptors, token refresh
+    │   ├── hooks.ts            # React Query hooks for all entities
+    │   └── types.ts            # TypeScript interfaces matching backend DTOs
+    ├── auth/
+    │   ├── AuthContext.tsx      # Auth state provider (user, permissions, login/logout)
+    │   └── usePermission.ts    # useHasPermission() hook
+    ├── components/
+    │   ├── Breadcrumbs.tsx      # MUI breadcrumb navigation for detail pages
+    │   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
+    │   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant, breadcrumbs)
+    │   ├── ExportButton.tsx     # Excel export button with loading state
+    │   ├── ConfirmDialog.tsx    # MUI confirmation dialog for delete actions
+    │   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
+    │   ├── grid/
+    │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row
+    │   │   ├── GridFilterRow.tsx      # Filter row rendering (theme-aware colors)
+    │   │   ├── InlineTextFilter.tsx   # Debounced text input (300ms)
+    │   │   ├── CompactMultiSelect.tsx # Checkbox multi-select dropdown
+    │   │   ├── CompactCountrySelect.tsx
+    │   │   ├── DateRangePopover.tsx   # From/To date picker
+    │   │   └── InlineBooleanFilter.tsx
+    │   ├── EntityHistoryDialog.tsx    # Change history per entity
+    │   ├── AuditDetailDialog.tsx      # Audit log entry detail
+    │   └── ChangeHistoryComponents.tsx
+    ├── layouts/
+    │   └── MainLayout.tsx      # Sidebar navigation (logo + menu) + content area
+    ├── pages/
+    │   ├── LoginPage.tsx        # Login form with logo
+    │   ├── DashboardPage.tsx
+    │   ├── ClientsPage.tsx / ClientDetailsPage.tsx / ClientDialogs.tsx
+    │   ├── AccountsPage.tsx / AccountDetailsPage.tsx / AccountDialogs.tsx
+    │   ├── InstrumentsPage.tsx / InstrumentDetailsPage.tsx / InstrumentDialogs.tsx
+    │   ├── UsersPage.tsx / UserDialogs.tsx
+    │   ├── RolesPage.tsx / RoleDetailsPage.tsx / RoleDialogs.tsx
+    │   ├── AuditPage.tsx
+    │   ├── NotFoundPage.tsx     # 404 page (wildcard route)
+    │   └── settings/           # ProfileTab, AppearanceTab, ReferenceDataTab, CRUD dialogs
+    ├── router/
+    │   └── index.tsx            # Route definitions with RequireAuth + React.lazy()
+    ├── theme/
+    │   ├── index.ts             # createAppTheme(mode), createAppListTheme(base) — theme factories
+    │   └── ThemeContext.tsx      # AppThemeProvider, useThemeMode, useListTheme — dark/light/system
+    ├── hooks/
+    │   ├── useDebounce.ts
+    │   └── useConfirm.ts       # Promise-based confirmation dialog hook
+    ├── types/
+    │   └── react-query.d.ts    # Type augmentation for mutation meta
+    ├── utils/
+    │   ├── exportToExcel.ts     # ExcelJS-based export utility
+    │   ├── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
+    │   └── validateFields.ts    # Inline form validation helpers (validateRequired, validateEmail)
+    └── test/
+        ├── setupTests.ts
+        ├── renderWithProviders.tsx
+        ├── msw/                 # MSW handlers per entity
+        └── factories/           # Test data factories with faker
 ```
 
 ### Key Frontend Conventions
