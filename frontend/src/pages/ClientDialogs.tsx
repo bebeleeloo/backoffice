@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, MenuItem, Box, Typography, Switch, FormControlLabel, Divider,
@@ -57,16 +57,16 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
   });
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setForm({
-        clientType: "Individual", status: "Active", email: "",
-        pepStatus: false, kycStatus: "NotStarted",
-        addresses: [emptyAddress("Legal")],
-      });
-      setShowInvestmentProfile(false);
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setForm({
+      clientType: "Individual", status: "Active", email: "",
+      pepStatus: false, kycStatus: "NotStarted",
+      addresses: [emptyAddress("Legal")],
+    });
+    setShowInvestmentProfile(false);
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   const set = <K extends keyof CreateClientRequest>(k: K, v: CreateClientRequest[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -215,62 +215,62 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
   const [accounts, setAccounts] = useState<ClientAccountInput[]>([]);
 
-  useEffect(() => {
-    if (client && open) {
-      const hasIp = !!client.investmentProfile;
-      setShowInvestmentProfile(hasIp);
-      setForm({
-        id: client.id,
-        clientType: client.clientType,
-        externalId: client.externalId ?? undefined,
-        status: client.status,
-        email: client.email,
-        phone: client.phone ?? undefined,
-        preferredLanguage: client.preferredLanguage ?? undefined,
-        timeZone: client.timeZone ?? undefined,
-        residenceCountryId: client.residenceCountryId ?? undefined,
-        citizenshipCountryId: client.citizenshipCountryId ?? undefined,
-        pepStatus: client.pepStatus,
-        riskLevel: client.riskLevel ?? undefined,
-        kycStatus: client.kycStatus,
-        kycReviewedAtUtc: client.kycReviewedAtUtc ?? undefined,
-        firstName: client.firstName ?? undefined,
-        lastName: client.lastName ?? undefined,
-        middleName: client.middleName ?? undefined,
-        dateOfBirth: client.dateOfBirth ?? undefined,
-        gender: client.gender ?? undefined,
-        maritalStatus: client.maritalStatus ?? undefined,
-        education: client.education ?? undefined,
-        ssn: client.ssn ?? undefined,
-        passportNumber: client.passportNumber ?? undefined,
-        driverLicenseNumber: client.driverLicenseNumber ?? undefined,
-        companyName: client.companyName ?? undefined,
-        registrationNumber: client.registrationNumber ?? undefined,
-        taxId: client.taxId ?? undefined,
-        addresses: client.addresses.map((a) => ({
-          type: a.type, line1: a.line1, line2: a.line2 ?? undefined,
-          city: a.city, state: a.state ?? undefined,
-          postalCode: a.postalCode ?? undefined, countryId: a.countryId,
-        })),
-        investmentProfile: client.investmentProfile ? {
-          objective: client.investmentProfile.objective ?? undefined,
-          riskTolerance: client.investmentProfile.riskTolerance ?? undefined,
-          liquidityNeeds: client.investmentProfile.liquidityNeeds ?? undefined,
-          timeHorizon: client.investmentProfile.timeHorizon ?? undefined,
-          knowledge: client.investmentProfile.knowledge ?? undefined,
-          experience: client.investmentProfile.experience ?? undefined,
-          notes: client.investmentProfile.notes ?? undefined,
-        } : undefined,
-        rowVersion: client.rowVersion,
-      });
-    }
-  }, [client, open]);
+  const [prevClient, setPrevClient] = useState(client);
+  if (client && open && client !== prevClient) {
+    setPrevClient(client);
+    const hasIp = !!client.investmentProfile;
+    setShowInvestmentProfile(hasIp);
+    setForm({
+      id: client.id,
+      clientType: client.clientType,
+      externalId: client.externalId ?? undefined,
+      status: client.status,
+      email: client.email,
+      phone: client.phone ?? undefined,
+      preferredLanguage: client.preferredLanguage ?? undefined,
+      timeZone: client.timeZone ?? undefined,
+      residenceCountryId: client.residenceCountryId ?? undefined,
+      citizenshipCountryId: client.citizenshipCountryId ?? undefined,
+      pepStatus: client.pepStatus,
+      riskLevel: client.riskLevel ?? undefined,
+      kycStatus: client.kycStatus,
+      kycReviewedAtUtc: client.kycReviewedAtUtc ?? undefined,
+      firstName: client.firstName ?? undefined,
+      lastName: client.lastName ?? undefined,
+      middleName: client.middleName ?? undefined,
+      dateOfBirth: client.dateOfBirth ?? undefined,
+      gender: client.gender ?? undefined,
+      maritalStatus: client.maritalStatus ?? undefined,
+      education: client.education ?? undefined,
+      ssn: client.ssn ?? undefined,
+      passportNumber: client.passportNumber ?? undefined,
+      driverLicenseNumber: client.driverLicenseNumber ?? undefined,
+      companyName: client.companyName ?? undefined,
+      registrationNumber: client.registrationNumber ?? undefined,
+      taxId: client.taxId ?? undefined,
+      addresses: client.addresses.map((a) => ({
+        type: a.type, line1: a.line1, line2: a.line2 ?? undefined,
+        city: a.city, state: a.state ?? undefined,
+        postalCode: a.postalCode ?? undefined, countryId: a.countryId,
+      })),
+      investmentProfile: client.investmentProfile ? {
+        objective: client.investmentProfile.objective ?? undefined,
+        riskTolerance: client.investmentProfile.riskTolerance ?? undefined,
+        liquidityNeeds: client.investmentProfile.liquidityNeeds ?? undefined,
+        timeHorizon: client.investmentProfile.timeHorizon ?? undefined,
+        knowledge: client.investmentProfile.knowledge ?? undefined,
+        experience: client.investmentProfile.experience ?? undefined,
+        notes: client.investmentProfile.notes ?? undefined,
+      } : undefined,
+      rowVersion: client.rowVersion,
+    });
+  }
 
-  useEffect(() => {
-    if (clientAccounts && open) {
-      setAccounts(clientAccounts.map((a) => ({ accountId: a.accountId, role: a.role, isPrimary: a.isPrimary })));
-    }
-  }, [clientAccounts, open]);
+  const [prevClientAccounts, setPrevClientAccounts] = useState(clientAccounts);
+  if (clientAccounts && open && clientAccounts !== prevClientAccounts) {
+    setPrevClientAccounts(clientAccounts);
+    setAccounts(clientAccounts.map((a) => ({ accountId: a.accountId, role: a.role, isPrimary: a.isPrimary })));
+  }
 
   if (!form) return null;
 

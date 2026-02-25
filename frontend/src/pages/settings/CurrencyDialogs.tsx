@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Switch, FormControlLabel, TextField } from "@mui/material";
 import { useCreateCurrency, useUpdateCurrency } from "../../api/hooks";
 import type { CurrencyDto } from "../../api/types";
@@ -42,9 +42,11 @@ export function EditCurrencyDialog({ open, onClose, item }: EditProps) {
   const [isActive, setIsActive] = useState(true);
   const update = useUpdateCurrency();
 
-  useEffect(() => {
-    if (item) { setCode(item.code); setName(item.name); setSymbol(item.symbol ?? ""); setIsActive(item.isActive); }
-  }, [item]);
+  const [prevItem, setPrevItem] = useState(item);
+  if (item && item !== prevItem) {
+    setPrevItem(item);
+    setCode(item.code); setName(item.name); setSymbol(item.symbol ?? ""); setIsActive(item.isActive);
+  }
 
   const handleSubmit = async () => {
     if (!item) return;

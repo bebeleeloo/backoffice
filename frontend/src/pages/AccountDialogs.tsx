@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   MenuItem, Box, Typography, IconButton, Table, TableBody, TableCell,
@@ -11,7 +11,7 @@ import {
   useSetAccountHolders, useClients,
 } from "../api/hooks";
 import type {
-  AccountListItemDto, AccountStatus, AccountType, MarginType, OptionLevel, Tariff,
+  AccountStatus, AccountType, MarginType, OptionLevel, Tariff,
   DeliveryType, ClearerDto, TradePlatformDto, CreateAccountRequest,
   HolderRole, AccountHolderInput, ClientListItemDto,
 } from "../api/types";
@@ -147,7 +147,7 @@ export function CreateAccountDialog({ open, onClose }: CreateProps) {
 
 /* ── Edit Dialog ── */
 
-interface EditProps { open: boolean; onClose: () => void; account: AccountListItemDto | null }
+interface EditProps { open: boolean; onClose: () => void; account: { id: string } | null }
 
 export function EditAccountDialog({ open, onClose, account }: EditProps) {
   const [form, setForm] = useState<CreateAccountRequest>(emptyForm);
@@ -161,29 +161,29 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
   const { data: clientsData } = useClients({ page: 1, pageSize: 200 });
   const clients = clientsData?.items ?? [];
 
-  useEffect(() => {
-    if (fullAccount) {
-      setForm({
-        number: fullAccount.number,
-        status: fullAccount.status,
-        accountType: fullAccount.accountType,
-        marginType: fullAccount.marginType,
-        optionLevel: fullAccount.optionLevel,
-        tariff: fullAccount.tariff,
-        deliveryType: fullAccount.deliveryType ?? undefined,
-        openedAt: fullAccount.openedAt ? fullAccount.openedAt.split("T")[0] : undefined,
-        closedAt: fullAccount.closedAt ? fullAccount.closedAt.split("T")[0] : undefined,
-        externalId: fullAccount.externalId ?? undefined,
-        clearerId: fullAccount.clearerId ?? undefined,
-        tradePlatformId: fullAccount.tradePlatformId ?? undefined,
-        comment: fullAccount.comment ?? undefined,
-      });
-      setRowVersion(fullAccount.rowVersion);
-      setHolders(
-        fullAccount.holders.map((h) => ({ clientId: h.clientId, role: h.role, isPrimary: h.isPrimary }))
-      );
-    }
-  }, [fullAccount]);
+  const [prevFullAccount, setPrevFullAccount] = useState(fullAccount);
+  if (fullAccount && fullAccount !== prevFullAccount) {
+    setPrevFullAccount(fullAccount);
+    setForm({
+      number: fullAccount.number,
+      status: fullAccount.status,
+      accountType: fullAccount.accountType,
+      marginType: fullAccount.marginType,
+      optionLevel: fullAccount.optionLevel,
+      tariff: fullAccount.tariff,
+      deliveryType: fullAccount.deliveryType ?? undefined,
+      openedAt: fullAccount.openedAt ? fullAccount.openedAt.split("T")[0] : undefined,
+      closedAt: fullAccount.closedAt ? fullAccount.closedAt.split("T")[0] : undefined,
+      externalId: fullAccount.externalId ?? undefined,
+      clearerId: fullAccount.clearerId ?? undefined,
+      tradePlatformId: fullAccount.tradePlatformId ?? undefined,
+      comment: fullAccount.comment ?? undefined,
+    });
+    setRowVersion(fullAccount.rowVersion);
+    setHolders(
+      fullAccount.holders.map((h) => ({ clientId: h.clientId, role: h.role, isPrimary: h.isPrimary }))
+    );
+  }
 
   const set = <K extends keyof CreateAccountRequest>(key: K, value: CreateAccountRequest[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -219,7 +219,7 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Edit Account: {account?.number}</DialogTitle>
+      <DialogTitle>Edit Account: {fullAccount?.number}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
         <AccountFormFields form={form} set={set} clearers={clearers.data ?? []} platforms={platforms.data ?? []} />
 

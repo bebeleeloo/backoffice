@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Switch, FormControlLabel, TextField } from "@mui/material";
 import { useCreateClearer, useUpdateClearer } from "../../api/hooks";
 import type { ClearerDto } from "../../api/types";
@@ -39,9 +39,11 @@ export function EditClearerDialog({ open, onClose, item }: EditProps) {
   const [isActive, setIsActive] = useState(true);
   const update = useUpdateClearer();
 
-  useEffect(() => {
-    if (item) { setName(item.name); setDescription(item.description ?? ""); setIsActive(item.isActive); }
-  }, [item]);
+  const [prevItem, setPrevItem] = useState(item);
+  if (item && item !== prevItem) {
+    setPrevItem(item);
+    setName(item.name); setDescription(item.description ?? ""); setIsActive(item.isActive);
+  }
 
   const handleSubmit = async () => {
     if (!item) return;

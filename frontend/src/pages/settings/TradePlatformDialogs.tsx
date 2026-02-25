@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Switch, FormControlLabel, TextField } from "@mui/material";
 import { useCreateTradePlatform, useUpdateTradePlatform } from "../../api/hooks";
 import type { TradePlatformDto } from "../../api/types";
@@ -39,9 +39,11 @@ export function EditTradePlatformDialog({ open, onClose, item }: EditProps) {
   const [isActive, setIsActive] = useState(true);
   const update = useUpdateTradePlatform();
 
-  useEffect(() => {
-    if (item) { setName(item.name); setDescription(item.description ?? ""); setIsActive(item.isActive); }
-  }, [item]);
+  const [prevItem, setPrevItem] = useState(item);
+  if (item && item !== prevItem) {
+    setPrevItem(item);
+    setName(item.name); setDescription(item.description ?? ""); setIsActive(item.isActive);
+  }
 
   const handleSubmit = async () => {
     if (!item) return;

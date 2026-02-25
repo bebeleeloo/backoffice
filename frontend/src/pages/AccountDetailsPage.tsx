@@ -139,7 +139,7 @@ export function AccountDetailsPage() {
       <EditAccountDialog
         open={editOpen}
         onClose={() => setEditOpen(false)}
-        account={account ? { id: account.id, number: account.number } as any : null}
+        account={account ? { id: account.id } : null}
       />
       <EntityHistoryDialog entityType="Account" entityId={account.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </PageContainer>

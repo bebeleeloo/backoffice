@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, MenuItem, Box, FormControlLabel, Switch,
@@ -8,7 +8,7 @@ import {
   useExchanges, useCurrencies, useCountries,
 } from "../api/hooks";
 import type {
-  InstrumentListItemDto, InstrumentType, AssetClass, InstrumentStatus, Sector,
+  InstrumentType, AssetClass, InstrumentStatus, Sector,
   CreateInstrumentRequest, ExchangeDto, CurrencyDto, CountryDto,
 } from "../api/types";
 
@@ -206,7 +206,7 @@ export function CreateInstrumentDialog({ open, onClose }: CreateProps) {
 
 /* ── Edit Dialog ── */
 
-interface EditProps { open: boolean; onClose: () => void; instrument: InstrumentListItemDto | null }
+interface EditProps { open: boolean; onClose: () => void; instrument: { id: string; symbol: string } | null }
 
 export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
   const [form, setForm] = useState<CreateInstrumentRequest>(emptyForm);
@@ -217,34 +217,34 @@ export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
   const { data: countries = [] } = useCountries();
   const { data: fullInstrument } = useInstrument(instrument?.id ?? "");
 
-  useEffect(() => {
-    if (fullInstrument) {
-      setForm({
-        symbol: fullInstrument.symbol,
-        name: fullInstrument.name,
-        isin: fullInstrument.isin ?? undefined,
-        cusip: fullInstrument.cusip ?? undefined,
-        type: fullInstrument.type,
-        assetClass: fullInstrument.assetClass,
-        status: fullInstrument.status,
-        sector: fullInstrument.sector ?? undefined,
-        exchangeId: fullInstrument.exchangeId ?? undefined,
-        currencyId: fullInstrument.currencyId ?? undefined,
-        countryId: fullInstrument.countryId ?? undefined,
-        lotSize: fullInstrument.lotSize,
-        tickSize: fullInstrument.tickSize ?? undefined,
-        marginRequirement: fullInstrument.marginRequirement ?? undefined,
-        isMarginEligible: fullInstrument.isMarginEligible,
-        listingDate: fullInstrument.listingDate ? fullInstrument.listingDate.split("T")[0] : undefined,
-        delistingDate: fullInstrument.delistingDate ? fullInstrument.delistingDate.split("T")[0] : undefined,
-        expirationDate: fullInstrument.expirationDate ? fullInstrument.expirationDate.split("T")[0] : undefined,
-        issuerName: fullInstrument.issuerName ?? undefined,
-        description: fullInstrument.description ?? undefined,
-        externalId: fullInstrument.externalId ?? undefined,
-      });
-      setRowVersion(fullInstrument.rowVersion);
-    }
-  }, [fullInstrument]);
+  const [prevFullInstrument, setPrevFullInstrument] = useState(fullInstrument);
+  if (fullInstrument && fullInstrument !== prevFullInstrument) {
+    setPrevFullInstrument(fullInstrument);
+    setForm({
+      symbol: fullInstrument.symbol,
+      name: fullInstrument.name,
+      isin: fullInstrument.isin ?? undefined,
+      cusip: fullInstrument.cusip ?? undefined,
+      type: fullInstrument.type,
+      assetClass: fullInstrument.assetClass,
+      status: fullInstrument.status,
+      sector: fullInstrument.sector ?? undefined,
+      exchangeId: fullInstrument.exchangeId ?? undefined,
+      currencyId: fullInstrument.currencyId ?? undefined,
+      countryId: fullInstrument.countryId ?? undefined,
+      lotSize: fullInstrument.lotSize,
+      tickSize: fullInstrument.tickSize ?? undefined,
+      marginRequirement: fullInstrument.marginRequirement ?? undefined,
+      isMarginEligible: fullInstrument.isMarginEligible,
+      listingDate: fullInstrument.listingDate ? fullInstrument.listingDate.split("T")[0] : undefined,
+      delistingDate: fullInstrument.delistingDate ? fullInstrument.delistingDate.split("T")[0] : undefined,
+      expirationDate: fullInstrument.expirationDate ? fullInstrument.expirationDate.split("T")[0] : undefined,
+      issuerName: fullInstrument.issuerName ?? undefined,
+      description: fullInstrument.description ?? undefined,
+      externalId: fullInstrument.externalId ?? undefined,
+    });
+    setRowVersion(fullInstrument.rowVersion);
+  }
 
   const set = <K extends keyof CreateInstrumentRequest>(key: K, value: CreateInstrumentRequest[K]) =>
     setForm((f) => ({ ...f, [key]: value }));

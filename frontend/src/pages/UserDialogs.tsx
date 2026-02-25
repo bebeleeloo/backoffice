@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   FormControlLabel, Switch, Autocomplete, Chip,
@@ -54,15 +54,17 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
   const update = useUpdateUser();
   const roles = useRoles({ page: 1, pageSize: 100 });
 
-  useEffect(() => {
-    if (user) {
-      setForm({
-        email: user.email, fullName: user.fullName ?? "",
-        isActive: user.isActive,
-        roleIds: (roles.data?.items ?? []).filter((r) => user.roles.includes(r.name)).map((r) => r.id),
-      });
-    }
-  }, [user, roles.data]);
+  const [prevUser, setPrevUser] = useState(user);
+  const [prevRolesData, setPrevRolesData] = useState(roles.data);
+  if (user && (user !== prevUser || roles.data !== prevRolesData)) {
+    setPrevUser(user);
+    setPrevRolesData(roles.data);
+    setForm({
+      email: user.email, fullName: user.fullName ?? "",
+      isActive: user.isActive,
+      roleIds: (roles.data?.items ?? []).filter((r) => user.roles.includes(r.name)).map((r) => r.id),
+    });
+  }
 
   const handleSubmit = async () => {
     if (!user) return;

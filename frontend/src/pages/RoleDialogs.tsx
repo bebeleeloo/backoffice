@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   Checkbox, FormControlLabel, Typography, Box, Divider,
@@ -49,20 +49,20 @@ export function EditRoleDialog({ open, onClose, role }: EditProps) {
   const permissions = usePermissions();
   const setPerms = useSetRolePermissions();
 
-  useEffect(() => {
-    if (role) {
-      setForm({ name: role.name, description: role.description ?? "" });
-    }
-  }, [role]);
+  const [prevRole, setPrevRole] = useState(role);
+  if (role && role !== prevRole) {
+    setPrevRole(role);
+    setForm({ name: role.name, description: role.description ?? "" });
+  }
 
-  useEffect(() => {
-    if (role && permissions.data) {
-      const rolePermIds = permissions.data
-        .filter((p) => role.permissions.includes(p.code))
-        .map((p) => p.id);
-      setSelectedPermIds(new Set(rolePermIds));
-    }
-  }, [role, permissions.data]);
+  const [prevPermData, setPrevPermData] = useState(permissions.data);
+  if (role && permissions.data && (role !== prevRole || permissions.data !== prevPermData)) {
+    setPrevPermData(permissions.data);
+    const rolePermIds = permissions.data
+      .filter((p) => role.permissions.includes(p.code))
+      .map((p) => p.id);
+    setSelectedPermIds(new Set(rolePermIds));
+  }
 
   const togglePerm = (id: string) => {
     setSelectedPermIds((prev) => {

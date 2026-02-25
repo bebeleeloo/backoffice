@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, Switch, FormControlLabel, TextField } from "@mui/material";
 import { useCreateExchange, useUpdateExchange, useCountries } from "../../api/hooks";
 import type { ExchangeDto, CountryDto } from "../../api/types";
@@ -50,12 +50,14 @@ export function EditExchangeDialog({ open, onClose, item }: EditProps) {
   const update = useUpdateExchange();
   const { data: countries } = useCountries();
 
-  useEffect(() => {
-    if (item) {
-      setCode(item.code); setName(item.name); setIsActive(item.isActive);
-      setCountry(countries?.find((c) => c.id === item.countryId) ?? null);
-    }
-  }, [item, countries]);
+  const [prevItem, setPrevItem] = useState(item);
+  const [prevCountries, setPrevCountries] = useState(countries);
+  if (item && (item !== prevItem || countries !== prevCountries)) {
+    setPrevItem(item);
+    setPrevCountries(countries);
+    setCode(item.code); setName(item.name); setIsActive(item.isActive);
+    setCountry(countries?.find((c) => c.id === item.countryId) ?? null);
+  }
 
   const handleSubmit = async () => {
     if (!item) return;

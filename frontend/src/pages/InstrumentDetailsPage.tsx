@@ -140,7 +140,7 @@ export function InstrumentDetailsPage() {
       <EditInstrumentDialog
         open={editOpen}
         onClose={() => setEditOpen(false)}
-        instrument={instrument ? { id: instrument.id, symbol: instrument.symbol } as any : null}
+        instrument={instrument ? { id: instrument.id, symbol: instrument.symbol } : null}
       />
       <EntityHistoryDialog entityType="Instrument" entityId={instrument.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </PageContainer>
