@@ -3,10 +3,8 @@ import {
   Typography, Box, Chip, Divider,
 } from "@mui/material";
 import type { GlobalOperationDto } from "../api/types";
-import {
-  CHANGE_TYPE_COLORS, getEntityTypeLabel,
-  FieldRow, ChangeGroup,
-} from "./ChangeHistoryComponents";
+import { CHANGE_TYPE_COLORS, getEntityTypeLabel } from "./changeHistoryUtils";
+import { FieldRow, ChangeGroup } from "./ChangeHistoryComponents";
 
 interface Props {
   operation: GlobalOperationDto | null;

@@ -10,7 +10,7 @@ import type { ExcelColumn } from "../utils/exportToExcel";
 import { apiClient } from "../api/client";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
-import { CHANGE_TYPE_COLORS, getEntityTypeLabel } from "../components/ChangeHistoryComponents";
+import { CHANGE_TYPE_COLORS, getEntityTypeLabel } from "../components/changeHistoryUtils";
 import { AuditDetailDialog } from "../components/AuditDetailDialog";
 
 const ENTITY_TYPE_OPTIONS = [

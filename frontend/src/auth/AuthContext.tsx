@@ -1,21 +1,10 @@
-import { createContext, useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { apiClient } from "../api/client";
 import type { AuthResponse, UserProfile } from "../api/types";
+import { AuthContext } from "./context";
 
-interface AuthState {
-  user: UserProfile | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  permissions: string[];
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-  refreshProfile: () => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthState>({
-  user: null, isAuthenticated: false, isLoading: true, permissions: [],
-  login: async () => {}, logout: () => {}, refreshProfile: async () => {},
-});
+export { AuthContext } from "./context";
+export type { AuthState } from "./context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);

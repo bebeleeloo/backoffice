@@ -7,10 +7,8 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEntityChanges } from "../api/hooks";
 import type { OperationDto } from "../api/types";
-import {
-  CHANGE_TYPE_COLORS, getEntityTypeLabel,
-  FieldRow, ChangeGroup,
-} from "./ChangeHistoryComponents";
+import { CHANGE_TYPE_COLORS, getEntityTypeLabel } from "./changeHistoryUtils";
+import { FieldRow, ChangeGroup } from "./ChangeHistoryComponents";
 
 interface Props {
   entityType: string;
