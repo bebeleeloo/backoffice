@@ -4,6 +4,7 @@ import {
   Checkbox, FormControlLabel, Typography, Box, Divider,
 } from "@mui/material";
 import { useCreateRole, useUpdateRole, usePermissions, useSetRolePermissions } from "../api/hooks";
+import { validateRequired, type FieldErrors } from "../utils/validateFields";
 import type { RoleDto, PermissionDto } from "../api/types";
 
 function groupPermissions(allPerms: PermissionDto[]) {
@@ -17,12 +18,16 @@ interface CreateProps { open: boolean; onClose: () => void }
 
 export function CreateRoleDialog({ open, onClose }: CreateProps) {
   const [form, setForm] = useState({ name: "", description: "" });
+  const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateRole();
 
   const handleSubmit = async () => {
+    const errs: FieldErrors = { name: validateRequired(form.name) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await create.mutateAsync({ ...form, description: form.description || undefined });
       setForm({ name: "", description: "" });
+      setErrors({});
       onClose();
     } catch { /* handled by MutationCache */ }
   };
@@ -31,12 +36,12 @@ export function CreateRoleDialog({ open, onClose }: CreateProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Create Role</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <TextField label="Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+        <TextField label="Name" value={form.name} onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setErrors((prev) => ({ ...prev, name: undefined })); }} required error={!!errors.name} helperText={errors.name} />
         <TextField label="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} multiline rows={2} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={create.isPending || !form.name}>Create</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={create.isPending}>Create</Button>
       </DialogActions>
     </Dialog>
   );
@@ -47,6 +52,7 @@ interface EditProps { open: boolean; onClose: () => void; role: RoleDto | null }
 export function EditRoleDialog({ open, onClose, role }: EditProps) {
   const [form, setForm] = useState({ name: "", description: "" });
   const [selectedPermIds, setSelectedPermIds] = useState<Set<string>>(new Set());
+  const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateRole();
   const permissions = usePermissions();
   const setPerms = useSetRolePermissions();
@@ -77,6 +83,8 @@ export function EditRoleDialog({ open, onClose, role }: EditProps) {
 
   const handleSubmit = async () => {
     if (!role) return;
+    const errs: FieldErrors = { name: validateRequired(form.name) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await update.mutateAsync({
         id: role.id, ...form,
@@ -94,7 +102,7 @@ export function EditRoleDialog({ open, onClose, role }: EditProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit Role: {role?.name}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <TextField label="Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required disabled={role?.isSystem} />
+        <TextField label="Name" value={form.name} onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setErrors((prev) => ({ ...prev, name: undefined })); }} required disabled={role?.isSystem} error={!!errors.name} helperText={errors.name} />
         <TextField label="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} multiline rows={2} />
 
         <Box>
@@ -123,7 +131,7 @@ export function EditRoleDialog({ open, onClose, role }: EditProps) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={update.isPending || setPerms.isPending || !form.name}>Save</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={update.isPending || setPerms.isPending}>Save</Button>
       </DialogActions>
     </Dialog>
   );

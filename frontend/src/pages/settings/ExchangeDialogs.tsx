@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, Switch, FormControlLabel, TextField } from "@mui/material";
 import { useCreateExchange, useUpdateExchange, useCountries } from "../../api/hooks";
+import { validateRequired, type FieldErrors } from "../../utils/validateFields";
 import type { ExchangeDto, CountryDto } from "../../api/types";
 
 interface CreateProps { open: boolean; onClose: () => void }
@@ -9,13 +10,16 @@ export function CreateExchangeDialog({ open, onClose }: CreateProps) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [country, setCountry] = useState<CountryDto | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateExchange();
   const { data: countries } = useCountries();
 
   const handleSubmit = async () => {
+    const errs: FieldErrors = { code: validateRequired(code), name: validateRequired(name) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await create.mutateAsync({ code, name, countryId: country?.id });
-      setCode(""); setName(""); setCountry(null);
+      setCode(""); setName(""); setCountry(null); setErrors({});
       onClose();
     } catch { /* handled by MutationCache */ }
   };
@@ -24,8 +28,8 @@ export function CreateExchangeDialog({ open, onClose }: CreateProps) {
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Create Exchange</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <TextField label="Code" value={code} onChange={(e) => setCode(e.target.value)} size="small" required />
-        <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} size="small" required />
+        <TextField label="Code" value={code} onChange={(e) => { setCode(e.target.value); setErrors((prev) => ({ ...prev, code: undefined })); }} size="small" required error={!!errors.code} helperText={errors.code} />
+        <TextField label="Name" value={name} onChange={(e) => { setName(e.target.value); setErrors((prev) => ({ ...prev, name: undefined })); }} size="small" required error={!!errors.name} helperText={errors.name} />
         <Autocomplete
           options={countries ?? []}
           getOptionLabel={(o) => `${o.flagEmoji} ${o.name}`}
@@ -36,7 +40,7 @@ export function CreateExchangeDialog({ open, onClose }: CreateProps) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={!code || !name || create.isPending}>Create</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={create.isPending}>Create</Button>
       </DialogActions>
     </Dialog>
   );
@@ -49,6 +53,7 @@ export function EditExchangeDialog({ open, onClose, item }: EditProps) {
   const [name, setName] = useState("");
   const [country, setCountry] = useState<CountryDto | null>(null);
   const [isActive, setIsActive] = useState(true);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateExchange();
   const { data: countries } = useCountries();
 
@@ -59,10 +64,13 @@ export function EditExchangeDialog({ open, onClose, item }: EditProps) {
     setPrevCountries(countries);
     setCode(item.code); setName(item.name); setIsActive(item.isActive);
     setCountry(countries?.find((c) => c.id === item.countryId) ?? null);
+    setErrors({});
   }
 
   const handleSubmit = async () => {
     if (!item) return;
+    const errs: FieldErrors = { code: validateRequired(code), name: validateRequired(name) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await update.mutateAsync({ id: item.id, code, name, countryId: country?.id, isActive });
       onClose();
@@ -73,8 +81,8 @@ export function EditExchangeDialog({ open, onClose, item }: EditProps) {
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Edit Exchange</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <TextField label="Code" value={code} onChange={(e) => setCode(e.target.value)} size="small" required />
-        <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} size="small" required />
+        <TextField label="Code" value={code} onChange={(e) => { setCode(e.target.value); setErrors((prev) => ({ ...prev, code: undefined })); }} size="small" required error={!!errors.code} helperText={errors.code} />
+        <TextField label="Name" value={name} onChange={(e) => { setName(e.target.value); setErrors((prev) => ({ ...prev, name: undefined })); }} size="small" required error={!!errors.name} helperText={errors.name} />
         <Autocomplete
           options={countries ?? []}
           getOptionLabel={(o) => `${o.flagEmoji} ${o.name}`}
@@ -86,7 +94,7 @@ export function EditExchangeDialog({ open, onClose, item }: EditProps) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={!code || !name || update.isPending}>Save</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={update.isPending}>Save</Button>
       </DialogActions>
     </Dialog>
   );

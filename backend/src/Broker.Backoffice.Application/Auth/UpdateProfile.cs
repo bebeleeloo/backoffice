@@ -29,6 +29,9 @@ public sealed class UpdateProfileCommandHandler(IAppDbContext db)
             .FirstOrDefaultAsync(u => u.Id == request.UserId, ct)
             ?? throw new KeyNotFoundException("User not found");
 
+        if (await db.Users.AnyAsync(u => u.Email == request.Email && u.Id != request.UserId, ct))
+            throw new InvalidOperationException("Email is already in use");
+
         user.FullName = request.FullName;
         user.Email = request.Email;
         await db.SaveChangesAsync(ct);

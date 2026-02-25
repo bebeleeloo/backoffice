@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress,
@@ -37,6 +37,11 @@ export function AccountDetailsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  const breadcrumbs = useMemo(() => [
+    { label: "Accounts", to: "/accounts" },
+    { label: account?.number ?? "" },
+  ], [account?.number]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
@@ -59,9 +64,9 @@ export function AccountDetailsPage() {
   return (
     <PageContainer
       title={`Account: ${account.number}`}
+      breadcrumbs={breadcrumbs}
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/accounts")}>Back</Button>
           {canAudit && (
             <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
           )}

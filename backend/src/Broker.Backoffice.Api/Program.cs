@@ -103,6 +103,18 @@ try
             limiter.Window = TimeSpan.FromMinutes(1);
             limiter.QueueLimit = 0;
         });
+        options.AddFixedWindowLimiter("auth", limiter =>
+        {
+            limiter.PermitLimit = 20;
+            limiter.Window = TimeSpan.FromMinutes(1);
+            limiter.QueueLimit = 0;
+        });
+        options.AddFixedWindowLimiter("sensitive", limiter =>
+        {
+            limiter.PermitLimit = 5;
+            limiter.Window = TimeSpan.FromMinutes(5);
+            limiter.QueueLimit = 0;
+        });
     });
 
     // Response compression

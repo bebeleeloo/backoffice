@@ -7,6 +7,7 @@ import {
   useCreateInstrument, useUpdateInstrument, useInstrument,
   useExchanges, useCurrencies, useCountries,
 } from "../api/hooks";
+import { validateRequired, type FieldErrors } from "../utils/validateFields";
 import type {
   InstrumentType, AssetClass, InstrumentStatus, Sector,
   CreateInstrumentRequest, ExchangeDto, CurrencyDto, CountryDto,
@@ -65,18 +66,19 @@ function emptyForm(): CreateInstrumentRequest {
 
 /* ── Shared form fields ── */
 
-function InstrumentFormFields({ form, set, exchanges, currencies, countries }: {
+function InstrumentFormFields({ form, set, exchanges, currencies, countries, errors = {} }: {
   form: CreateInstrumentRequest;
   set: <K extends keyof CreateInstrumentRequest>(key: K, value: CreateInstrumentRequest[K]) => void;
   exchanges: ExchangeDto[];
   currencies: CurrencyDto[];
   countries: CountryDto[];
+  errors?: FieldErrors;
 }) {
   return (
     <>
       <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-        <TextField label="Symbol" value={form.symbol} onChange={(e) => set("symbol", e.target.value)} size="small" required />
-        <TextField label="Name" value={form.name} onChange={(e) => set("name", e.target.value)} size="small" required />
+        <TextField label="Symbol" value={form.symbol} onChange={(e) => set("symbol", e.target.value)} size="small" required error={!!errors.symbol} helperText={errors.symbol} />
+        <TextField label="Name" value={form.name} onChange={(e) => set("name", e.target.value)} size="small" required error={!!errors.name} helperText={errors.name} />
         <TextField label="ISIN" value={form.isin ?? ""} onChange={(e) => set("isin", e.target.value || undefined)} size="small" />
         <TextField label="CUSIP" value={form.cusip ?? ""} onChange={(e) => set("cusip", e.target.value || undefined)} size="small" />
         <TextField select label="Type" value={form.type} onChange={(e) => set("type", e.target.value as InstrumentType)} size="small">
@@ -160,15 +162,20 @@ interface CreateProps { open: boolean; onClose: () => void }
 
 export function CreateInstrumentDialog({ open, onClose }: CreateProps) {
   const [form, setForm] = useState<CreateInstrumentRequest>(emptyForm);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateInstrument();
   const { data: exchanges = [] } = useExchanges();
   const { data: currencies = [] } = useCurrencies();
   const { data: countries = [] } = useCountries();
 
-  const set = <K extends keyof CreateInstrumentRequest>(key: K, value: CreateInstrumentRequest[K]) =>
+  const set = <K extends keyof CreateInstrumentRequest>(key: K, value: CreateInstrumentRequest[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
 
   const handleSubmit = async () => {
+    const errs: FieldErrors = { symbol: validateRequired(form.symbol), name: validateRequired(form.name) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await create.mutateAsync({
         ...form,
@@ -196,11 +203,11 @@ export function CreateInstrumentDialog({ open, onClose }: CreateProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Create Instrument</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <InstrumentFormFields form={form} set={set} exchanges={exchanges} currencies={currencies} countries={countries} />
+        <InstrumentFormFields form={form} set={set} exchanges={exchanges} currencies={currencies} countries={countries} errors={errors} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={create.isPending || !form.symbol || !form.name}>Create</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={create.isPending}>Create</Button>
       </DialogActions>
     </Dialog>
   );
@@ -213,6 +220,7 @@ interface EditProps { open: boolean; onClose: () => void; instrument: { id: stri
 export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
   const [form, setForm] = useState<CreateInstrumentRequest>(emptyForm);
   const [rowVersion, setRowVersion] = useState("");
+  const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateInstrument();
   const { data: exchanges = [] } = useExchanges();
   const { data: currencies = [] } = useCurrencies();
@@ -248,11 +256,15 @@ export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
     setRowVersion(fullInstrument.rowVersion);
   }
 
-  const set = <K extends keyof CreateInstrumentRequest>(key: K, value: CreateInstrumentRequest[K]) =>
+  const set = <K extends keyof CreateInstrumentRequest>(key: K, value: CreateInstrumentRequest[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
 
   const handleSubmit = async () => {
     if (!instrument) return;
+    const errs: FieldErrors = { symbol: validateRequired(form.symbol), name: validateRequired(form.name) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await update.mutateAsync({
         id: instrument.id,
@@ -281,11 +293,11 @@ export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit Instrument: {instrument?.symbol}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <InstrumentFormFields form={form} set={set} exchanges={exchanges} currencies={currencies} countries={countries} />
+        <InstrumentFormFields form={form} set={set} exchanges={exchanges} currencies={currencies} countries={countries} errors={errors} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={update.isPending || !form.symbol || !form.name}>Save</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={update.isPending}>Save</Button>
       </DialogActions>
     </Dialog>
   );

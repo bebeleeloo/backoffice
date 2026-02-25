@@ -22,6 +22,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Refresh(RefreshTokenCommand command, CancellationToken ct)
     {
         var result = await mediator.Send(command, ct);
@@ -41,6 +42,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 
     [HttpPost("change-password")]
     [Authorize]
+    [EnableRateLimiting("sensitive")]
     public async Task<IActionResult> ChangePassword(ChangePasswordBody body, CancellationToken ct)
     {
         if (!TryGetUserId(out var id)) return Unauthorized();
@@ -52,6 +54,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 
     [HttpPut("profile")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<UserProfileResponse>> UpdateProfile(UpdateProfileBody body, CancellationToken ct)
     {
         if (!TryGetUserId(out var id)) return Unauthorized();

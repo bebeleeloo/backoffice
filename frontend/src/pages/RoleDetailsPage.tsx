@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
@@ -41,6 +41,11 @@ export function RoleDetailsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  const breadcrumbs = useMemo(() => [
+    { label: "Roles", to: "/roles" },
+    { label: role?.name ?? "" },
+  ], [role?.name]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
@@ -66,9 +71,9 @@ export function RoleDetailsPage() {
   return (
     <PageContainer
       title={role.name}
+      breadcrumbs={breadcrumbs}
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/roles")}>Back</Button>
           {canAudit && (
             <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
           )}

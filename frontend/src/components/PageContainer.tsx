@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import { listTheme } from "../theme";
+import { Breadcrumbs, type BreadcrumbItem } from "./Breadcrumbs";
 
 interface PageContainerProps {
   title: string;
@@ -15,6 +16,7 @@ interface PageContainerProps {
   children: ReactNode;
   /** Use "list" for journal/grid pages — applies compact control sizing via scoped theme. */
   variant?: "default" | "list";
+  breadcrumbs?: BreadcrumbItem[];
 }
 
 export function PageContainer({
@@ -25,6 +27,7 @@ export function PageContainer({
   subheaderRight,
   children,
   variant = "default",
+  breadcrumbs,
 }: PageContainerProps) {
   const isList = variant === "list";
   const hasSubheader = subheader || subheaderLeft || subheaderRight;
@@ -44,6 +47,7 @@ export function PageContainer({
         gap: isList ? 1 : 1.5,
       }}
     >
+      {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
       <Box
         sx={{
           display: "flex",

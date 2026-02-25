@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Divider,
@@ -41,6 +41,15 @@ export function ClientDetailsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  const displayName = client?.clientType === "Corporate"
+    ? client?.companyName ?? ""
+    : [client?.firstName, client?.middleName, client?.lastName].filter(Boolean).join(" ");
+
+  const breadcrumbs = useMemo(() => [
+    { label: "Clients", to: "/clients" },
+    { label: displayName || client?.email || "" },
+  ], [displayName, client?.email]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
@@ -60,16 +69,12 @@ export function ClientDetailsPage() {
     );
   }
 
-  const displayName = client.clientType === "Corporate"
-    ? client.companyName ?? ""
-    : [client.firstName, client.middleName, client.lastName].filter(Boolean).join(" ");
-
   return (
     <PageContainer
       title={displayName || client.email}
+      breadcrumbs={breadcrumbs}
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/clients")}>Back</Button>
           {canAudit && (
             <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
           )}

@@ -5,12 +5,14 @@ import {
 import { enqueueSnackbar } from "notistack";
 import { useAuth } from "../../auth/useAuth";
 import { useChangePassword, useUpdateProfile } from "../../api/hooks";
+import { validateEmail, type FieldErrors } from "../../utils/validateFields";
 
 export function ProfileTab() {
   const { user, refreshProfile } = useAuth();
 
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -20,6 +22,8 @@ export function ProfileTab() {
   const changePassword = useChangePassword();
 
   const handleProfileSave = async () => {
+    const errs: FieldErrors = { email: validateEmail(email) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await updateProfile.mutateAsync({ fullName: fullName || undefined, email });
       await refreshProfile();
@@ -72,14 +76,16 @@ export function ProfileTab() {
               <TextField
                 label="Email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setErrors((prev) => ({ ...prev, email: undefined })); }}
                 size="small"
                 required
+                error={!!errors.email}
+                helperText={errors.email}
               />
               <Button
                 variant="contained"
                 onClick={handleProfileSave}
-                disabled={updateProfile.isPending || !email}
+                disabled={updateProfile.isPending}
                 sx={{ alignSelf: "flex-start" }}
               >
                 Save

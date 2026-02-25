@@ -9,6 +9,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useCreateClient, useUpdateClient, useClient, useCountries, useClientAccounts, useSetClientAccounts, useAccounts } from "../api/hooks";
+import { validateEmail, validateRequired, type FieldErrors } from "../utils/validateFields";
 import type {
   CreateClientRequest, UpdateClientRequest, CreateClientAddressRequest, CreateInvestmentProfileRequest,
   ClientType, ClientStatus, KycStatus, AddressType, Gender, MaritalStatus, Education,
@@ -56,6 +57,7 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
     addresses: [],
   });
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open && !prevOpen) {
@@ -65,11 +67,14 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
       addresses: [],
     });
     setShowInvestmentProfile(false);
+    setErrors({});
   }
   if (open !== prevOpen) setPrevOpen(open);
 
-  const set = <K extends keyof CreateClientRequest>(k: K, v: CreateClientRequest[K]) =>
+  const set = <K extends keyof CreateClientRequest>(k: K, v: CreateClientRequest[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
+    setErrors((prev) => ({ ...prev, [k]: undefined }));
+  };
 
   const setAddr = (idx: number, field: string, value: string) =>
     setForm((f) => ({
@@ -84,6 +89,15 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
     setForm((f) => ({ ...f, investmentProfile: { ...f.investmentProfile, [k]: v } }));
 
   const handleSubmit = async () => {
+    const errs: FieldErrors = { email: validateEmail(form.email) };
+    if (form.clientType === "Individual") {
+      errs.firstName = validateRequired(form.firstName);
+      errs.lastName = validateRequired(form.lastName);
+    } else {
+      errs.companyName = validateRequired(form.companyName);
+    }
+    const hasErrors = Object.values(errs).some(Boolean);
+    if (hasErrors) { setErrors(errs); return; }
     try {
       const payload = {
         ...form,
@@ -113,7 +127,7 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
             <TextField select label="Status" value={form.status} onChange={(e) => set("status", e.target.value as ClientStatus)} size="small">
               {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </TextField>
-            <TextField label="Email" value={form.email} onChange={(e) => set("email", e.target.value)} size="small" required />
+            <TextField label="Email" value={form.email} onChange={(e) => set("email", e.target.value)} size="small" required error={!!errors.email} helperText={errors.email} />
             <TextField label="Phone" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value || undefined)} size="small" />
             <TextField label="External ID" value={form.externalId ?? ""} onChange={(e) => set("externalId", e.target.value || undefined)} size="small" />
           </Box>
@@ -122,8 +136,8 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
             <>
               <Typography variant="subtitle2">Personal Data</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2 }}>
-                <TextField label="First Name" value={form.firstName ?? ""} onChange={(e) => set("firstName", e.target.value || undefined)} size="small" required />
-                <TextField label="Last Name" value={form.lastName ?? ""} onChange={(e) => set("lastName", e.target.value || undefined)} size="small" required />
+                <TextField label="First Name" value={form.firstName ?? ""} onChange={(e) => set("firstName", e.target.value || undefined)} size="small" required error={!!errors.firstName} helperText={errors.firstName} />
+                <TextField label="Last Name" value={form.lastName ?? ""} onChange={(e) => set("lastName", e.target.value || undefined)} size="small" required error={!!errors.lastName} helperText={errors.lastName} />
                 <TextField label="Middle Name" value={form.middleName ?? ""} onChange={(e) => set("middleName", e.target.value || undefined)} size="small" />
                 <TextField label="Date of Birth" type="date" value={form.dateOfBirth ?? ""} onChange={(e) => set("dateOfBirth", e.target.value || undefined)} size="small" slotProps={{ inputLabel: { shrink: true } }} />
                 <TextField select label="Gender" value={form.gender ?? ""} onChange={(e) => set("gender", (e.target.value || undefined) as Gender | undefined)} size="small">
@@ -149,7 +163,7 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
             <>
               <Typography variant="subtitle2">Corporate</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-                <TextField label="Company Name" value={form.companyName ?? ""} onChange={(e) => set("companyName", e.target.value || undefined)} size="small" required />
+                <TextField label="Company Name" value={form.companyName ?? ""} onChange={(e) => set("companyName", e.target.value || undefined)} size="small" required error={!!errors.companyName} helperText={errors.companyName} />
                 <TextField label="Registration Number" value={form.registrationNumber ?? ""} onChange={(e) => set("registrationNumber", e.target.value || undefined)} size="small" />
                 <TextField label="Tax ID" value={form.taxId ?? ""} onChange={(e) => set("taxId", e.target.value || undefined)} size="small" />
               </Box>
@@ -227,6 +241,7 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   const [form, setForm] = useState<UpdateClientRequest | null>(null);
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
   const [accounts, setAccounts] = useState<ClientAccountInput[]>([]);
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   const [prevClient, setPrevClient] = useState(client);
   if (client && open && client !== prevClient) {
@@ -287,8 +302,10 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
 
   if (!form) return null;
 
-  const set = <K extends keyof UpdateClientRequest>(k: K, v: UpdateClientRequest[K]) =>
+  const set = <K extends keyof UpdateClientRequest>(k: K, v: UpdateClientRequest[K]) => {
     setForm((f) => f ? { ...f, [k]: v } : f);
+    setErrors((prev) => ({ ...prev, [k]: undefined }));
+  };
 
   const setAddr = (idx: number, field: string, value: string) =>
     setForm((f) => f ? {
@@ -314,6 +331,15 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
 
   const handleSubmit = async () => {
     if (!form || !clientId) return;
+    const errs: FieldErrors = { email: validateEmail(form.email) };
+    if (form.clientType === "Individual") {
+      errs.firstName = validateRequired(form.firstName);
+      errs.lastName = validateRequired(form.lastName);
+    } else {
+      errs.companyName = validateRequired(form.companyName);
+    }
+    const hasErrors = Object.values(errs).some(Boolean);
+    if (hasErrors) { setErrors(errs); return; }
     try {
       const payload = {
         ...form,
@@ -345,7 +371,7 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
             <TextField select label="Status" value={form.status} onChange={(e) => set("status", e.target.value as ClientStatus)} size="small">
               {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </TextField>
-            <TextField label="Email" value={form.email} onChange={(e) => set("email", e.target.value)} size="small" required />
+            <TextField label="Email" value={form.email} onChange={(e) => set("email", e.target.value)} size="small" required error={!!errors.email} helperText={errors.email} />
             <TextField label="Phone" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value || undefined)} size="small" />
             <TextField label="External ID" value={form.externalId ?? ""} onChange={(e) => set("externalId", e.target.value || undefined)} size="small" />
           </Box>
@@ -354,8 +380,8 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
             <>
               <Typography variant="subtitle2">Personal Data</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2 }}>
-                <TextField label="First Name" value={form.firstName ?? ""} onChange={(e) => set("firstName", e.target.value || undefined)} size="small" required />
-                <TextField label="Last Name" value={form.lastName ?? ""} onChange={(e) => set("lastName", e.target.value || undefined)} size="small" required />
+                <TextField label="First Name" value={form.firstName ?? ""} onChange={(e) => set("firstName", e.target.value || undefined)} size="small" required error={!!errors.firstName} helperText={errors.firstName} />
+                <TextField label="Last Name" value={form.lastName ?? ""} onChange={(e) => set("lastName", e.target.value || undefined)} size="small" required error={!!errors.lastName} helperText={errors.lastName} />
                 <TextField label="Middle Name" value={form.middleName ?? ""} onChange={(e) => set("middleName", e.target.value || undefined)} size="small" />
                 <TextField label="Date of Birth" type="date" value={form.dateOfBirth ?? ""} onChange={(e) => set("dateOfBirth", e.target.value || undefined)} size="small" slotProps={{ inputLabel: { shrink: true } }} />
                 <TextField select label="Gender" value={form.gender ?? ""} onChange={(e) => set("gender", (e.target.value || undefined) as Gender | undefined)} size="small">
@@ -381,7 +407,7 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
             <>
               <Typography variant="subtitle2">Corporate</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-                <TextField label="Company Name" value={form.companyName ?? ""} onChange={(e) => set("companyName", e.target.value || undefined)} size="small" required />
+                <TextField label="Company Name" value={form.companyName ?? ""} onChange={(e) => set("companyName", e.target.value || undefined)} size="small" required error={!!errors.companyName} helperText={errors.companyName} />
                 <TextField label="Registration Number" value={form.registrationNumber ?? ""} onChange={(e) => set("registrationNumber", e.target.value || undefined)} size="small" />
                 <TextField label="Tax ID" value={form.taxId ?? ""} onChange={(e) => set("taxId", e.target.value || undefined)} size="small" />
               </Box>

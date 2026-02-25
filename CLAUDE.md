@@ -12,6 +12,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ├── docs/             # Architecture documentation
 ├── scripts/          # Test and deployment scripts
 ├── screenshots/      # UI screenshots
+├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
 ├── docker-compose.yml
 ├── Dockerfile.api    # Multi-stage .NET build
 ├── Dockerfile.web    # Multi-stage Node + nginx build
@@ -28,7 +29,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - Serilog (structured logging with correlation IDs)
 - ASP.NET Core Identity password hashing
 - JWT Bearer authentication with refresh token rotation
-- ASP.NET Core Rate Limiting (fixed window on login endpoint)
+- ASP.NET Core Rate Limiting (fixed window on login, auth, sensitive endpoints)
 - ASP.NET Core Response Compression (Gzip, CompressionLevel.Fastest)
 
 ### Frontend
@@ -45,9 +46,10 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - ESLint 9 (flat config, typescript-eslint, react-hooks, react-refresh)
 
 ### Infrastructure
-- Docker Compose (3 services: mssql, api, web)
+- Docker Compose (3 services: mssql, api, web) with restart policies, resource limits, log rotation
 - SQL Server 2022
-- nginx (frontend reverse proxy + SPA fallback + gzip + security headers)
+- nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
+- GitHub Actions CI (backend build + unit tests, frontend tsc + eslint + vitest)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (MSSQL)
@@ -74,6 +76,13 @@ Frontend follows feature-based organization with shared components.
 **Security headers** (nginx):
 - `Content-Security-Policy`: default-src 'self', unsafe-inline for styles (MUI), data:/blob: for images
 - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy`
+- `Strict-Transport-Security`: max-age=63072000; includeSubDomains
+- `Permissions-Policy`: camera=(), microphone=(), geolocation=()
+- `server_tokens off` — hides nginx version
+
+**Cache control** (nginx):
+- `/assets/*` (Vite hashed files): `Cache-Control: public, immutable`, expires 1y
+- `/index.html` and `/`: `Cache-Control: no-cache` (SPA always gets fresh HTML)
 
 ## 4. Backend Structure
 
@@ -149,6 +158,7 @@ backend/src/
 
 **Pagination:**
 - List queries extend `PagedQuery` (Page, PageSize, Sort, Q)
+- `PagedQuery` clamps values: Page min 1, PageSize 1–10000 (protects against OOM)
 - Return `PagedResult<T>` with Items, TotalCount, Page, PageSize, TotalPages
 - `QueryableExtensions.ToPagedResultAsync()` handles Skip/Take/Count
 - `QueryableExtensions.SortBy()` handles dynamic sorting via expression trees
@@ -172,7 +182,9 @@ backend/src/
 **Rate limiting:**
 - ASP.NET Core built-in rate limiter (no external packages)
 - Fixed window policy "login": 5 requests per 1 minute per client (configurable via `RateLimiting:LoginPermitLimit`)
-- Applied via `[EnableRateLimiting("login")]` on `AuthController.Login`
+- Fixed window policy "auth": 20 requests per 1 minute (refresh token, update profile)
+- Fixed window policy "sensitive": 5 requests per 5 minutes (change password)
+- Applied via `[EnableRateLimiting("policy")]` on AuthController methods
 - Returns 429 Too Many Requests when exceeded
 - Integration tests override limit to 10000 via `UseSetting`
 
@@ -193,8 +205,9 @@ frontend/src/
 │   ├── AuthContext.tsx      # Auth state provider (user, permissions, login/logout)
 │   └── usePermission.ts    # useHasPermission() hook
 ├── components/
+│   ├── Breadcrumbs.tsx      # MUI breadcrumb navigation for detail pages
 │   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
-│   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant)
+│   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant, breadcrumbs)
 │   ├── ExportButton.tsx     # Excel export button with loading state
 │   ├── ConfirmDialog.tsx    # MUI confirmation dialog for delete actions
 │   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
@@ -233,7 +246,8 @@ frontend/src/
 │   └── react-query.d.ts    # Type augmentation for mutation meta
 ├── utils/
 │   ├── exportToExcel.ts     # ExcelJS-based export utility
-│   └── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
+│   ├── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
+│   └── validateFields.ts    # Inline form validation helpers (validateRequired, validateEmail)
 └── test/
     ├── setupTests.ts
     ├── renderWithProviders.tsx
@@ -252,6 +266,11 @@ frontend/src/
 6. `fetchAll: () => Promise<T[]>` fetches with pageSize=10000 for export
 7. Permission-gated action buttons via `useHasPermission()`
 8. `PageContainer` wrapper with variant="list" for compact theme
+
+**Detail page pattern:**
+- `PageContainer` with `breadcrumbs` prop for navigation (e.g., Clients > John Doe)
+- `Breadcrumbs` component with `BreadcrumbItem[]` — last item is text, others are RouterLinks
+- No Back button — breadcrumbs replace it
 
 **API client:**
 - Base URL: `VITE_API_URL` env var, defaults to `/api/v1`
@@ -280,6 +299,15 @@ frontend/src/
 - `ConfirmDialog` component: MUI Dialog with Cancel + red Delete button, `isLoading` prop
 - `useConfirm()` hook: returns `{ confirm, confirmDialogProps }`, `confirm()` returns `Promise<boolean>`
 - All delete actions in list pages use `useConfirm()` instead of native `confirm()`
+
+**Inline form validation:**
+- `validateFields.ts` provides `validateRequired()` and `validateEmail()` helpers
+- Type: `FieldErrors = Record<string, string | undefined>`
+- Pattern: `const [errors, setErrors] = useState<FieldErrors>({})` in each dialog
+- On submit: validate required fields, if errors → `setErrors(errs); return;`
+- On TextFields: `error={!!errors.fieldName}` + `helperText={errors.fieldName}`
+- On change: `setErrors(prev => ({ ...prev, fieldName: undefined }))` clears error for that field
+- No Zod/Yup — simple inline validation with MUI error/helperText props
 
 **Route lazy loading:**
 - Page components loaded via `React.lazy()` with `.then(m => ({ default: m.PageName }))` for named exports
@@ -450,6 +478,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Separate ListItemDto (grid) and Dto (detail) to minimize payload
 - Gzip compression: nginx (`gzip on`, min_length 1024, comp_level 5) + backend (`AddResponseCompression` with `GzipCompressionProvider`)
 - Route-level code splitting via `React.lazy()` — each page loads as a separate chunk
+- nginx cache headers: immutable 1y for hashed `/assets/*`, no-cache for HTML/SPA routes
 
 ## 12. Testing Strategy
 
@@ -492,6 +521,7 @@ docker compose up --build -d
 # Frontend: http://localhost:3000
 # API/Swagger: http://localhost:5050/swagger
 # Login: admin / Admin123!
+# Services auto-restart (unless-stopped), memory-limited (mssql: 2G, api: 512M, web: 256M)
 ```
 
 ### Frontend dev (hot reload):
@@ -564,6 +594,8 @@ dotnet run
 - Add route in `router/index.tsx` using `React.lazy()` + `withSuspense()` under RequireAuth
 - Delete actions: use `useConfirm()` + `<ConfirmDialog />` (not native `confirm()`)
 - Dialog `handleSubmit`: wrap `mutateAsync` in `try/catch` (error toast via MutationCache)
+- Detail pages: use `PageContainer` with `breadcrumbs` prop, no Back button
+- Dialog forms: add inline validation with `FieldErrors` state + `validateRequired`/`validateEmail` from `utils/validateFields.ts`
 
 ### When modifying existing code:
 - Preserve file organization pattern (command + validator + handler in one file)
@@ -594,3 +626,6 @@ dotnet run
 - Use native `confirm()` / `alert()` — use `ConfirmDialog` / notistack toasts instead
 - Skip `meta.successMessage` on new mutation hooks
 - Skip `try/catch` on `mutateAsync` in dialog submit handlers
+- Skip inline validation on required fields in dialog forms
+- Add Zod/Yup — use `validateFields.ts` helpers for simple inline validation
+- Use Back buttons in detail pages — use breadcrumbs instead

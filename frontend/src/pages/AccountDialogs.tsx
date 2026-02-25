@@ -10,6 +10,7 @@ import {
   useCreateAccount, useUpdateAccount, useAccount, useClearers, useTradePlatforms,
   useSetAccountHolders, useClients,
 } from "../api/hooks";
+import { validateRequired, type FieldErrors } from "../utils/validateFields";
 import type {
   AccountStatus, AccountType, MarginType, OptionLevel, Tariff,
   DeliveryType, ClearerDto, TradePlatformDto, CreateAccountRequest,
@@ -46,16 +47,17 @@ function emptyForm(): CreateAccountRequest {
 
 /* ── Shared form fields ── */
 
-function AccountFormFields({ form, set, clearers, platforms }: {
+function AccountFormFields({ form, set, clearers, platforms, errors = {} }: {
   form: CreateAccountRequest;
   set: <K extends keyof CreateAccountRequest>(key: K, value: CreateAccountRequest[K]) => void;
   clearers: ClearerDto[];
   platforms: TradePlatformDto[];
+  errors?: FieldErrors;
 }) {
   return (
     <>
       <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-        <TextField label="Number" value={form.number} onChange={(e) => set("number", e.target.value)} size="small" required />
+        <TextField label="Number" value={form.number} onChange={(e) => set("number", e.target.value)} size="small" required error={!!errors.number} helperText={errors.number} />
         <TextField select label="Status" value={form.status} onChange={(e) => set("status", e.target.value as AccountStatus)} size="small">
           {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
@@ -110,14 +112,19 @@ interface CreateProps { open: boolean; onClose: () => void }
 
 export function CreateAccountDialog({ open, onClose }: CreateProps) {
   const [form, setForm] = useState<CreateAccountRequest>(emptyForm);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateAccount();
   const clearers = useClearers();
   const platforms = useTradePlatforms();
 
-  const set = <K extends keyof CreateAccountRequest>(key: K, value: CreateAccountRequest[K]) =>
+  const set = <K extends keyof CreateAccountRequest>(key: K, value: CreateAccountRequest[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
 
   const handleSubmit = async () => {
+    const errs: FieldErrors = { number: validateRequired(form.number) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await create.mutateAsync({
         ...form,
@@ -137,11 +144,11 @@ export function CreateAccountDialog({ open, onClose }: CreateProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Create Account</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <AccountFormFields form={form} set={set} clearers={clearers.data ?? []} platforms={platforms.data ?? []} />
+        <AccountFormFields form={form} set={set} clearers={clearers.data ?? []} platforms={platforms.data ?? []} errors={errors} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={create.isPending || !form.number}>Create</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={create.isPending}>Create</Button>
       </DialogActions>
     </Dialog>
   );
@@ -155,6 +162,7 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
   const [form, setForm] = useState<CreateAccountRequest>(emptyForm);
   const [rowVersion, setRowVersion] = useState("");
   const [holders, setHolders] = useState<AccountHolderInput[]>([]);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateAccount();
   const setAccountHolders = useSetAccountHolders();
   const clearers = useClearers();
@@ -187,8 +195,10 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
     );
   }
 
-  const set = <K extends keyof CreateAccountRequest>(key: K, value: CreateAccountRequest[K]) =>
+  const set = <K extends keyof CreateAccountRequest>(key: K, value: CreateAccountRequest[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
 
   const addHolderRow = () => {
     setHolders((prev) => [...prev, { clientId: "", role: "Owner", isPrimary: false }]);
@@ -202,6 +212,8 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
 
   const handleSubmit = async () => {
     if (!account) return;
+    const errs: FieldErrors = { number: validateRequired(form.number) };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
       await update.mutateAsync({
         id: account.id,
@@ -225,7 +237,7 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Edit Account: {fullAccount?.number}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <AccountFormFields form={form} set={set} clearers={clearers.data ?? []} platforms={platforms.data ?? []} />
+        <AccountFormFields form={form} set={set} clearers={clearers.data ?? []} platforms={platforms.data ?? []} errors={errors} />
 
         {/* Holders */}
         <Box>
@@ -283,7 +295,7 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={update.isPending || setAccountHolders.isPending || !form.number}>Save</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={update.isPending || setAccountHolders.isPending}>Save</Button>
       </DialogActions>
     </Dialog>
   );

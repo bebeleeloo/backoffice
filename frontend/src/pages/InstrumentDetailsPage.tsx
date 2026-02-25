@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Typography,
@@ -36,6 +36,11 @@ export function InstrumentDetailsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  const breadcrumbs = useMemo(() => [
+    { label: "Instruments", to: "/instruments" },
+    { label: instrument?.symbol ?? "" },
+  ], [instrument?.symbol]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
@@ -58,9 +63,9 @@ export function InstrumentDetailsPage() {
   return (
     <PageContainer
       title={`${instrument.symbol} — ${instrument.name}`}
+      breadcrumbs={breadcrumbs}
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/instruments")}>Back</Button>
           {canAudit && (
             <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
           )}
