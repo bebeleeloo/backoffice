@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -83,6 +85,18 @@ try
         .AddHealthChecks()
         .AddCheck<SqlServerHealthCheck>("sqlserver", tags: new[] { "ready" });
 
+    // Rate limiting
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddFixedWindowLimiter("login", limiter =>
+        {
+            limiter.PermitLimit = 5;
+            limiter.Window = TimeSpan.FromMinutes(1);
+            limiter.QueueLimit = 0;
+        });
+    });
+
     // CORS — allow any origin so the app works when accessed by IP or domain name.
     // The API is not exposed directly; nginx proxies /api/ requests.
     builder.Services.AddCors(options =>
@@ -108,6 +122,7 @@ try
     }
 
     app.UseCors();
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();

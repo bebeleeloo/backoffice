@@ -17,6 +17,7 @@ import ShowChartIcon from "@mui/icons-material/ShowChart";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useAuth } from "../auth/useAuth";
 import { useHasPermission } from "../auth/usePermission";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 const DRAWER_WIDTH = 260;
 
@@ -151,7 +152,9 @@ export function MainLayout() {
       >
         <Toolbar />
         <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, overflowY: "auto" }}>
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </Box>
       </Box>
     </Box>

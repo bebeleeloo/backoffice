@@ -28,6 +28,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - Serilog (structured logging with correlation IDs)
 - ASP.NET Core Identity password hashing
 - JWT Bearer authentication with refresh token rotation
+- ASP.NET Core Rate Limiting (fixed window on login endpoint)
 
 ### Frontend
 - React 18 + TypeScript (strict mode)
@@ -39,11 +40,12 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - Recharts (dashboard charts)
 - ExcelJS + file-saver (Excel export)
 - Dayjs (date handling)
+- ESLint 9 (flat config, typescript-eslint, react-hooks, react-refresh)
 
 ### Infrastructure
 - Docker Compose (3 services: mssql, api, web)
 - SQL Server 2022
-- nginx (frontend reverse proxy + SPA fallback)
+- nginx (frontend reverse proxy + SPA fallback + security headers)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (MSSQL)
@@ -66,6 +68,10 @@ Backend follows Clean Architecture with 4 layers:
 - **Api** — Controllers, middleware, filters, Program.cs. Composes everything.
 
 Frontend follows feature-based organization with shared components.
+
+**Security headers** (nginx):
+- `Content-Security-Policy`: default-src 'self', unsafe-inline for styles (MUI), data:/blob: for images
+- `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy`
 
 ## 4. Backend Structure
 
@@ -161,6 +167,12 @@ backend/src/
 - All others → 500
 - Response format: RFC 7807 ProblemDetails
 
+**Rate limiting:**
+- ASP.NET Core built-in rate limiter (no external packages)
+- Fixed window policy "login": 5 requests per 1 minute per client
+- Applied via `[EnableRateLimiting("login")]` on `AuthController.Login`
+- Returns 429 Too Many Requests when exceeded
+
 **Concurrency control:**
 - `RowVersion` byte[] on AuditableEntity
 - Passed from client, set as OriginalValue before SaveChanges
@@ -178,6 +190,7 @@ frontend/src/
 │   ├── AuthContext.tsx      # Auth state provider (user, permissions, login/logout)
 │   └── usePermission.ts    # useHasPermission() hook
 ├── components/
+│   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
 │   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant)
 │   ├── ExportButton.tsx     # Excel export button with loading state
 │   ├── grid/
@@ -202,6 +215,7 @@ frontend/src/
 │   ├── UsersPage.tsx / UserDialogs.tsx
 │   ├── RolesPage.tsx / RoleDetailsPage.tsx / RoleDialogs.tsx
 │   ├── AuditPage.tsx
+│   ├── NotFoundPage.tsx     # 404 page (wildcard route)
 │   └── settings/           # ProfileTab, ReferenceDataTab, CRUD dialogs
 ├── router/
 │   └── index.tsx            # Route definitions with RequireAuth
@@ -383,6 +397,9 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - `useCallback` for handlers passed as props
 - Named exports only (no default exports)
 - Files: PascalCase for components, camelCase for utilities
+- ESLint 9 flat config (`eslint.config.js`): TS recommended + react-hooks + react-refresh
+- ErrorBoundary wraps `<Outlet />` in MainLayout — page crashes don't break sidebar/navigation
+- 404 wildcard route inside authenticated layout shows NotFoundPage
 
 ### Shared
 - API route format: `/api/v1/{entity}` (kebab-case for multi-word: `entity-changes`, `trade-platforms`)

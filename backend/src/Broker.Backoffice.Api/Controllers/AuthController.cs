@@ -3,6 +3,7 @@ using Broker.Backoffice.Application.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Broker.Backoffice.Api.Controllers;
 
@@ -12,6 +13,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 {
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginCommand command, CancellationToken ct)
     {
         var result = await mediator.Send(command, ct);

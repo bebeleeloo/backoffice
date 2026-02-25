@@ -14,6 +14,7 @@ import { AccountDetailsPage } from "../pages/AccountDetailsPage";
 import { InstrumentsPage } from "../pages/InstrumentsPage";
 import { InstrumentDetailsPage } from "../pages/InstrumentDetailsPage";
 import { RequireAuth } from "../auth/RequireAuth";
+import { NotFoundPage } from "../pages/NotFoundPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
       { path: "roles/:id", element: <RoleDetailsPage /> },
       { path: "audit", element: <AuditPage /> },
       { path: "settings", element: <SettingsPage /> },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);
