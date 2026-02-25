@@ -10,6 +10,8 @@ import { useAccounts, useDeleteAccount } from "../api/hooks";
 import type { AccountListItemDto, AccountStatus, AccountType, MarginType, Tariff } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateAccountDialog, EditAccountDialog } from "./AccountDialogs";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ExportButton } from "../components/ExportButton";
 import type { ExcelColumn } from "../utils/exportToExcel";
@@ -94,6 +96,7 @@ export function AccountsPage() {
 
   const { data, isLoading } = useAccounts(params);
   const deleteAccount = useDeleteAccount();
+  const { confirm, confirmDialogProps } = useConfirm();
 
   const setParam = useCallback(
     (patch: Record<string, string | undefined>) => {
@@ -149,8 +152,9 @@ export function AccountsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this account?")) return;
-    await deleteAccount.mutateAsync(id);
+    const ok = await confirm({ title: "Delete Account", message: "Are you sure you want to delete this account?" });
+    if (!ok) return;
+    try { await deleteAccount.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
   const columns: GridColDef<AccountListItemDto>[] = [
@@ -357,6 +361,7 @@ export function AccountsPage() {
 
       <CreateAccountDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditAccountDialog open={!!editAccount} onClose={() => setEditAccount(null)} account={editAccount} />
+      <ConfirmDialog {...confirmDialogProps} isLoading={deleteAccount.isPending} />
     </PageContainer>
   );
 }

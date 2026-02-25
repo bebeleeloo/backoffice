@@ -11,6 +11,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using System.IO.Compression;
+using Microsoft.AspNetCore.ResponseCompression;
+using Broker.Backoffice.Api.Converters;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -78,7 +81,11 @@ try
     builder.Services.AddScoped<AuditActionFilter>();
 
     // Controllers
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new NullableGuidConverter());
+        });
 
     // Health checks
     builder.Services
@@ -98,6 +105,17 @@ try
         });
     });
 
+    // Response compression
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<GzipCompressionProvider>();
+    });
+    builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+    {
+        options.Level = CompressionLevel.Fastest;
+    });
+
     // CORS — allow any origin so the app works when accessed by IP or domain name.
     // The API is not exposed directly; nginx proxies /api/ requests.
     builder.Services.AddCors(options =>
@@ -113,6 +131,7 @@ try
 
     // Middleware pipeline
     app.UseMiddleware<CorrelationIdMiddleware>();
+    app.UseResponseCompression();
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 

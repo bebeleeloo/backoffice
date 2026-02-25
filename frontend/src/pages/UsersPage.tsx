@@ -10,6 +10,8 @@ import { useUsers, useDeleteUser } from "../api/hooks";
 import type { UserDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateUserDialog, EditUserDialog } from "./UserDialogs";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { useSearchParams } from "react-router-dom";
 import { ExportButton } from "../components/ExportButton";
@@ -54,6 +56,7 @@ export function UsersPage() {
 
   const { data, isLoading } = useUsers(params);
   const deleteUser = useDeleteUser();
+  const { confirm, confirmDialogProps } = useConfirm();
 
   const setParam = useCallback(
     (patch: Record<string, string | undefined>) => {
@@ -96,8 +99,9 @@ export function UsersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this user?")) return;
-    await deleteUser.mutateAsync(id);
+    const ok = await confirm({ title: "Delete User", message: "Are you sure you want to delete this user?" });
+    if (!ok) return;
+    try { await deleteUser.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
   const columns: GridColDef<UserDto>[] = [
@@ -250,6 +254,7 @@ export function UsersPage() {
       <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditUserDialog open={!!editUser} onClose={() => setEditUser(null)} user={editUser} />
       <EntityHistoryDialog entityType="User" entityId={historyUserId ?? ""} open={!!historyUserId} onClose={() => setHistoryUserId(null)} />
+      <ConfirmDialog {...confirmDialogProps} isLoading={deleteUser.isPending} />
     </PageContainer>
   );
 }

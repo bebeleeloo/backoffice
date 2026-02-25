@@ -20,9 +20,11 @@ export function CreateRoleDialog({ open, onClose }: CreateProps) {
   const create = useCreateRole();
 
   const handleSubmit = async () => {
-    await create.mutateAsync({ ...form, description: form.description || undefined });
-    setForm({ name: "", description: "" });
-    onClose();
+    try {
+      await create.mutateAsync({ ...form, description: form.description || undefined });
+      setForm({ name: "", description: "" });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -75,13 +77,15 @@ export function EditRoleDialog({ open, onClose, role }: EditProps) {
 
   const handleSubmit = async () => {
     if (!role) return;
-    await update.mutateAsync({
-      id: role.id, ...form,
-      description: form.description || undefined,
-      rowVersion: role.rowVersion,
-    });
-    await setPerms.mutateAsync({ roleId: role.id, permissionIds: [...selectedPermIds] });
-    onClose();
+    try {
+      await update.mutateAsync({
+        id: role.id, ...form,
+        description: form.description || undefined,
+        rowVersion: role.rowVersion,
+      });
+      await setPerms.mutateAsync({ roleId: role.id, permissionIds: [...selectedPermIds] });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   const grouped = groupPermissions(permissions.data ?? []);

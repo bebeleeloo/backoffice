@@ -43,7 +43,7 @@ public sealed record CreateClientAddressDto(
     string City,
     string? State,
     string? PostalCode,
-    Guid CountryId);
+    Guid? CountryId);
 
 public sealed class CreateClientCommandValidator : AbstractValidator<CreateClientCommand>
 {
@@ -146,7 +146,7 @@ public sealed class CreateClientCommandHandler(
                 City = addr.City,
                 State = addr.State,
                 PostalCode = addr.PostalCode,
-                CountryId = addr.CountryId
+                CountryId = addr.CountryId!.Value
             });
         }
 

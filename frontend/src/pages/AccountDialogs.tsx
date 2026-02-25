@@ -118,17 +118,19 @@ export function CreateAccountDialog({ open, onClose }: CreateProps) {
     setForm((f) => ({ ...f, [key]: value }));
 
   const handleSubmit = async () => {
-    await create.mutateAsync({
-      ...form,
-      comment: form.comment || undefined,
-      externalId: form.externalId || undefined,
-      openedAt: form.openedAt || undefined,
-      closedAt: form.closedAt || undefined,
-      clearerId: form.clearerId || undefined,
-      tradePlatformId: form.tradePlatformId || undefined,
-    });
-    setForm(emptyForm);
-    onClose();
+    try {
+      await create.mutateAsync({
+        ...form,
+        comment: form.comment || undefined,
+        externalId: form.externalId || undefined,
+        openedAt: form.openedAt || undefined,
+        closedAt: form.closedAt || undefined,
+        clearerId: form.clearerId || undefined,
+        tradePlatformId: form.tradePlatformId || undefined,
+      });
+      setForm(emptyForm);
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -200,21 +202,23 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
 
   const handleSubmit = async () => {
     if (!account) return;
-    await update.mutateAsync({
-      id: account.id,
-      ...form,
-      comment: form.comment || undefined,
-      externalId: form.externalId || undefined,
-      openedAt: form.openedAt || undefined,
-      closedAt: form.closedAt || undefined,
-      clearerId: form.clearerId || undefined,
-      tradePlatformId: form.tradePlatformId || undefined,
-      rowVersion,
-    });
-    // Save holders
-    const validHolders = holders.filter((h) => h.clientId);
-    await setAccountHolders.mutateAsync({ accountId: account.id, holders: validHolders });
-    onClose();
+    try {
+      await update.mutateAsync({
+        id: account.id,
+        ...form,
+        comment: form.comment || undefined,
+        externalId: form.externalId || undefined,
+        openedAt: form.openedAt || undefined,
+        closedAt: form.closedAt || undefined,
+        clearerId: form.clearerId || undefined,
+        tradePlatformId: form.tradePlatformId || undefined,
+        rowVersion,
+      });
+      // Save holders
+      const validHolders = holders.filter((h) => h.clientId);
+      await setAccountHolders.mutateAsync({ accountId: account.id, holders: validHolders });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (

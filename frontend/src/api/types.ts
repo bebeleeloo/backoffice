@@ -264,7 +264,7 @@ export interface CreateClientAddressRequest {
   city: string;
   state?: string;
   postalCode?: string;
-  countryId: string;
+  countryId?: string;
 }
 
 export interface CreateClientRequest {

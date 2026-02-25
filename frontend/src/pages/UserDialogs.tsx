@@ -14,9 +14,11 @@ export function CreateUserDialog({ open, onClose }: CreateProps) {
   const roles = useRoles({ page: 1, pageSize: 100 });
 
   const handleSubmit = async () => {
-    await create.mutateAsync({ ...form, fullName: form.fullName || undefined });
-    setForm({ username: "", email: "", password: "", fullName: "", isActive: true, roleIds: [] });
-    onClose();
+    try {
+      await create.mutateAsync({ ...form, fullName: form.fullName || undefined });
+      setForm({ username: "", email: "", password: "", fullName: "", isActive: true, roleIds: [] });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -68,12 +70,14 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
 
   const handleSubmit = async () => {
     if (!user) return;
-    await update.mutateAsync({
-      id: user.id, ...form,
-      fullName: form.fullName || undefined,
-      rowVersion: user.rowVersion,
-    });
-    onClose();
+    try {
+      await update.mutateAsync({
+        id: user.id, ...form,
+        fullName: form.fullName || undefined,
+        rowVersion: user.rowVersion,
+      });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (

@@ -24,6 +24,8 @@ import type {
 } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateClientDialog, EditClientDialog } from "./ClientDialogs";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ExportButton } from "../components/ExportButton";
 import type { ExcelColumn } from "../utils/exportToExcel";
@@ -167,6 +169,7 @@ export function ClientsPage() {
   const { data, isLoading } = useClients(params);
   const deleteClient = useDeleteClient();
   const { data: countries = [] } = useCountries();
+  const { confirm, confirmDialogProps } = useConfirm();
 
   /* ── Filter helpers ── */
 
@@ -223,8 +226,9 @@ export function ClientsPage() {
     setParam({ sort: s ? `${s.field} ${s.sort}` : undefined, page: "1" });
   };
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this client?")) return;
-    await deleteClient.mutateAsync(id);
+    const ok = await confirm({ title: "Delete Client", message: "Are you sure you want to delete this client?" });
+    if (!ok) return;
+    try { await deleteClient.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
   /* ── Filter definitions: field → render fn ── */
@@ -462,6 +466,7 @@ export function ClientsPage() {
         onClose={() => setEditClientId(null)}
         clientId={editClientId}
       />
+      <ConfirmDialog {...confirmDialogProps} isLoading={deleteClient.isPending} />
     </PageContainer>
   );
 }

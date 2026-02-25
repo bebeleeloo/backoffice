@@ -1,7 +1,8 @@
 import { useState } from "react";
 import {
-  Alert, Box, Button, Card, CardContent, Chip, TextField, Typography,
+  Box, Button, Card, CardContent, Chip, TextField, Typography,
 } from "@mui/material";
+import { enqueueSnackbar } from "notistack";
 import { useAuth } from "../../auth/useAuth";
 import { useChangePassword, useUpdateProfile } from "../../api/hooks";
 
@@ -10,32 +11,24 @@ export function ProfileTab() {
 
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
-  const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [pwdMsg, setPwdMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const updateProfile = useUpdateProfile();
   const changePassword = useChangePassword();
 
   const handleProfileSave = async () => {
-    setProfileMsg(null);
     try {
       await updateProfile.mutateAsync({ fullName: fullName || undefined, email });
       await refreshProfile();
-      setProfileMsg({ type: "success", text: "Profile updated" });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to update profile";
-      setProfileMsg({ type: "error", text: msg });
-    }
+    } catch { /* handled by MutationCache */ }
   };
 
   const handlePasswordChange = async () => {
-    setPwdMsg(null);
     if (newPassword !== confirmPassword) {
-      setPwdMsg({ type: "error", text: "Passwords do not match" });
+      enqueueSnackbar("Passwords do not match", { variant: "error" });
       return;
     }
     try {
@@ -43,10 +36,7 @@ export function ProfileTab() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setPwdMsg({ type: "success", text: "Password changed successfully" });
-    } catch {
-      setPwdMsg({ type: "error", text: "Failed to change password. Check your current password." });
-    }
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -72,7 +62,6 @@ export function ProfileTab() {
         <Card variant="outlined">
           <CardContent>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>Edit Profile</Typography>
-            {profileMsg && <Alert severity={profileMsg.type} sx={{ mb: 2 }}>{profileMsg.text}</Alert>}
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <TextField
                 label="Full Name"
@@ -104,7 +93,6 @@ export function ProfileTab() {
       <Card variant="outlined" sx={{ alignSelf: "flex-start" }}>
         <CardContent>
           <Typography variant="subtitle1" fontWeight={600} gutterBottom>Change Password</Typography>
-          {pwdMsg && <Alert severity={pwdMsg.type} sx={{ mb: 2 }}>{pwdMsg.text}</Alert>}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField
               label="Current Password"

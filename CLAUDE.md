@@ -29,14 +29,16 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - ASP.NET Core Identity password hashing
 - JWT Bearer authentication with refresh token rotation
 - ASP.NET Core Rate Limiting (fixed window on login endpoint)
+- ASP.NET Core Response Compression (Gzip, CompressionLevel.Fastest)
 
 ### Frontend
 - React 18 + TypeScript (strict mode)
 - Vite 5 (build tool, dev server)
 - MUI v6 (Material UI components + DataGrid)
 - React Query / TanStack Query (server state, caching)
-- React Router v6 (routing, URL-based filter state)
+- React Router v6 (routing, URL-based filter state, lazy loading)
 - Axios (HTTP client with interceptors)
+- notistack (snackbar/toast notifications via MutationCache)
 - Recharts (dashboard charts)
 - ExcelJS + file-saver (Excel export)
 - Dayjs (date handling)
@@ -45,7 +47,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ### Infrastructure
 - Docker Compose (3 services: mssql, api, web)
 - SQL Server 2022
-- nginx (frontend reverse proxy + SPA fallback + security headers)
+- nginx (frontend reverse proxy + SPA fallback + gzip + security headers)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (MSSQL)
@@ -194,6 +196,8 @@ frontend/src/
 │   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
 │   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant)
 │   ├── ExportButton.tsx     # Excel export button with loading state
+│   ├── ConfirmDialog.tsx    # MUI confirmation dialog for delete actions
+│   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
 │   ├── grid/
 │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row
 │   │   ├── GridFilterRow.tsx      # Filter row rendering
@@ -219,13 +223,17 @@ frontend/src/
 │   ├── NotFoundPage.tsx     # 404 page (wildcard route)
 │   └── settings/           # ProfileTab, ReferenceDataTab, CRUD dialogs
 ├── router/
-│   └── index.tsx            # Route definitions with RequireAuth
+│   └── index.tsx            # Route definitions with RequireAuth + React.lazy()
 ├── theme/
 │   └── index.ts             # MUI theme (light, primary #1565c0)
 ├── hooks/
-│   └── useDebounce.ts
+│   ├── useDebounce.ts
+│   └── useConfirm.ts       # Promise-based confirmation dialog hook
+├── types/
+│   └── react-query.d.ts    # Type augmentation for mutation meta
 ├── utils/
-│   └── exportToExcel.ts     # ExcelJS-based export utility
+│   ├── exportToExcel.ts     # ExcelJS-based export utility
+│   └── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
 └── test/
     ├── setupTests.ts
     ├── renderWithProviders.tsx
@@ -255,8 +263,29 @@ frontend/src/
 **React Query conventions:**
 - Query keys: `["entity", params]` for lists, `["entity", id]` for details
 - Mutations invalidate related query keys
+- Mutation hooks include `meta: { successMessage: "..." }` for global toast notifications
+- `useLogin` uses `meta: { skipErrorToast: true }` (LoginPage shows errors inline)
+- Global `MutationCache` in main.tsx handles `onError` (error toast) and `onSuccess` (success toast)
 - Reference data (countries, clearers, etc.): `staleTime: 10 * 60 * 1000`
 - Auth: `useMe(enabled)` re-fetches user profile
+
+**Toast notifications (notistack):**
+- `SnackbarProvider` wraps app in main.tsx (maxSnack=3, bottom-right, 4s auto-hide)
+- Errors: automatic via `MutationCache.onError` → `extractErrorMessage()` parses ProblemDetails
+- Success: automatic via `MutationCache.onSuccess` when `meta.successMessage` is set
+- Dialog `handleSubmit` uses `try/catch` to prevent unhandled rejections (error toast via MutationCache)
+- Client-side validation errors: call `enqueueSnackbar()` directly
+
+**Confirmation dialogs:**
+- `ConfirmDialog` component: MUI Dialog with Cancel + red Delete button, `isLoading` prop
+- `useConfirm()` hook: returns `{ confirm, confirmDialogProps }`, `confirm()` returns `Promise<boolean>`
+- All delete actions in list pages use `useConfirm()` instead of native `confirm()`
+
+**Route lazy loading:**
+- Page components loaded via `React.lazy()` with `.then(m => ({ default: m.PageName }))` for named exports
+- `withSuspense()` helper wraps each lazy route in `<Suspense fallback={<RouteLoadingFallback />}>`
+- Eager-loaded: `LoginPage`, `MainLayout`, `RequireAuth`, `NotFoundPage`
+- Lazy-loaded: all 12 authenticated page routes (Dashboard, Clients, Accounts, etc.)
 
 **State management:**
 - Server state: React Query (no Redux/Zustand)
@@ -419,6 +448,8 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Debounced text filters (300ms) to avoid excessive API calls
 - Multi-stage Docker builds for minimal image size
 - Separate ListItemDto (grid) and Dto (detail) to minimize payload
+- Gzip compression: nginx (`gzip on`, min_length 1024, comp_level 5) + backend (`AddResponseCompression` with `GzipCompressionProvider`)
+- Route-level code splitting via `React.lazy()` — each page loads as a separate chunk
 
 ## 12. Testing Strategy
 
@@ -530,7 +561,9 @@ dotnet run
 - Filters go in URL search params, not local state
 - Add export support: ExcelColumn[] + fetchAll function + ExportButton
 - Gate actions with `useHasPermission()`
-- Add route in `router/index.tsx` under RequireAuth
+- Add route in `router/index.tsx` using `React.lazy()` + `withSuspense()` under RequireAuth
+- Delete actions: use `useConfirm()` + `<ConfirmDialog />` (not native `confirm()`)
+- Dialog `handleSubmit`: wrap `mutateAsync` in `try/catch` (error toast via MutationCache)
 
 ### When modifying existing code:
 - Preserve file organization pattern (command + validator + handler in one file)
@@ -539,6 +572,8 @@ dotnet run
 - Always include RowVersion in update commands
 - Set audit context (BeforeJson/AfterJson) in mutation handlers
 - Invalidate relevant React Query keys after mutations
+- Add `meta: { successMessage: "..." }` to new mutation hooks
+- Wrap dialog `handleSubmit` with `try/catch` around `mutateAsync`
 
 ### Reference data (Clearers, TradePlatforms, Exchanges, Currencies):
 - Two query endpoints: `GET /entity` (active only, for dropdowns) and `GET /entity/all` (for settings CRUD)
@@ -556,3 +591,6 @@ dotnet run
 - Skip audit context setup in mutation handlers
 - Introduce Redux, Zustand, or other state management
 - Use `any` type in TypeScript
+- Use native `confirm()` / `alert()` — use `ConfirmDialog` / notistack toasts instead
+- Skip `meta.successMessage` on new mutation hooks
+- Skip `try/catch` on `mutateAsync` in dialog submit handlers

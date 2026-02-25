@@ -37,7 +37,7 @@ const INV_KNOWLEDGE: InvestmentKnowledge[] = ["None", "Basic", "Good", "Advanced
 const INV_EXPERIENCE: InvestmentExperience[] = ["None", "LessThan1Year", "OneToThreeYears", "ThreeToFiveYears", "MoreThan5Years"];
 
 const emptyAddress = (type: AddressType): CreateClientAddressRequest => ({
-  type, line1: "", city: "", countryId: "",
+  type, line1: "", city: "",
 });
 
 const emptyInvestmentProfile = (): CreateInvestmentProfileRequest => ({});
@@ -53,7 +53,7 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
     email: "",
     pepStatus: false,
     kycStatus: "NotStarted",
-    addresses: [emptyAddress("Legal")],
+    addresses: [],
   });
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
 
@@ -62,7 +62,7 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
     setForm({
       clientType: "Individual", status: "Active", email: "",
       pepStatus: false, kycStatus: "NotStarted",
-      addresses: [emptyAddress("Legal")],
+      addresses: [],
     });
     setShowInvestmentProfile(false);
   }
@@ -84,10 +84,20 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
     setForm((f) => ({ ...f, investmentProfile: { ...f.investmentProfile, [k]: v } }));
 
   const handleSubmit = async () => {
-    const payload = { ...form };
-    if (!showInvestmentProfile) delete payload.investmentProfile;
-    await create.mutateAsync(payload);
-    onClose();
+    try {
+      const payload = {
+        ...form,
+        addresses: form.addresses
+          .filter((a) => a.line1 || a.city || a.countryId)
+          .map((a) => ({
+            ...a,
+            countryId: a.countryId || undefined,
+          })),
+      };
+      if (!showInvestmentProfile) delete payload.investmentProfile;
+      await create.mutateAsync(payload);
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -165,13 +175,16 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
             <Typography variant="subtitle2">Addresses</Typography>
             <Button size="small" startIcon={<AddIcon />} onClick={addAddress}>Add</Button>
           </Box>
+          {form.addresses.length === 0 && (
+            <Typography variant="body2" color="text.secondary">No addresses. Click &quot;Add&quot; to add one.</Typography>
+          )}
           {form.addresses.map((addr, idx) => (
             <AddressFields
               key={idx}
               addr={addr}
               countries={countries}
               onChange={(f, v) => setAddr(idx, f, v)}
-              onRemove={form.addresses.length > 1 ? () => removeAddress(idx) : undefined}
+              onRemove={() => removeAddress(idx)}
             />
           ))}
 
@@ -301,12 +314,22 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
 
   const handleSubmit = async () => {
     if (!form || !clientId) return;
-    const payload = { ...form };
-    if (!showInvestmentProfile) delete payload.investmentProfile;
-    await update.mutateAsync(payload);
-    const validAccounts = accounts.filter((a) => a.accountId);
-    await setClientAccounts.mutateAsync({ clientId, accounts: validAccounts });
-    onClose();
+    try {
+      const payload = {
+        ...form,
+        addresses: form.addresses
+          .filter((a) => a.line1 || a.city || a.countryId)
+          .map((a) => ({
+            ...a,
+            countryId: a.countryId || undefined,
+          })),
+      };
+      if (!showInvestmentProfile) delete payload.investmentProfile;
+      await update.mutateAsync(payload);
+      const validAccounts = accounts.filter((a) => a.accountId);
+      await setClientAccounts.mutateAsync({ clientId, accounts: validAccounts });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -384,13 +407,16 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
             <Typography variant="subtitle2">Addresses</Typography>
             <Button size="small" startIcon={<AddIcon />} onClick={addAddress}>Add</Button>
           </Box>
+          {form.addresses.length === 0 && (
+            <Typography variant="body2" color="text.secondary">No addresses. Click &quot;Add&quot; to add one.</Typography>
+          )}
           {form.addresses.map((addr, idx) => (
             <AddressFields
               key={idx}
               addr={addr}
               countries={countries}
               onChange={(f, v) => setAddr(idx, f, v)}
-              onRemove={form.addresses.length > 1 ? () => removeAddress(idx) : undefined}
+              onRemove={() => removeAddress(idx)}
             />
           ))}
 
@@ -516,7 +542,7 @@ function AddressFields({ addr, countries, onChange, onRemove }: {
         <TextField label="City" value={addr.city} onChange={(e) => onChange("city", e.target.value)} size="small" required />
         <TextField label="State" value={addr.state ?? ""} onChange={(e) => onChange("state", e.target.value)} size="small" />
         <TextField label="Postal Code" value={addr.postalCode ?? ""} onChange={(e) => onChange("postalCode", e.target.value)} size="small" />
-        <CountryAutocomplete countries={countries} value={addr.countryId || null} onChange={(id) => onChange("countryId", id ?? "")} label="Country" />
+        <CountryAutocomplete countries={countries} value={addr.countryId ?? null} onChange={(id) => onChange("countryId", id ?? "")} label="Country" />
       </Box>
     </Box>
   );

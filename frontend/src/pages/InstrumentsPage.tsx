@@ -12,6 +12,8 @@ import type {
 } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateInstrumentDialog, EditInstrumentDialog } from "./InstrumentDialogs";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ExportButton } from "../components/ExportButton";
 import type { ExcelColumn } from "../utils/exportToExcel";
@@ -110,6 +112,7 @@ export function InstrumentsPage() {
 
   const { data, isLoading } = useInstruments(params);
   const deleteInstrument = useDeleteInstrument();
+  const { confirm, confirmDialogProps } = useConfirm();
 
   const setParam = useCallback(
     (patch: Record<string, string | undefined>) => {
@@ -165,8 +168,9 @@ export function InstrumentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this instrument?")) return;
-    await deleteInstrument.mutateAsync(id);
+    const ok = await confirm({ title: "Delete Instrument", message: "Are you sure you want to delete this instrument?" });
+    if (!ok) return;
+    try { await deleteInstrument.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
   const columns: GridColDef<InstrumentListItemDto>[] = [
@@ -390,6 +394,7 @@ export function InstrumentsPage() {
 
       <CreateInstrumentDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditInstrumentDialog open={!!editInstrument} onClose={() => setEditInstrument(null)} instrument={editInstrument} />
+      <ConfirmDialog {...confirmDialogProps} isLoading={deleteInstrument.isPending} />
     </PageContainer>
   );
 }

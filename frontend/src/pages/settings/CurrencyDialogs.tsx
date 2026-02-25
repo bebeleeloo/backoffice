@@ -12,9 +12,11 @@ export function CreateCurrencyDialog({ open, onClose }: CreateProps) {
   const create = useCreateCurrency();
 
   const handleSubmit = async () => {
-    await create.mutateAsync({ code, name, symbol: symbol || undefined });
-    setCode(""); setName(""); setSymbol("");
-    onClose();
+    try {
+      await create.mutateAsync({ code, name, symbol: symbol || undefined });
+      setCode(""); setName(""); setSymbol("");
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -50,8 +52,10 @@ export function EditCurrencyDialog({ open, onClose, item }: EditProps) {
 
   const handleSubmit = async () => {
     if (!item) return;
-    await update.mutateAsync({ id: item.id, code, name, symbol: symbol || undefined, isActive });
-    onClose();
+    try {
+      await update.mutateAsync({ id: item.id, code, name, symbol: symbol || undefined, isActive });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (

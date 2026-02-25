@@ -13,15 +13,17 @@ import { CreateClearerDialog, EditClearerDialog } from "./ClearerDialogs";
 import { CreateTradePlatformDialog, EditTradePlatformDialog } from "./TradePlatformDialogs";
 import { CreateExchangeDialog, EditExchangeDialog } from "./ExchangeDialogs";
 import { CreateCurrencyDialog, EditCurrencyDialog } from "./CurrencyDialogs";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { useConfirm } from "../../hooks/useConfirm";
 
 const clearerCols: Column<ClearerDto>[] = [
   { header: "Name", render: (r) => r.name },
-  { header: "Description", render: (r) => r.description ?? "—" },
+  { header: "Description", render: (r) => r.description ?? "\u2014" },
 ];
 
 const platformCols: Column<TradePlatformDto>[] = [
   { header: "Name", render: (r) => r.name },
-  { header: "Description", render: (r) => r.description ?? "—" },
+  { header: "Description", render: (r) => r.description ?? "\u2014" },
 ];
 
 const exchangeCols: Column<ExchangeDto>[] = [
@@ -32,7 +34,7 @@ const exchangeCols: Column<ExchangeDto>[] = [
 const currencyCols: Column<CurrencyDto>[] = [
   { header: "Code", render: (r) => r.code, width: 80 },
   { header: "Name", render: (r) => r.name },
-  { header: "Symbol", render: (r) => r.symbol ?? "—", width: 80 },
+  { header: "Symbol", render: (r) => r.symbol ?? "\u2014", width: 80 },
 ];
 
 export function ReferenceDataTab() {
@@ -60,12 +62,19 @@ export function ReferenceDataTab() {
   const [createCurrencyOpen, setCreateCurrencyOpen] = useState(false);
   const [editCurrency, setEditCurrency] = useState<CurrencyDto | null>(null);
 
+  const { confirm, confirmDialogProps } = useConfirm();
+
+  const isDeleting = deleteClearer.isPending || deletePlatform.isPending || deleteExchange.isPending || deleteCurrency.isPending;
+
   const handleDelete = async (type: string, id: string) => {
-    if (!confirm(`Delete this ${type}?`)) return;
-    if (type === "clearer") await deleteClearer.mutateAsync(id);
-    else if (type === "trade platform") await deletePlatform.mutateAsync(id);
-    else if (type === "exchange") await deleteExchange.mutateAsync(id);
-    else if (type === "currency") await deleteCurrency.mutateAsync(id);
+    const ok = await confirm({ title: `Delete ${type}`, message: `Are you sure you want to delete this ${type.toLowerCase()}?` });
+    if (!ok) return;
+    try {
+      if (type === "Clearer") await deleteClearer.mutateAsync(id);
+      else if (type === "Trade Platform") await deletePlatform.mutateAsync(id);
+      else if (type === "Exchange") await deleteExchange.mutateAsync(id);
+      else if (type === "Currency") await deleteCurrency.mutateAsync(id);
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -82,7 +91,7 @@ export function ReferenceDataTab() {
             isLoading={loadingClearers}
             onAdd={() => setCreateClearerOpen(true)}
             onEdit={setEditClearer}
-            onDelete={(r) => handleDelete("clearer", r.id)}
+            onDelete={(r) => handleDelete("Clearer", r.id)}
           />
         </AccordionDetails>
       </Accordion>
@@ -99,7 +108,7 @@ export function ReferenceDataTab() {
             isLoading={loadingPlatforms}
             onAdd={() => setCreatePlatformOpen(true)}
             onEdit={setEditPlatform}
-            onDelete={(r) => handleDelete("trade platform", r.id)}
+            onDelete={(r) => handleDelete("Trade Platform", r.id)}
           />
         </AccordionDetails>
       </Accordion>
@@ -116,7 +125,7 @@ export function ReferenceDataTab() {
             isLoading={loadingExchanges}
             onAdd={() => setCreateExchangeOpen(true)}
             onEdit={setEditExchange}
-            onDelete={(r) => handleDelete("exchange", r.id)}
+            onDelete={(r) => handleDelete("Exchange", r.id)}
           />
         </AccordionDetails>
       </Accordion>
@@ -133,7 +142,7 @@ export function ReferenceDataTab() {
             isLoading={loadingCurrencies}
             onAdd={() => setCreateCurrencyOpen(true)}
             onEdit={setEditCurrency}
-            onDelete={(r) => handleDelete("currency", r.id)}
+            onDelete={(r) => handleDelete("Currency", r.id)}
           />
         </AccordionDetails>
       </Accordion>
@@ -147,6 +156,7 @@ export function ReferenceDataTab() {
       <EditExchangeDialog open={!!editExchange} onClose={() => setEditExchange(null)} item={editExchange} />
       <CreateCurrencyDialog open={createCurrencyOpen} onClose={() => setCreateCurrencyOpen(false)} />
       <EditCurrencyDialog open={!!editCurrency} onClose={() => setEditCurrency(null)} item={editCurrency} />
+      <ConfirmDialog {...confirmDialogProps} isLoading={isDeleting} />
     </Card>
   );
 }

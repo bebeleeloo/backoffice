@@ -1,6 +1,6 @@
-using System.Text.Json;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Backoffice.Api.Middleware;
 
@@ -45,12 +45,21 @@ public sealed class ExceptionHandlingMiddleware(
             await WriteProblemDetails(context, StatusCodes.Status409Conflict,
                 "Conflict", ex.Message);
         }
-        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+        catch (DbUpdateConcurrencyException ex)
         {
             logger.LogWarning(ex, "Concurrency conflict");
             await WriteProblemDetails(context, StatusCodes.Status409Conflict,
                 "Concurrency Conflict",
                 "The record was modified by another user. Please refresh and try again.");
+        }
+        catch (DbUpdateException ex)
+        {
+            logger.LogWarning(ex, "Database update failed");
+            var detail = ex.InnerException?.Message?.Contains("REFERENCE constraint", StringComparison.OrdinalIgnoreCase) == true
+                ? "Cannot delete this record because it is referenced by other records."
+                : "A database error occurred. Please try again.";
+            await WriteProblemDetails(context, StatusCodes.Status409Conflict,
+                "Conflict", detail);
         }
         catch (Exception ex)
         {

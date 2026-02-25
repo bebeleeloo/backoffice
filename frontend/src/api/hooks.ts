@@ -26,6 +26,7 @@ export const useLogin = () =>
   useMutation({
     mutationFn: (creds: { username: string; password: string }) =>
       apiClient.post<AuthResponse>("/auth/login", creds).then((r) => r.data),
+    meta: { skipErrorToast: true },
   });
 
 export const useMe = (enabled: boolean) =>
@@ -57,6 +58,7 @@ export const useCreateUser = () => {
     mutationFn: (data: CreateUserRequest) =>
       apiClient.post<UserDto>("/users", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    meta: { successMessage: "User created" },
   });
 };
 
@@ -66,6 +68,7 @@ export const useUpdateUser = () => {
     mutationFn: (data: UpdateUserRequest) =>
       apiClient.put<UserDto>(`/users/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    meta: { successMessage: "User updated" },
   });
 };
 
@@ -74,6 +77,7 @@ export const useDeleteUser = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/users/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    meta: { successMessage: "User deleted" },
   });
 };
 
@@ -98,6 +102,7 @@ export const useCreateRole = () => {
     mutationFn: (data: CreateRoleRequest) =>
       apiClient.post<RoleDto>("/roles", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roles"] }),
+    meta: { successMessage: "Role created" },
   });
 };
 
@@ -107,6 +112,7 @@ export const useUpdateRole = () => {
     mutationFn: (data: UpdateRoleRequest) =>
       apiClient.put<RoleDto>(`/roles/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roles"] }),
+    meta: { successMessage: "Role updated" },
   });
 };
 
@@ -115,6 +121,7 @@ export const useDeleteRole = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/roles/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roles"] }),
+    meta: { successMessage: "Role deleted" },
   });
 };
 
@@ -124,6 +131,7 @@ export const useSetRolePermissions = () => {
     mutationFn: ({ roleId, permissionIds }: { roleId: string; permissionIds: string[] }) =>
       apiClient.put<RoleDto>(`/roles/${roleId}/permissions`, permissionIds).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roles"] }),
+    meta: {},
   });
 };
 
@@ -209,6 +217,7 @@ export const useCreateAccount = () => {
     mutationFn: (data: CreateAccountRequest) =>
       apiClient.post<AccountDto>("/accounts", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+    meta: { successMessage: "Account created" },
   });
 };
 
@@ -218,6 +227,7 @@ export const useUpdateAccount = () => {
     mutationFn: (data: UpdateAccountRequest) =>
       apiClient.put<AccountDto>(`/accounts/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+    meta: { successMessage: "Account updated" },
   });
 };
 
@@ -226,6 +236,7 @@ export const useDeleteAccount = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/accounts/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+    meta: { successMessage: "Account deleted" },
   });
 };
 
@@ -238,6 +249,7 @@ export const useSetAccountHolders = () => {
       qc.invalidateQueries({ queryKey: ["accounts", vars.accountId] });
       qc.invalidateQueries({ queryKey: ["client-accounts"] });
     },
+    meta: {},
   });
 };
 
@@ -258,6 +270,7 @@ export const useSetClientAccounts = () => {
       qc.invalidateQueries({ queryKey: ["client-accounts", vars.clientId] });
       qc.invalidateQueries({ queryKey: ["accounts"] });
     },
+    meta: {},
   });
 };
 
@@ -282,6 +295,7 @@ export const useCreateClient = () => {
     mutationFn: (data: CreateClientRequest) =>
       apiClient.post<ClientDto>("/clients", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
+    meta: { successMessage: "Client created" },
   });
 };
 
@@ -291,6 +305,7 @@ export const useUpdateClient = () => {
     mutationFn: (data: UpdateClientRequest) =>
       apiClient.put<ClientDto>(`/clients/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
+    meta: { successMessage: "Client updated" },
   });
 };
 
@@ -299,6 +314,7 @@ export const useDeleteClient = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/clients/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
+    meta: { successMessage: "Client deleted" },
   });
 };
 
@@ -341,6 +357,7 @@ export const useCreateInstrument = () => {
     mutationFn: (data: CreateInstrumentRequest) =>
       apiClient.post<InstrumentDto>("/instruments", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
+    meta: { successMessage: "Instrument created" },
   });
 };
 
@@ -350,6 +367,7 @@ export const useUpdateInstrument = () => {
     mutationFn: (data: UpdateInstrumentRequest) =>
       apiClient.put<InstrumentDto>(`/instruments/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
+    meta: { successMessage: "Instrument updated" },
   });
 };
 
@@ -358,6 +376,7 @@ export const useDeleteInstrument = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/instruments/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
+    meta: { successMessage: "Instrument deleted" },
   });
 };
 
@@ -366,6 +385,7 @@ export const useChangePassword = () =>
   useMutation({
     mutationFn: (data: ChangePasswordRequest) =>
       apiClient.post("/auth/change-password", data),
+    meta: { successMessage: "Password changed successfully" },
   });
 
 export const useUpdateProfile = () => {
@@ -374,6 +394,7 @@ export const useUpdateProfile = () => {
     mutationFn: (data: UpdateProfileRequest) =>
       apiClient.put<UserProfile>("/auth/profile", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+    meta: { successMessage: "Profile updated" },
   });
 };
 
@@ -390,6 +411,7 @@ export const useCreateClearer = () => {
     mutationFn: (data: CreateClearerRequest) =>
       apiClient.post<ClearerDto>("/clearers", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clearers"] }),
+    meta: { successMessage: "Clearer created" },
   });
 };
 
@@ -399,6 +421,7 @@ export const useUpdateClearer = () => {
     mutationFn: (data: UpdateClearerRequest) =>
       apiClient.put<ClearerDto>(`/clearers/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clearers"] }),
+    meta: { successMessage: "Clearer updated" },
   });
 };
 
@@ -407,6 +430,7 @@ export const useDeleteClearer = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/clearers/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clearers"] }),
+    meta: { successMessage: "Clearer deleted" },
   });
 };
 
@@ -423,6 +447,7 @@ export const useCreateTradePlatform = () => {
     mutationFn: (data: CreateTradePlatformRequest) =>
       apiClient.post<TradePlatformDto>("/trade-platforms", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-platforms"] }),
+    meta: { successMessage: "Trade platform created" },
   });
 };
 
@@ -432,6 +457,7 @@ export const useUpdateTradePlatform = () => {
     mutationFn: (data: UpdateTradePlatformRequest) =>
       apiClient.put<TradePlatformDto>(`/trade-platforms/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-platforms"] }),
+    meta: { successMessage: "Trade platform updated" },
   });
 };
 
@@ -440,6 +466,7 @@ export const useDeleteTradePlatform = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/trade-platforms/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-platforms"] }),
+    meta: { successMessage: "Trade platform deleted" },
   });
 };
 
@@ -456,6 +483,7 @@ export const useCreateExchange = () => {
     mutationFn: (data: CreateExchangeRequest) =>
       apiClient.post<ExchangeDto>("/exchanges", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exchanges"] }),
+    meta: { successMessage: "Exchange created" },
   });
 };
 
@@ -465,6 +493,7 @@ export const useUpdateExchange = () => {
     mutationFn: (data: UpdateExchangeRequest) =>
       apiClient.put<ExchangeDto>(`/exchanges/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exchanges"] }),
+    meta: { successMessage: "Exchange updated" },
   });
 };
 
@@ -473,6 +502,7 @@ export const useDeleteExchange = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/exchanges/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exchanges"] }),
+    meta: { successMessage: "Exchange deleted" },
   });
 };
 
@@ -489,6 +519,7 @@ export const useCreateCurrency = () => {
     mutationFn: (data: CreateCurrencyRequest) =>
       apiClient.post<CurrencyDto>("/currencies", data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["currencies"] }),
+    meta: { successMessage: "Currency created" },
   });
 };
 
@@ -498,6 +529,7 @@ export const useUpdateCurrency = () => {
     mutationFn: (data: UpdateCurrencyRequest) =>
       apiClient.put<CurrencyDto>(`/currencies/${data.id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["currencies"] }),
+    meta: { successMessage: "Currency updated" },
   });
 };
 
@@ -506,6 +538,7 @@ export const useDeleteCurrency = () => {
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/currencies/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["currencies"] }),
+    meta: { successMessage: "Currency deleted" },
   });
 };
 

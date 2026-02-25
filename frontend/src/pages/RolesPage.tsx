@@ -10,6 +10,8 @@ import { useRoles, useDeleteRole } from "../api/hooks";
 import type { RoleDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
 import { CreateRoleDialog } from "./RoleDialogs";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ExportButton } from "../components/ExportButton";
 import type { ExcelColumn } from "../utils/exportToExcel";
@@ -50,6 +52,7 @@ export function RolesPage() {
 
   const { data, isLoading } = useRoles(params);
   const deleteRole = useDeleteRole();
+  const { confirm, confirmDialogProps } = useConfirm();
 
   const setParam = useCallback(
     (patch: Record<string, string | undefined>) => {
@@ -92,8 +95,9 @@ export function RolesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this role?")) return;
-    await deleteRole.mutateAsync(id);
+    const ok = await confirm({ title: "Delete Role", message: "Are you sure you want to delete this role?" });
+    if (!ok) return;
+    try { await deleteRole.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
   const columns: GridColDef<RoleDto>[] = [
@@ -230,6 +234,7 @@ export function RolesPage() {
       </Paper>
 
       <CreateRoleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ConfirmDialog {...confirmDialogProps} isLoading={deleteRole.isPending} />
     </PageContainer>
   );
 }

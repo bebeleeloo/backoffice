@@ -155,7 +155,7 @@ public sealed class UpdateClientCommandHandler(
                 City = addr.City,
                 State = addr.State,
                 PostalCode = addr.PostalCode,
-                CountryId = addr.CountryId
+                CountryId = addr.CountryId!.Value
             });
         }
 

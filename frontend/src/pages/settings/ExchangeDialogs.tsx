@@ -13,9 +13,11 @@ export function CreateExchangeDialog({ open, onClose }: CreateProps) {
   const { data: countries } = useCountries();
 
   const handleSubmit = async () => {
-    await create.mutateAsync({ code, name, countryId: country?.id });
-    setCode(""); setName(""); setCountry(null);
-    onClose();
+    try {
+      await create.mutateAsync({ code, name, countryId: country?.id });
+      setCode(""); setName(""); setCountry(null);
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -61,8 +63,10 @@ export function EditExchangeDialog({ open, onClose, item }: EditProps) {
 
   const handleSubmit = async () => {
     if (!item) return;
-    await update.mutateAsync({ id: item.id, code, name, countryId: country?.id, isActive });
-    onClose();
+    try {
+      await update.mutateAsync({ id: item.id, code, name, countryId: country?.id, isActive });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (

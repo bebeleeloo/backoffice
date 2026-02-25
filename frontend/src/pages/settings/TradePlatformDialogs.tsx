@@ -11,9 +11,11 @@ export function CreateTradePlatformDialog({ open, onClose }: CreateProps) {
   const create = useCreateTradePlatform();
 
   const handleSubmit = async () => {
-    await create.mutateAsync({ name, description: description || undefined });
-    setName(""); setDescription("");
-    onClose();
+    try {
+      await create.mutateAsync({ name, description: description || undefined });
+      setName(""); setDescription("");
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -47,8 +49,10 @@ export function EditTradePlatformDialog({ open, onClose, item }: EditProps) {
 
   const handleSubmit = async () => {
     if (!item) return;
-    await update.mutateAsync({ id: item.id, name, description: description || undefined, isActive });
-    onClose();
+    try {
+      await update.mutateAsync({ id: item.id, name, description: description || undefined, isActive });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (

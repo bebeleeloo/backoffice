@@ -169,25 +169,27 @@ export function CreateInstrumentDialog({ open, onClose }: CreateProps) {
     setForm((f) => ({ ...f, [key]: value }));
 
   const handleSubmit = async () => {
-    await create.mutateAsync({
-      ...form,
-      isin: form.isin || undefined,
-      cusip: form.cusip || undefined,
-      sector: form.sector || undefined,
-      exchangeId: form.exchangeId || undefined,
-      currencyId: form.currencyId || undefined,
-      countryId: form.countryId || undefined,
-      tickSize: form.tickSize ?? undefined,
-      marginRequirement: form.marginRequirement ?? undefined,
-      listingDate: form.listingDate || undefined,
-      delistingDate: form.delistingDate || undefined,
-      expirationDate: form.expirationDate || undefined,
-      issuerName: form.issuerName || undefined,
-      description: form.description || undefined,
-      externalId: form.externalId || undefined,
-    });
-    setForm(emptyForm);
-    onClose();
+    try {
+      await create.mutateAsync({
+        ...form,
+        isin: form.isin || undefined,
+        cusip: form.cusip || undefined,
+        sector: form.sector || undefined,
+        exchangeId: form.exchangeId || undefined,
+        currencyId: form.currencyId || undefined,
+        countryId: form.countryId || undefined,
+        tickSize: form.tickSize ?? undefined,
+        marginRequirement: form.marginRequirement ?? undefined,
+        listingDate: form.listingDate || undefined,
+        delistingDate: form.delistingDate || undefined,
+        expirationDate: form.expirationDate || undefined,
+        issuerName: form.issuerName || undefined,
+        description: form.description || undefined,
+        externalId: form.externalId || undefined,
+      });
+      setForm(emptyForm);
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (
@@ -251,26 +253,28 @@ export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
 
   const handleSubmit = async () => {
     if (!instrument) return;
-    await update.mutateAsync({
-      id: instrument.id,
-      ...form,
-      isin: form.isin || undefined,
-      cusip: form.cusip || undefined,
-      sector: form.sector || undefined,
-      exchangeId: form.exchangeId || undefined,
-      currencyId: form.currencyId || undefined,
-      countryId: form.countryId || undefined,
-      tickSize: form.tickSize ?? undefined,
-      marginRequirement: form.marginRequirement ?? undefined,
-      listingDate: form.listingDate || undefined,
-      delistingDate: form.delistingDate || undefined,
-      expirationDate: form.expirationDate || undefined,
-      issuerName: form.issuerName || undefined,
-      description: form.description || undefined,
-      externalId: form.externalId || undefined,
-      rowVersion,
-    });
-    onClose();
+    try {
+      await update.mutateAsync({
+        id: instrument.id,
+        ...form,
+        isin: form.isin || undefined,
+        cusip: form.cusip || undefined,
+        sector: form.sector || undefined,
+        exchangeId: form.exchangeId || undefined,
+        currencyId: form.currencyId || undefined,
+        countryId: form.countryId || undefined,
+        tickSize: form.tickSize ?? undefined,
+        marginRequirement: form.marginRequirement ?? undefined,
+        listingDate: form.listingDate || undefined,
+        delistingDate: form.delistingDate || undefined,
+        expirationDate: form.expirationDate || undefined,
+        issuerName: form.issuerName || undefined,
+        description: form.description || undefined,
+        externalId: form.externalId || undefined,
+        rowVersion,
+      });
+      onClose();
+    } catch { /* handled by MutationCache */ }
   };
 
   return (

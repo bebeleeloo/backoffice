@@ -16,6 +16,10 @@ public sealed class DeleteClientCommandHandler(
         var client = await db.Clients.FirstOrDefaultAsync(c => c.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Client {request.Id} not found");
 
+        var hasAccounts = await db.AccountHolders.AnyAsync(h => h.ClientId == request.Id, ct);
+        if (hasAccounts)
+            throw new InvalidOperationException("Cannot delete client because it is linked to one or more accounts. Remove the client from all accounts first.");
+
         audit.EntityType = "Client";
         audit.EntityId = client.Id.ToString();
         audit.BeforeJson = JsonSerializer.Serialize(new { client.Id, client.Email, client.ClientType });
