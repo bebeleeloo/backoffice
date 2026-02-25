@@ -1,9 +1,8 @@
 using Broker.Backoffice.Application.Clients;
 using Broker.Backoffice.Domain.Clients;
-using FluentAssertions;
 using FluentValidation.TestHelper;
 
-namespace Broker.Backoffice.Tests.Unit;
+namespace Broker.Backoffice.Tests.Unit.Validators;
 
 public class CreateClientValidatorTests
 {

@@ -1,15 +1,15 @@
 using Broker.Backoffice.Application.Accounts;
 using Broker.Backoffice.Domain.Accounts;
-using FluentAssertions;
 using FluentValidation.TestHelper;
 
-namespace Broker.Backoffice.Tests.Unit;
+namespace Broker.Backoffice.Tests.Unit.Validators;
 
-public class CreateAccountValidatorTests
+public class UpdateAccountValidatorTests
 {
-    private readonly CreateAccountCommandValidator _validator = new();
+    private readonly UpdateAccountCommandValidator _validator = new();
 
-    private static CreateAccountCommand ValidCommand() => new(
+    private static UpdateAccountCommand ValidCommand() => new(
+        Id: Guid.NewGuid(),
         Number: "ACC-001",
         ClearerId: null,
         TradePlatformId: null,
@@ -22,7 +22,8 @@ public class CreateAccountValidatorTests
         OpenedAt: null,
         ClosedAt: null,
         Comment: null,
-        ExternalId: null);
+        ExternalId: null,
+        RowVersion: [1, 2, 3]);
 
     [Fact]
     public void ValidCommand_ShouldPass()
@@ -62,9 +63,9 @@ public class CreateAccountValidatorTests
     }
 
     [Fact]
-    public void Comment_AtMaxLength_ShouldPass()
+    public void RowVersion_Empty_ShouldFail()
     {
-        var result = _validator.TestValidate(ValidCommand() with { Comment = new string('x', 500) });
-        result.ShouldNotHaveValidationErrorFor(x => x.Comment);
+        var result = _validator.TestValidate(ValidCommand() with { RowVersion = [] });
+        result.ShouldHaveValidationErrorFor(x => x.RowVersion);
     }
 }
