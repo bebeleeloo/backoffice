@@ -28,7 +28,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Broker.Backoffi
             // Add DbContext with Testcontainers connection string
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(_msSqlContainer.GetConnectionString()));
+
         });
+
+        // Disable rate limiting for integration tests
+        builder.UseSetting("RateLimiting:LoginPermitLimit", "10000");
     }
 
     public async Task InitializeAsync()
