@@ -6,15 +6,19 @@
 
 **Фреймворк:** Vitest 2.x + React Testing Library 16 + jsdom
 
-**Default suite (`npm test`):** только быстрые unit-тесты
+**Default suite (`npm test`):** быстрые unit-тесты и regression-тесты
 
 | Файл | Тестов | Что тестирует |
 |------|--------|---------------|
 | `src/hooks/useDebounce.test.tsx` | 5 | Хук debounce: задержка, сброс таймера, custom delay |
+| `src/hooks/useConfirm.test.ts` | 5 | Хук useConfirm: promise-based подтверждение |
 | `src/auth/usePermission.test.ts` | 3 | Хук useHasPermission: наличие/отсутствие permission |
-| **Итого** | **8** | **~600ms** |
+| `src/utils/validateFields.test.ts` | 17 | Валидаторы: validateRequired, validateEmail |
+| `src/utils/extractErrorMessage.test.ts` | 10 | Парсинг ошибок: Axios, ProblemDetails, fallback |
+| `src/test/edit-dialogs.test.tsx` | 4 | Regression: Edit-диалоги заполняют форму при закешированных данных |
+| **Итого** | **44** | **~2.8s** |
 
-**Include pattern:** `src/{hooks,auth,lib,utils}/**/*.test.{ts,tsx}`
+**Include pattern:** `src/{hooks,auth,lib,utils,test}/**/*.test.{ts,tsx}`
 
 **setupTests.ts** содержит только:
 - `@testing-library/jest-dom/vitest` (матчеры)

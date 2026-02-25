@@ -149,6 +149,30 @@ Request interceptor:
 - `InstrumentDialogs` -- создание/редактирование инструмента с Autocomplete для Exchange/Currency/Country
 - `ClearerDialogs`, `TradePlatformDialogs`, `ExchangeDialogs`, `CurrencyDialogs` -- CRUD-диалоги для справочников (Settings → Reference Data)
 
+#### Паттерн заполнения Edit-диалогов
+
+Edit-диалоги используют паттерн `populated` флага для корректного заполнения формы из кешированных данных React Query:
+
+```typescript
+const [populated, setPopulated] = useState(false);
+const [prevOpen, setPrevOpen] = useState(open);
+
+// Сброс при открытии диалога
+if (open && !prevOpen) {
+  setPopulated(false);
+  setForm(emptyForm());
+}
+if (open !== prevOpen) setPrevOpen(open);
+
+// Заполнение формы из данных
+if (open && !populated && fullData) {
+  setPopulated(true);
+  setForm({ ...fullData });
+}
+```
+
+Этот паттерн решает проблему с React Query кешем: если данные уже закешированы (например, на странице деталей), `useQuery` возвращает тот же объект при монтировании диалога. Флаг `populated` гарантирует одноразовое заполнение формы при каждом открытии.
+
 Страницы деталей:
 - `ClientDetailsPage` -- просмотр клиента со связанными счетами (с навигацией на счёт)
 - `AccountDetailsPage` -- просмотр счёта со связанными холдерами (с навигацией на клиента)

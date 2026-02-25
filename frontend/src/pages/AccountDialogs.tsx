@@ -171,9 +171,19 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
   const { data: clientsData } = useClients({ page: 1, pageSize: 200 });
   const clients = clientsData?.items ?? [];
 
-  const [prevFullAccount, setPrevFullAccount] = useState(fullAccount);
-  if (fullAccount && fullAccount !== prevFullAccount) {
-    setPrevFullAccount(fullAccount);
+  const [populated, setPopulated] = useState(false);
+
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setPopulated(false);
+    setForm(emptyForm());
+    setErrors({});
+    setHolders([]);
+  }
+  if (open !== prevOpen) setPrevOpen(open);
+
+  if (open && !populated && fullAccount) {
+    setPopulated(true);
     setForm({
       number: fullAccount.number,
       status: fullAccount.status,

@@ -230,6 +230,19 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
 
 interface EditProps { open: boolean; onClose: () => void; clientId: string | null }
 
+function emptyClientForm(): UpdateClientRequest {
+  return {
+    id: "",
+    clientType: "Individual",
+    status: "Active",
+    email: "",
+    pepStatus: false,
+    kycStatus: "NotStarted",
+    addresses: [],
+    rowVersion: "",
+  };
+}
+
 export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   const { data: client } = useClient(clientId ?? "");
   const update = useUpdateClient();
@@ -238,14 +251,27 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   const setClientAccounts = useSetClientAccounts();
   const { data: accountsData } = useAccounts({ page: 1, pageSize: 200 });
   const allAccounts = accountsData?.items ?? [];
-  const [form, setForm] = useState<UpdateClientRequest | null>(null);
+  const [form, setForm] = useState<UpdateClientRequest>(emptyClientForm);
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
   const [accounts, setAccounts] = useState<ClientAccountInput[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  const [prevClient, setPrevClient] = useState(client);
-  if (client && open && client !== prevClient) {
-    setPrevClient(client);
+  const [populated, setPopulated] = useState(false);
+  const [accountsPopulated, setAccountsPopulated] = useState(false);
+
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setPopulated(false);
+    setAccountsPopulated(false);
+    setForm(emptyClientForm());
+    setShowInvestmentProfile(false);
+    setAccounts([]);
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
+
+  if (open && !populated && client) {
+    setPopulated(true);
     const hasIp = !!client.investmentProfile;
     setShowInvestmentProfile(hasIp);
     setForm({
@@ -294,27 +320,24 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
     });
   }
 
-  const [prevClientAccounts, setPrevClientAccounts] = useState(clientAccounts);
-  if (clientAccounts && open && clientAccounts !== prevClientAccounts) {
-    setPrevClientAccounts(clientAccounts);
+  if (open && !accountsPopulated && clientAccounts) {
+    setAccountsPopulated(true);
     setAccounts(clientAccounts.map((a) => ({ accountId: a.accountId, role: a.role, isPrimary: a.isPrimary })));
   }
 
-  if (!form) return null;
-
   const set = <K extends keyof UpdateClientRequest>(k: K, v: UpdateClientRequest[K]) => {
-    setForm((f) => f ? { ...f, [k]: v } : f);
+    setForm((f) => ({ ...f, [k]: v }));
     setErrors((prev) => ({ ...prev, [k]: undefined }));
   };
 
   const setAddr = (idx: number, field: string, value: string) =>
-    setForm((f) => f ? {
+    setForm((f) => ({
       ...f,
       addresses: f.addresses.map((a, i) => i === idx ? { ...a, [field]: value } : a),
-    } : f);
+    }));
 
-  const addAddress = () => setForm((f) => f ? { ...f, addresses: [...f.addresses, emptyAddress("Legal")] } : f);
-  const removeAddress = (idx: number) => setForm((f) => f ? { ...f, addresses: f.addresses.filter((_, i) => i !== idx) } : f);
+  const addAddress = () => setForm((f) => ({ ...f, addresses: [...f.addresses, emptyAddress("Legal")] }));
+  const removeAddress = (idx: number) => setForm((f) => ({ ...f, addresses: f.addresses.filter((_, i) => i !== idx) }));
 
   const addAccountRow = () => {
     setAccounts((prev) => [...prev, { accountId: "", role: "Owner", isPrimary: false }]);
@@ -327,10 +350,10 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   };
 
   const setIp = <K extends keyof CreateInvestmentProfileRequest>(k: K, v: CreateInvestmentProfileRequest[K]) =>
-    setForm((f) => f ? { ...f, investmentProfile: { ...f.investmentProfile, [k]: v } } : f);
+    setForm((f) => ({ ...f, investmentProfile: { ...f.investmentProfile, [k]: v } }));
 
   const handleSubmit = async () => {
-    if (!form || !clientId) return;
+    if (!clientId) return;
     const errs: FieldErrors = { email: validateEmail(form.email) };
     if (form.clientType === "Individual") {
       errs.firstName = validateRequired(form.firstName);

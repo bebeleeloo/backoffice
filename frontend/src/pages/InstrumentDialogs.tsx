@@ -227,9 +227,18 @@ export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
   const { data: countries = [] } = useCountries();
   const { data: fullInstrument } = useInstrument(instrument?.id ?? "");
 
-  const [prevFullInstrument, setPrevFullInstrument] = useState(fullInstrument);
-  if (fullInstrument && fullInstrument !== prevFullInstrument) {
-    setPrevFullInstrument(fullInstrument);
+  const [populated, setPopulated] = useState(false);
+
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setPopulated(false);
+    setForm(emptyForm());
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
+
+  if (open && !populated && fullInstrument) {
+    setPopulated(true);
     setForm({
       symbol: fullInstrument.symbol,
       name: fullInstrument.name,
