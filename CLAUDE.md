@@ -169,9 +169,10 @@ backend/src/
 
 **Rate limiting:**
 - ASP.NET Core built-in rate limiter (no external packages)
-- Fixed window policy "login": 5 requests per 1 minute per client
+- Fixed window policy "login": 5 requests per 1 minute per client (configurable via `RateLimiting:LoginPermitLimit`)
 - Applied via `[EnableRateLimiting("login")]` on `AuthController.Login`
 - Returns 429 Too Many Requests when exceeded
+- Integration tests override limit to 10000 via `UseSetting`
 
 **Concurrency control:**
 - `RowVersion` byte[] on AuditableEntity
@@ -433,6 +434,8 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - `[Collection("Integration")]` for shared fixture
 - Real HTTP calls, real database, real migrations
 - Each test authenticates independently
+- Rate limiting disabled via `UseSetting("RateLimiting:LoginPermitLimit", "10000")`
+- Requires `backend/global.json` pinning SDK to 8.0 (avoids .NET 10 SDK incompatibility)
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
 
 ### Frontend Tests
