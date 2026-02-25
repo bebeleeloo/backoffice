@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
-  AppBar, Box, CssBaseline, Divider, Drawer, IconButton,
+  AppBar, Box, Divider, Drawer, IconButton,
   List, ListItemButton, ListItemIcon, ListItemText, Toolbar,
   Typography, Button,
 } from "@mui/material";
@@ -87,7 +87,6 @@ export function MainLayout() {
 
   return (
     <Box sx={{ display: "flex", height: { xs: "100dvh", md: "100vh" }, overflow: "hidden" }}>
-      <CssBaseline />
 
       <AppBar
         position="fixed"

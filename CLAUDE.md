@@ -234,11 +234,12 @@ frontend/src/
 │   ├── RolesPage.tsx / RoleDetailsPage.tsx / RoleDialogs.tsx
 │   ├── AuditPage.tsx
 │   ├── NotFoundPage.tsx     # 404 page (wildcard route)
-│   └── settings/           # ProfileTab, ReferenceDataTab, CRUD dialogs
+│   └── settings/           # ProfileTab, AppearanceTab, ReferenceDataTab, CRUD dialogs
 ├── router/
 │   └── index.tsx            # Route definitions with RequireAuth + React.lazy()
 ├── theme/
-│   └── index.ts             # MUI theme (light, primary #1565c0)
+│   ├── index.ts             # createAppTheme(mode), createAppListTheme(base) — theme factories
+│   └── ThemeContext.tsx      # AppThemeProvider, useThemeMode, useListTheme — dark/light/system
 ├── hooks/
 │   ├── useDebounce.ts
 │   └── useConfirm.ts       # Promise-based confirmation dialog hook
@@ -314,6 +315,15 @@ frontend/src/
 - `withSuspense()` helper wraps each lazy route in `<Suspense fallback={<RouteLoadingFallback />}>`
 - Eager-loaded: `LoginPage`, `MainLayout`, `RequireAuth`, `NotFoundPage`
 - Lazy-loaded: all 12 authenticated page routes (Dashboard, Clients, Accounts, etc.)
+
+**Theme (dark mode):**
+- `AppThemeProvider` in `theme/ThemeContext.tsx` wraps the app (above SnackbarProvider in main.tsx)
+- Preference stored in `localStorage` key `"themeMode"`: `"light"` | `"dark"` | `"system"` (default: `"light"`)
+- `"system"` follows OS via `prefers-color-scheme` media query listener
+- `useThemeMode()` — read/write preference and resolved mode
+- `useListTheme()` — get scoped list theme (replaces static `listTheme` import)
+- `createAppTheme(mode)` / `createAppListTheme(base)` in `theme/index.ts` — factory functions
+- Settings > Appearance tab (`AppearanceTab.tsx`) — ToggleButtonGroup with Light/Dark/System
 
 **State management:**
 - Server state: React Query (no Redux/Zustand)

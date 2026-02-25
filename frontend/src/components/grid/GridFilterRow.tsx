@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import { useTheme } from "@mui/material/styles";
 import {
   GridColumnHeaders,
   useGridApiContext,
@@ -70,6 +71,7 @@ export const CustomColumnHeaders = React.forwardRef(
 function HeaderFilterRow() {
   const filterDefs = useContext(FilterCtx);
   const apiRef = useGridApiContext();
+  const theme = useTheme();
   const visibleColumns = useGridSelector(
     apiRef,
     gridVisibleColumnDefinitionsSelector,
@@ -103,8 +105,8 @@ function HeaderFilterRow() {
         overflow: "hidden",
         width: "100%",
         height: 36,
-        borderTop: "1px solid rgba(224,224,224,1)",
-        backgroundColor: "#fafafa",
+        borderTop: `1px solid ${theme.palette.divider}`,
+        backgroundColor: theme.palette.background.paper,
       }}
     >
       <div
@@ -197,6 +199,7 @@ export function CompactMultiSelect<T extends string>({
   value: T[];
   onChange: (v: T[]) => void;
 }) {
+  const theme = useTheme();
   const handleChange = (e: SelectChangeEvent<string[]>) => {
     const v = e.target.value;
     onChange((typeof v === "string" ? v.split(",") : v) as T[]);
@@ -212,7 +215,7 @@ export function CompactMultiSelect<T extends string>({
         renderValue={(selected) => {
           const sel = selected as string[];
           if (sel.length === 0)
-            return <span style={{ color: "#999" }}>All</span>;
+            return <span style={{ color: theme.palette.text.secondary }}>All</span>;
           if (sel.length <= 2)
             return sel
               .map((v) => options.find((o) => o.value === v)?.label ?? v)
@@ -251,6 +254,7 @@ export function CompactCountrySelect({
   value: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const theme = useTheme();
   return (
     <FormControl size="small" fullWidth>
       <Select
@@ -264,7 +268,7 @@ export function CompactCountrySelect({
         renderValue={(selected) => {
           const sel = selected as string[];
           if (sel.length === 0)
-            return <span style={{ color: "#999" }}>All</span>;
+            return <span style={{ color: theme.palette.text.secondary }}>All</span>;
           if (sel.length <= 2)
             return sel
               .map((id) => {

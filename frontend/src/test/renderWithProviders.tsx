@@ -7,7 +7,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { MemoryRouter, type MemoryRouterProps } from "react-router-dom";
 import { AuthContext } from "@/auth/AuthContext";
-import { theme } from "@/theme";
+import { createAppTheme } from "@/theme";
 import type { UserProfile } from "@/api/types";
 import { buildUserProfile } from "./factories";
 
@@ -59,7 +59,7 @@ export function renderWithProviders(ui: ReactNode, options: Options = {}) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider theme={theme}>
+        <ThemeProvider theme={createAppTheme("light")}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <AuthContext.Provider value={authValue}>
               <MemoryRouter {...routerProps}>{children}</MemoryRouter>

@@ -1,13 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
-import { CssBaseline, ThemeProvider } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { RouterProvider } from "react-router-dom";
 import { SnackbarProvider, enqueueSnackbar } from "notistack";
 import { router } from "./router";
-import { theme } from "./theme";
+import { AppThemeProvider } from "./theme/ThemeContext";
 import { AuthProvider } from "./auth/AuthContext";
 import { extractErrorMessage } from "./utils/extractErrorMessage";
 
@@ -35,8 +34,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
+      <AppThemeProvider>
         <SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} autoHideDuration={4000}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <AuthProvider>
@@ -44,7 +42,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             </AuthProvider>
           </LocalizationProvider>
         </SnackbarProvider>
-      </ThemeProvider>
+      </AppThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

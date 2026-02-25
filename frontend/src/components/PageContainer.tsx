@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
-import { listTheme } from "../theme";
+import { useListTheme } from "../theme/ThemeContext";
 import { Breadcrumbs, type BreadcrumbItem } from "./Breadcrumbs";
 
 interface PageContainerProps {
@@ -30,6 +30,7 @@ export function PageContainer({
   breadcrumbs,
 }: PageContainerProps) {
   const isList = variant === "list";
+  const listTheme = useListTheme();
   const hasSubheader = subheader || subheaderLeft || subheaderRight;
 
   const content = (
