@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type {
   AuthResponse, UserProfile, PagedResult, UserDto, RoleDto,
@@ -45,6 +45,7 @@ export const useUsers = (params: UsersParams) =>
     queryKey: ["users", params],
     queryFn: () =>
       apiClient.get<PagedResult<UserDto>>("/users", { params }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useUser = (id: string) =>
@@ -89,6 +90,7 @@ export const useRoles = (params: RolesParams) =>
     queryKey: ["roles", params],
     queryFn: () =>
       apiClient.get<PagedResult<RoleDto>>("/roles", { params }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useRole = (id: string) =>
@@ -151,6 +153,7 @@ export const useAuditLogs = (params: AuditParams) =>
     queryKey: ["audit", params],
     queryFn: () =>
       apiClient.get<PagedResult<AuditLogDto>>("/audit", { params }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useAuditLog = (id: string) =>
@@ -204,6 +207,7 @@ export const useAccounts = (params: AccountsParams) =>
     queryKey: ["accounts", params],
     queryFn: () =>
       apiClient.get<PagedResult<AccountListItemDto>>("/accounts", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useAccount = (id: string) =>
@@ -282,6 +286,7 @@ export const useClients = (params: ClientsParams) =>
     queryKey: ["clients", params],
     queryFn: () =>
       apiClient.get<PagedResult<ClientListItemDto>>("/clients", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useClient = (id: string) =>
@@ -344,6 +349,7 @@ export const useInstruments = (params: InstrumentsParams) =>
     queryKey: ["instruments", params],
     queryFn: () =>
       apiClient.get<PagedResult<InstrumentListItemDto>>("/instruments", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useInstrument = (id: string) =>
@@ -388,6 +394,7 @@ export const useTradeOrders = (params: TradeOrdersParams) =>
     queryKey: ["trade-orders", params],
     queryFn: () =>
       apiClient.get<PagedResult<TradeOrderListItemDto>>("/trade-orders", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useTradeOrder = (id: string) =>
@@ -432,6 +439,7 @@ export const useNonTradeOrders = (params: NonTradeOrdersParams) =>
     queryKey: ["non-trade-orders", params],
     queryFn: () =>
       apiClient.get<PagedResult<NonTradeOrderListItemDto>>("/non-trade-orders", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
 export const useNonTradeOrder = (id: string) =>
@@ -647,6 +655,7 @@ export const useEntityChanges = (params: EntityChangesParams, enabled = true) =>
     queryFn: () =>
       apiClient.get<PagedResult<OperationDto>>("/entity-changes", { params }).then((r) => r.data),
     enabled: enabled && !!params.entityId,
+    placeholderData: keepPreviousData,
   });
 
 export const useAllEntityChanges = (params: AllEntityChangesParams) =>
@@ -654,4 +663,5 @@ export const useAllEntityChanges = (params: AllEntityChangesParams) =>
     queryKey: ["entity-changes-all", params],
     queryFn: () =>
       apiClient.get<PagedResult<GlobalOperationDto>>("/entity-changes/all", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
