@@ -23,6 +23,9 @@ test-results/
 # Claude Code
 .claude/
 
+# .NET local tools
+.config/
+
 # OS
 .DS_Store
 Thumbs.db
