@@ -2,7 +2,7 @@ using Broker.Backoffice.Domain.Common;
 
 namespace Broker.Backoffice.Domain.Audit;
 
-public sealed class AuditLog : Entity<Guid>
+public sealed class AuditLog : Entity
 {
     public Guid? UserId { get; set; }
     public string? UserName { get; set; }

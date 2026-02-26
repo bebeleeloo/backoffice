@@ -31,6 +31,11 @@ public static class Permissions
     public const string InstrumentsUpdate = "instruments.update";
     public const string InstrumentsDelete = "instruments.delete";
 
+    public const string OrdersRead = "orders.read";
+    public const string OrdersCreate = "orders.create";
+    public const string OrdersUpdate = "orders.update";
+    public const string OrdersDelete = "orders.delete";
+
     public const string SettingsManage = "settings.manage";
 
     public static readonly (string Code, string Name, string Group)[] All =
@@ -57,6 +62,10 @@ public static class Permissions
         (InstrumentsCreate, "Create instruments", "Instruments"),
         (InstrumentsUpdate, "Update instruments", "Instruments"),
         (InstrumentsDelete, "Delete instruments", "Instruments"),
+        (OrdersRead, "View orders", "Orders"),
+        (OrdersCreate, "Create orders", "Orders"),
+        (OrdersUpdate, "Update orders", "Orders"),
+        (OrdersDelete, "Delete orders", "Orders"),
         (SettingsManage, "Manage reference data settings", "Settings"),
     ];
 }

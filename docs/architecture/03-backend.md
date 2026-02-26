@@ -157,6 +157,30 @@ GET без `/all` возвращает только active-записи (для 
 | PUT | `/currencies/{id}` | settings.manage |
 | DELETE | `/currencies/{id}` | settings.manage |
 
+### Торговые поручения (TradeOrdersController)
+
+| Метод | Маршрут | Permission | Аудит |
+|-------|---------|-----------|-------|
+| GET | `/trade-orders` | orders.read | - |
+| GET | `/trade-orders/{id}` | orders.read | - |
+| POST | `/trade-orders` | orders.create | Да |
+| PUT | `/trade-orders/{id}` | orders.update | Да |
+| DELETE | `/trade-orders/{id}` | orders.delete | Да |
+
+**Фильтры GET /trade-orders:** AccountId[], InstrumentId[], Status[], Side[], OrderType[], TimeInForce[], OrderDateFrom, OrderDateTo, QuantityFrom, QuantityTo, PriceFrom, PriceTo.
+
+### Неторговые поручения (NonTradeOrdersController)
+
+| Метод | Маршрут | Permission | Аудит |
+|-------|---------|-----------|-------|
+| GET | `/non-trade-orders` | orders.read | - |
+| GET | `/non-trade-orders/{id}` | orders.read | - |
+| POST | `/non-trade-orders` | orders.create | Да |
+| PUT | `/non-trade-orders/{id}` | orders.update | Да |
+| DELETE | `/non-trade-orders/{id}` | orders.delete | Да |
+
+**Фильтры GET /non-trade-orders:** AccountId[], InstrumentId[], Status[], NonTradeType[], OrderDateFrom, OrderDateTo, AmountFrom, AmountTo.
+
 ### Дашборд (DashboardController)
 
 | Метод | Маршрут | Авторизация | Описание |
@@ -223,7 +247,7 @@ sequenceDiagram
 
 ## Оптимистичная конкурентность
 
-Все мутирующие операции над User, Role, Client, Account используют `RowVersion` (SQL Server `rowversion`):
+Все мутирующие операции над User, Role, Client, Account, Order используют `RowVersion` (SQL Server `rowversion`):
 
 1. Клиент получает сущность с `RowVersion`
 2. При обновлении передает `RowVersion` обратно
@@ -268,6 +292,7 @@ SaveChangesAsync()
 | Account | root | — | Счета |
 | AccountHolder | child | Account + Client | Связь счёт-клиент (dual parent) |
 | Instrument | root | — | Инструменты |
+| Order | root | — | Поручения (торговые и неторговые) |
 | User | root | — | Пользователи (PasswordHash исключён) |
 | UserRole | child | User | Роли пользователя |
 | Role | root | — | Роли |

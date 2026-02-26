@@ -699,3 +699,233 @@ export interface AllEntityChangesParams {
   changeType?: string;
   q?: string;
 }
+
+// Orders
+export type OrderCategory = "Trade" | "NonTrade";
+export type OrderStatus =
+  | "New"
+  | "PendingApproval"
+  | "Approved"
+  | "Rejected"
+  | "InProgress"
+  | "PartiallyFilled"
+  | "Filled"
+  | "Completed"
+  | "Cancelled"
+  | "Failed";
+export type TradeSide = "Buy" | "Sell" | "ShortSell" | "BuyToCover";
+export type TradeOrderType = "Market" | "Limit" | "Stop" | "StopLimit";
+export type TimeInForce = "Day" | "GTC" | "IOC" | "FOK" | "GTD";
+export type NonTradeOrderType =
+  | "Deposit"
+  | "Withdrawal"
+  | "Dividend"
+  | "CorporateAction"
+  | "Fee"
+  | "Interest"
+  | "Transfer"
+  | "Adjustment";
+
+export interface TradeOrderListItemDto {
+  id: string;
+  accountNumber: string;
+  orderNumber: string;
+  status: OrderStatus;
+  orderDate: string;
+  instrumentSymbol: string;
+  instrumentName: string;
+  side: TradeSide;
+  orderType: TradeOrderType;
+  timeInForce: TimeInForce;
+  quantity: number;
+  price: number | null;
+  executedQuantity: number;
+  averagePrice: number | null;
+  commission: number | null;
+  executedAt: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface TradeOrderDto {
+  id: string;
+  accountId: string;
+  accountNumber: string;
+  orderNumber: string;
+  status: OrderStatus;
+  orderDate: string;
+  comment: string | null;
+  externalId: string | null;
+  instrumentId: string;
+  instrumentSymbol: string;
+  instrumentName: string;
+  side: TradeSide;
+  orderType: TradeOrderType;
+  timeInForce: TimeInForce;
+  quantity: number;
+  price: number | null;
+  stopPrice: number | null;
+  executedQuantity: number;
+  averagePrice: number | null;
+  commission: number | null;
+  executedAt: string | null;
+  expirationDate: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface NonTradeOrderListItemDto {
+  id: string;
+  accountNumber: string;
+  orderNumber: string;
+  status: OrderStatus;
+  orderDate: string;
+  nonTradeType: NonTradeOrderType;
+  amount: number;
+  currencyCode: string;
+  instrumentSymbol: string | null;
+  instrumentName: string | null;
+  referenceNumber: string | null;
+  processedAt: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface NonTradeOrderDto {
+  id: string;
+  accountId: string;
+  accountNumber: string;
+  orderNumber: string;
+  status: OrderStatus;
+  orderDate: string;
+  comment: string | null;
+  externalId: string | null;
+  nonTradeType: NonTradeOrderType;
+  amount: number;
+  currencyId: string;
+  currencyCode: string;
+  instrumentId: string | null;
+  instrumentSymbol: string | null;
+  instrumentName: string | null;
+  referenceNumber: string | null;
+  description: string | null;
+  processedAt: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface CreateTradeOrderRequest {
+  accountId: string;
+  instrumentId: string;
+  orderDate: string;
+  side: TradeSide;
+  orderType: TradeOrderType;
+  timeInForce: TimeInForce;
+  quantity: number;
+  price?: number;
+  stopPrice?: number;
+  commission?: number;
+  expirationDate?: string;
+  comment?: string;
+  externalId?: string;
+}
+
+export interface UpdateTradeOrderRequest {
+  id: string;
+  accountId: string;
+  instrumentId: string;
+  orderDate: string;
+  status: OrderStatus;
+  side: TradeSide;
+  orderType: TradeOrderType;
+  timeInForce: TimeInForce;
+  quantity: number;
+  price?: number;
+  stopPrice?: number;
+  executedQuantity: number;
+  averagePrice?: number;
+  commission?: number;
+  executedAt?: string;
+  expirationDate?: string;
+  comment?: string;
+  externalId?: string;
+  rowVersion: string;
+}
+
+export interface CreateNonTradeOrderRequest {
+  accountId: string;
+  orderDate: string;
+  nonTradeType: NonTradeOrderType;
+  amount: number;
+  currencyId: string;
+  instrumentId?: string;
+  referenceNumber?: string;
+  description?: string;
+  comment?: string;
+  externalId?: string;
+}
+
+export interface UpdateNonTradeOrderRequest {
+  id: string;
+  accountId: string;
+  orderDate: string;
+  status: OrderStatus;
+  nonTradeType: NonTradeOrderType;
+  amount: number;
+  currencyId: string;
+  instrumentId?: string;
+  referenceNumber?: string;
+  description?: string;
+  processedAt?: string;
+  comment?: string;
+  externalId?: string;
+  rowVersion: string;
+}
+
+export interface TradeOrdersParams extends PagedParams {
+  status?: OrderStatus[];
+  side?: TradeSide[];
+  orderType?: TradeOrderType[];
+  timeInForce?: TimeInForce[];
+  accountId?: string[];
+  instrumentId?: string[];
+  orderNumber?: string;
+  externalId?: string;
+  orderDateFrom?: string;
+  orderDateTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  executedFrom?: string;
+  executedTo?: string;
+  quantityMin?: string;
+  quantityMax?: string;
+  priceMin?: string;
+  priceMax?: string;
+  executedQuantityMin?: string;
+  executedQuantityMax?: string;
+  averagePriceMin?: string;
+  averagePriceMax?: string;
+  commissionMin?: string;
+  commissionMax?: string;
+}
+
+export interface NonTradeOrdersParams extends PagedParams {
+  status?: OrderStatus[];
+  nonTradeType?: NonTradeOrderType[];
+  accountId?: string[];
+  instrumentId?: string[];
+  orderNumber?: string;
+  currencyCode?: string;
+  referenceNumber?: string;
+  externalId?: string;
+  orderDateFrom?: string;
+  orderDateTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  processedFrom?: string;
+  processedTo?: string;
+  amountMin?: string;
+  amountMax?: string;
+}

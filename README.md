@@ -139,13 +139,15 @@ dotnet test tests/Broker.Backoffice.Tests.Integration
 |-------------|------|-----------------|--------------------------------------------------|
 | User        | CRUD | 10              | Пользователи системы, привязка к ролям           |
 | Role        | CRUD | 3               | Роли (Manager, Viewer, Operator) + Admin          |
-| Permission  | R    | 22              | Разрешения: clients/accounts/instruments/users/roles/audit/permissions |
+| Permission  | R    | 27              | Разрешения: clients/accounts/instruments/orders/users/roles/audit/permissions/settings |
 | Client      | CRUD | 100             | Клиенты (Individual/Corporate), KYC, адреса, инвест-профиль |
 | Account     | CRUD | 150             | Торговые счета, типы маржи, тарифы, холдеры       |
 | Instrument  | CRUD | 300             | Торговые инструменты: Stock, Bond, ETF, Option, Future, Forex, CFD, MutualFund, Warrant, Index |
 | Exchange    | R    | 15              | Биржи (NYSE, NASDAQ, LSE, TSE, HKEX и др.)       |
 | Currency    | R    | 15              | Валюты (USD, EUR, GBP, JPY и др.)                |
 | Country     | R    | 250             | Страны мира (ISO 3166)                           |
+| TradeOrder  | CRUD | —               | Торговые поручения (Buy/Sell, Market/Limit/Stop)  |
+| NonTradeOrder | CRUD | —             | Неторговые поручения (Deposit/Withdrawal/Dividend) |
 | AuditLog    | R    | —               | Журнал аудита всех мутаций                       |
 
 ### Instrument — поля
@@ -215,6 +217,16 @@ dotnet test tests/Broker.Backoffice.Tests.Integration
 | GET    | `/api/v1/trade-platforms`           | accounts.read       |
 | GET    | `/api/v1/audit`                     | audit.read          |
 | GET    | `/api/v1/audit/:id`                 | audit.read          |
+| GET    | `/api/v1/trade-orders`              | orders.read         |
+| GET    | `/api/v1/trade-orders/:id`          | orders.read         |
+| POST   | `/api/v1/trade-orders`              | orders.create       |
+| PUT    | `/api/v1/trade-orders/:id`          | orders.update       |
+| DELETE | `/api/v1/trade-orders/:id`          | orders.delete       |
+| GET    | `/api/v1/non-trade-orders`          | orders.read         |
+| GET    | `/api/v1/non-trade-orders/:id`      | orders.read         |
+| POST   | `/api/v1/non-trade-orders`          | orders.create       |
+| PUT    | `/api/v1/non-trade-orders/:id`      | orders.update       |
+| DELETE | `/api/v1/non-trade-orders/:id`      | orders.delete       |
 | GET    | `/api/v1/entity-changes`            | audit.read          |
 
 ## Health Checks

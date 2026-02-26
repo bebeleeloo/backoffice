@@ -94,6 +94,7 @@ backend/src/
 │   ├── Clients/             # Client, ClientAddress, InvestmentProfile + enums
 │   ├── Accounts/            # Account, AccountHolder, Clearer, TradePlatform + enums
 │   ├── Instruments/         # Instrument, Exchange, Currency + enums
+│   ├── Orders/              # Order, TradeOrder, NonTradeOrder + enums
 │   ├── Audit/               # AuditLog, EntityChange
 │   └── Countries/           # Country
 │
@@ -105,6 +106,9 @@ backend/src/
 │   ├── Clients/             # CRUD commands/queries + DTOs
 │   ├── Accounts/            # CRUD commands/queries + DTOs
 │   ├── Instruments/         # CRUD commands/queries + DTOs
+│   ├── Orders/
+│   │   ├── TradeOrders/     # CRUD commands/queries + DTOs for trade orders
+│   │   └── NonTradeOrders/  # CRUD commands/queries + DTOs for non-trade orders
 │   ├── Users/               # CRUD commands/queries + DTOs
 │   ├── Roles/               # CRUD commands/queries + DTOs + SetRolePermissions
 │   ├── Clearers/            # CRUD + GetAll / GetActive
@@ -141,7 +145,7 @@ backend/src/
 **Entity base classes:**
 - `Entity<TId>` — Abstract generic base with ID and equality by ID
 - `AuditableEntity` — Extends `Entity<Guid>`, adds CreatedAt/By, UpdatedAt/By, RowVersion
-- Aggregate roots (Client, Account, Instrument, User, Role) inherit `AuditableEntity`
+- Aggregate roots (Client, Account, Instrument, Order, User, Role) inherit `AuditableEntity`
 - Reference entities (Country, Currency, Exchange, Clearer, TradePlatform) have no base class
 
 **CQRS file organization:**
@@ -167,6 +171,7 @@ backend/src/
 - Text: `EF.Functions.Like(field, $"%{value}%")` or `.Contains()`
 - Multi-value enum: `request.Status.Contains(entity.Status)`
 - Date range: `>= from`, `< to.AddDays(1)` (inclusive end date)
+- Numeric range: `>= min`, `<= max` (optional min/max)
 - Boolean: `== value`
 - Global search `Q`: searches multiple text fields with OR
 
@@ -218,12 +223,14 @@ frontend/
     │   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
     │   ├── grid/
     │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row
-    │   │   ├── GridFilterRow.tsx      # Filter row rendering (theme-aware colors)
+    │   │   ├── GridFilterRow.tsx      # Filter row rendering (native scroll sync, theme-aware)
     │   │   ├── InlineTextFilter.tsx   # Debounced text input (300ms)
     │   │   ├── CompactMultiSelect.tsx # Checkbox multi-select dropdown
     │   │   ├── CompactCountrySelect.tsx
     │   │   ├── DateRangePopover.tsx   # From/To date picker
+    │   │   ├── NumericRangePopover.tsx # Min/Max numeric range
     │   │   └── InlineBooleanFilter.tsx
+    │   ├── GlobalSearchBar.tsx         # Debounced auto-search input (300ms)
     │   ├── EntityHistoryDialog.tsx    # Change history per entity
     │   ├── AuditDetailDialog.tsx      # Audit log entry detail
     │   └── ChangeHistoryComponents.tsx
@@ -235,6 +242,8 @@ frontend/
     │   ├── ClientsPage.tsx / ClientDetailsPage.tsx / ClientDialogs.tsx
     │   ├── AccountsPage.tsx / AccountDetailsPage.tsx / AccountDialogs.tsx
     │   ├── InstrumentsPage.tsx / InstrumentDetailsPage.tsx / InstrumentDialogs.tsx
+    │   ├── TradeOrdersPage.tsx / TradeOrderDetailsPage.tsx / TradeOrderDialogs.tsx
+    │   ├── NonTradeOrdersPage.tsx / NonTradeOrderDetailsPage.tsx / NonTradeOrderDialogs.tsx
     │   ├── UsersPage.tsx / UserDialogs.tsx
     │   ├── RolesPage.tsx / RoleDetailsPage.tsx / RoleDialogs.tsx
     │   ├── AuditPage.tsx
@@ -319,7 +328,7 @@ frontend/
 - Page components loaded via `React.lazy()` with `.then(m => ({ default: m.PageName }))` for named exports
 - `withSuspense()` helper wraps each lazy route in `<Suspense fallback={<RouteLoadingFallback />}>`
 - Eager-loaded: `LoginPage`, `MainLayout`, `RequireAuth`, `NotFoundPage`
-- Lazy-loaded: all 12 authenticated page routes (Dashboard, Clients, Accounts, etc.)
+- Lazy-loaded: all 16 authenticated page routes (Dashboard, Clients, Accounts, Trade Orders, Non-Trade Orders, etc.)
 
 **Theme (dark mode):**
 - `AppThemeProvider` in `theme/ThemeContext.tsx` wraps the app (above SnackbarProvider in main.tsx)
@@ -356,6 +365,13 @@ frontend/
 
 **Instrument** (AuditableEntity) — Financial instrument (Stock, Bond, ETF, etc.)
 - References: Exchange?, Currency?, Country?
+
+**Order** (AuditableEntity) — Base order aggregate (Trade or NonTrade)
+- Owns: TradeOrder? (cascade), NonTradeOrder? (cascade)
+- References: Account
+- Fields: OrderNumber (unique), Category, Status, OrderDate, Comment, ExternalId
+- Children: TradeOrder (Side, OrderType, TimeInForce, Quantity, Price, StopPrice, etc.)
+- Children: NonTradeOrder (NonTradeType, Amount, CurrencyId, InstrumentId?, ReferenceNumber, etc.)
 
 **User** (AuditableEntity) — System user
 - Owns: UserRole[], UserPermissionOverride[], UserRefreshToken[], DataScope[]
@@ -412,7 +428,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 
 ## 8. Permission Model
 
-### 23 permissions in 8 groups:
+### 27 permissions in 9 groups:
 | Group | Permissions |
 |-------|------------|
 | Users | users.read, users.create, users.update, users.delete |
@@ -422,6 +438,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 | Clients | clients.read, clients.create, clients.update, clients.delete |
 | Accounts | accounts.read, accounts.create, accounts.update, accounts.delete |
 | Instruments | instruments.read, instruments.create, instruments.update, instruments.delete |
+| Orders | orders.read, orders.create, orders.update, orders.delete |
 | Settings | settings.manage |
 
 ### Authorization flow:
@@ -448,7 +465,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Records: operationId, entityType, entityId, displayName, changeType, fieldName, oldValue, newValue
 - Grouped by operationId for atomic operations
 - Deduplicates "delete + recreate" patterns for child entities (addresses, holders)
-- Tracked entities configured in `EntityTrackingRegistry` (Client, Account, Instrument, User, Role + children)
+- Tracked entities configured in `EntityTrackingRegistry` (Client, Account, Instrument, Order, User, Role + children)
 - Excludes: RowVersion, timestamps, PasswordHash, navigation properties
 
 ## 10. Coding Conventions

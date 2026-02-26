@@ -27,6 +27,10 @@ QueryClientProvider (retry: 1, refetchOnWindowFocus: false)
   /accounts/:id          -> AccountDetailsPage
   /instruments           -> InstrumentsPage
   /instruments/:id       -> InstrumentDetailsPage
+  /trade-orders          -> TradeOrdersPage
+  /trade-orders/:id      -> TradeOrderDetailsPage
+  /non-trade-orders      -> NonTradeOrdersPage
+  /non-trade-orders/:id  -> NonTradeOrderDetailsPage
   /users                 -> UsersPage
   /roles                 -> RolesPage
   /roles/:id             -> RoleDetailsPage
@@ -112,6 +116,10 @@ Request interceptor:
 | `useCountries()` | GET /countries | staleTime: 10 мин |
 | `useClearers()` | GET /clearers | staleTime: 10 мин |
 | `useTradePlatforms()` | GET /trade-platforms | staleTime: 10 мин |
+| `useTradeOrders(params)` | GET /trade-orders | default |
+| `useTradeOrder(id)` | GET /trade-orders/{id} | default |
+| `useNonTradeOrders(params)` | GET /non-trade-orders | default |
+| `useNonTradeOrder(id)` | GET /non-trade-orders/{id} | default |
 | `useDashboardStats()` | GET /dashboard/stats | default |
 | `useAllClearers()` | GET /clearers/all | default |
 | `useAllTradePlatforms()` | GET /trade-platforms/all | default |

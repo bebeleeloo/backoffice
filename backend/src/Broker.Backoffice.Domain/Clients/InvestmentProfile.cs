@@ -2,7 +2,7 @@ using Broker.Backoffice.Domain.Common;
 
 namespace Broker.Backoffice.Domain.Clients;
 
-public sealed class InvestmentProfile : Entity<Guid>
+public sealed class InvestmentProfile : Entity
 {
     public Guid ClientId { get; set; }
     public Client Client { get; set; } = null!;

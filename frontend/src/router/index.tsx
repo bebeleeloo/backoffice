@@ -16,6 +16,10 @@ const InstrumentDetailsPage = React.lazy(() => import("../pages/InstrumentDetail
 const UsersPage = React.lazy(() => import("../pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 const RolesPage = React.lazy(() => import("../pages/RolesPage").then((m) => ({ default: m.RolesPage })));
 const RoleDetailsPage = React.lazy(() => import("../pages/RoleDetailsPage").then((m) => ({ default: m.RoleDetailsPage })));
+const TradeOrdersPage = React.lazy(() => import("../pages/TradeOrdersPage").then((m) => ({ default: m.TradeOrdersPage })));
+const TradeOrderDetailsPage = React.lazy(() => import("../pages/TradeOrderDetailsPage").then((m) => ({ default: m.TradeOrderDetailsPage })));
+const NonTradeOrdersPage = React.lazy(() => import("../pages/NonTradeOrdersPage").then((m) => ({ default: m.NonTradeOrdersPage })));
+const NonTradeOrderDetailsPage = React.lazy(() => import("../pages/NonTradeOrderDetailsPage").then((m) => ({ default: m.NonTradeOrderDetailsPage })));
 const AuditPage = React.lazy(() => import("../pages/AuditPage").then((m) => ({ default: m.AuditPage })));
 const SettingsPage = React.lazy(() => import("../pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 
@@ -44,6 +48,10 @@ export const router = createBrowserRouter([
       { path: "accounts/:id", element: withSuspense(AccountDetailsPage) },
       { path: "instruments", element: withSuspense(InstrumentsPage) },
       { path: "instruments/:id", element: withSuspense(InstrumentDetailsPage) },
+      { path: "trade-orders", element: withSuspense(TradeOrdersPage) },
+      { path: "trade-orders/:id", element: withSuspense(TradeOrderDetailsPage) },
+      { path: "non-trade-orders", element: withSuspense(NonTradeOrdersPage) },
+      { path: "non-trade-orders/:id", element: withSuspense(NonTradeOrderDetailsPage) },
       { path: "users", element: withSuspense(UsersPage) },
       { path: "roles", element: withSuspense(RolesPage) },
       { path: "roles/:id", element: withSuspense(RoleDetailsPage) },

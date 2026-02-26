@@ -8,6 +8,7 @@ Broker Backoffice -- веб-приложение для внутренних о�
 - **Управление счетами** (Accounts): создание, редактирование, привязка клиентов-холдеров (many-to-many)
 - **Управление пользователями** системы: CRUD, привязка ролей
 - **Управление инструментами** (Instruments): Stock, Bond, ETF и др. с привязкой к биржам и валютам
+- **Управление поручениями** (Orders): торговые (Buy/Sell, Market/Limit/Stop) и неторговые (Deposit/Withdrawal/Dividend и др.)
 - **Управление ролями и правами**: RBAC с гранулярными permissions
 - **Дашборд**: счётчики и графики (распределение по типам, статусам, классам активов)
 - **Настройки**: профиль пользователя (смена пароля, email), CRUD справочников (Clearers, Trade Platforms, Exchanges, Currencies)
@@ -45,7 +46,7 @@ new-back/
       router/                  # React Router v6 (protected routes)
       api/                     # Axios client + React Query hooks
       auth/                    # AuthContext, useAuth, usePermission, RequireAuth
-      pages/                   # Страницы (Dashboard, Login, Users, Roles, Clients, Accounts, Audit, Settings)
+      pages/                   # Страницы (Dashboard, Login, Users, Roles, Clients, Accounts, TradeOrders, NonTradeOrders, Audit, Settings)
       layouts/                 # MainLayout (sidebar + AppBar)
       components/              # Переиспользуемые компоненты (PageContainer, grid/*, dialogs)
       theme/                   # MUI theme + compact list variant

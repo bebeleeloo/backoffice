@@ -2,7 +2,7 @@ using Broker.Backoffice.Domain.Common;
 
 namespace Broker.Backoffice.Domain.Audit;
 
-public sealed class EntityChange : Entity<Guid>
+public sealed class EntityChange : Entity
 {
     public Guid OperationId { get; set; }
     public string EntityType { get; set; } = string.Empty;

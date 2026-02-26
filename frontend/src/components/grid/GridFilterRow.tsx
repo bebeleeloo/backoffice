@@ -76,61 +76,69 @@ function HeaderFilterRow() {
     apiRef,
     gridVisibleColumnDefinitionsSelector,
   );
-  const containerRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
+  // Live resize: update the specific column's filter cell width during drag.
+  // MUI only updates computedWidth on mouseup; during drag it mutates DOM directly.
+  // We mirror that by updating our filter cell via DOM during the drag.
   useEffect(() => {
-    const root = containerRef.current?.closest(
-      ".MuiDataGrid-root",
-    ) as HTMLElement | null;
-    if (!root || !innerRef.current) return;
-    const scroller = root.querySelector(
-      ".MuiDataGrid-virtualScroller",
-    ) as HTMLElement | null;
-    if (!scroller) return;
+    const unsub = apiRef.current.subscribeEvent(
+      "columnResize",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (params: any) => {
+        const row = rowRef.current;
+        if (!row) return;
+        const field = params.colDef?.field as string | undefined;
+        const width = params.width as number | undefined;
+        if (!field || width == null) return;
 
-    const sync = () => {
-      if (innerRef.current)
-        innerRef.current.style.transform = `translateX(-${scroller.scrollLeft}px)`;
-    };
-    scroller.addEventListener("scroll", sync);
-    sync();
-    return () => scroller.removeEventListener("scroll", sync);
-  }, []);
+        const cell = row.querySelector(`[data-field="${field}"]`) as HTMLElement | null;
+        if (cell) {
+          cell.style.width = `${width}px`;
+          cell.style.minWidth = `${width}px`;
+        }
+      },
+    );
+    return unsub;
+  }, [apiRef]);
 
+  // No manual scroll sync needed: the filter row lives inside MUI's topContainer
+  // which is inside the virtualScroller. The browser's native scroll handles
+  // horizontal positioning automatically, just like GridColumnHeaders.
+  // Widths come from col.computedWidth (React state via gridVisibleColumnDefinitionsSelector)
+  // which includes ALL columns regardless of column virtualization.
   return (
     <div
-      ref={containerRef}
+      ref={rowRef}
       style={{
-        overflow: "hidden",
-        width: "100%",
+        display: "flex",
+        alignItems: "center",
         height: 36,
+        minHeight: 36,
+        maxHeight: 36,
         borderTop: `1px solid ${theme.palette.divider}`,
         backgroundColor: theme.palette.background.paper,
       }}
     >
-      <div
-        ref={innerRef}
-        style={{ display: "flex", alignItems: "center", height: 36, minHeight: 36, maxHeight: 36 }}
-      >
-        {visibleColumns.map((col) => {
-          const render = filterDefs.get(col.field);
-          return (
-            <div
-              key={col.field}
-              style={{
-                width: col.computedWidth || col.width || 100,
-                minWidth: col.computedWidth || col.width || 100,
-                flexShrink: 0,
-                padding: "2px 10px",
-                boxSizing: "border-box",
-              }}
-            >
-              {render ? render() : <div style={{ height: 28 }} />}
-            </div>
-          );
-        })}
-      </div>
+      {visibleColumns.map((col) => {
+        const render = filterDefs.get(col.field);
+        const w = col.computedWidth ?? col.width ?? 100;
+        return (
+          <div
+            key={col.field}
+            data-field={col.field}
+            style={{
+              width: w,
+              minWidth: w,
+              flexShrink: 0,
+              padding: "2px 10px",
+              boxSizing: "border-box",
+            }}
+          >
+            {render ? render() : <div style={{ height: 28 }} />}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -483,6 +491,101 @@ export function DateRangePopover({
             value={toValue}
             onChange={onToChange}
             ariaLabel="Filter created to"
+          />
+        </Box>
+      </Popover>
+    </>
+  );
+}
+
+/* ─── Numeric range popover ─── */
+
+export function NumericRangePopover({
+  minValue,
+  maxValue,
+  onMinChange,
+  onMaxChange,
+}: {
+  minValue: string;
+  maxValue: string;
+  onMinChange: (v: string) => void;
+  onMaxChange: (v: string) => void;
+}) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  const display = useMemo(() => {
+    if (!minValue && !maxValue) return "";
+    if (minValue && maxValue) return `${minValue} — ${maxValue}`;
+    if (minValue) return `≥ ${minValue}`;
+    return `≤ ${maxValue}`;
+  }, [minValue, maxValue]);
+
+  const hasValue = !!(minValue || maxValue);
+
+  return (
+    <>
+      <TextField
+        variant="outlined"
+        size="small"
+        fullWidth
+        value={display}
+        placeholder="All"
+        onClick={(e) => setAnchorEl(e.currentTarget as HTMLElement)}
+        sx={{
+          ...inputSx,
+          "& .MuiOutlinedInput-input": {
+            py: "2px",
+            px: 1,
+            cursor: "pointer",
+          },
+        }}
+        slotProps={{
+          htmlInput: { readOnly: true },
+          input: {
+            endAdornment: hasValue ? (
+              <InputAdornment position="end">
+                <Tooltip title="Clear range">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMinChange("");
+                      onMaxChange("");
+                    }}
+                    sx={{ p: 0, mr: -0.5 }}
+                  >
+                    <ClearIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              </InputAdornment>
+            ) : undefined,
+          },
+        }}
+      />
+      <Popover
+        open={!!anchorEl}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+      >
+        <Box sx={{ p: 1.5, display: "flex", flexDirection: "column", gap: 1.5, minWidth: 200 }}>
+          <TextField
+            label="Min"
+            type="number"
+            size="small"
+            fullWidth
+            value={minValue}
+            onChange={(e) => onMinChange(e.target.value)}
+            sx={inputSx}
+          />
+          <TextField
+            label="Max"
+            type="number"
+            size="small"
+            fullWidth
+            value={maxValue}
+            onChange={(e) => onMaxChange(e.target.value)}
+            sx={inputSx}
           />
         </Box>
       </Popover>

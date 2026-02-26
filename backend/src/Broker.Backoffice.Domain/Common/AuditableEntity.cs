@@ -1,6 +1,6 @@
 namespace Broker.Backoffice.Domain.Common;
 
-public abstract class AuditableEntity : Entity<Guid>
+public abstract class AuditableEntity : Entity
 {
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }

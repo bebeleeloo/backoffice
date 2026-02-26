@@ -34,6 +34,10 @@ erDiagram
     Instrument }o--o| Currency : "currency"
     Instrument }o--o| Country : "country"
 
+    Order }o--|| Account : "account"
+    Order }o--o| Instrument : "instrument"
+    Order }o--o| Currency : "currency"
+
     EntityChange }o..o| User : "who changed"
 
     User {
@@ -190,6 +194,37 @@ erDiagram
         bool IsActive
     }
 
+    Order {
+        guid Id PK
+        string OrderNumber UK
+        guid AccountId FK
+        enum OrderCategory
+        enum OrderStatus
+        datetime OrderDate
+        string Comment
+        string ExternalId
+        guid InstrumentId FK
+        enum TradeSide
+        enum TradeOrderType
+        enum TimeInForce
+        decimal Quantity
+        decimal Price
+        decimal StopPrice
+        decimal ExecutedQuantity
+        decimal AveragePrice
+        decimal Commission
+        datetime ExecutedAt
+        datetime ExpirationDate
+        enum NonTradeOrderType
+        decimal Amount
+        guid CurrencyId FK
+        string ReferenceNumber
+        string Description
+        datetime ProcessedAt
+        binary RowVersion
+        datetime CreatedAt
+    }
+
     AuditLog {
         guid Id PK
         guid UserId IX
@@ -232,7 +267,7 @@ erDiagram
 |---------|------------|-------------------|
 | Users | Пользователи системы | Username, Email |
 | Roles | Роли (в т.ч. системные) | Name |
-| Permissions | Гранулярные права (23 шт.) | Code |
+| Permissions | Гранулярные права (27 шт.) | Code |
 | UserRoles | Связь M:N User <-> Role | (UserId, RoleId) |
 | RolePermissions | Связь M:N Role <-> Permission | (RoleId, PermissionId) |
 | UserPermissionOverrides | Персональные переопределения прав | (UserId, PermissionId) |
@@ -265,6 +300,16 @@ erDiagram
 | Exchanges | Справочник бирж | Seed data (NYSE, NASDAQ, LSE, TSE и др.) |
 | Currencies | Справочник валют | Seed data (USD, EUR, GBP, JPY и др.) |
 
+### Поручения
+
+| Таблица | Назначение | Особенности |
+|---------|------------|-------------|
+| Orders | Торговые и неторговые поручения (STI — single table inheritance) | RowVersion, FK на Account, Instrument?, Currency?, OrderNumber уникален |
+
+**Торговые (Category = Trade):** Side, OrderType, TimeInForce, Quantity, Price, StopPrice, ExecutedQuantity, AveragePrice, Commission, ExecutedAt, ExpirationDate.
+
+**Неторговые (Category = NonTrade):** NonTradeType, Amount, CurrencyId, ReferenceNumber, Description, ProcessedAt.
+
 ### Аудит и отслеживание изменений
 
 | Таблица | Назначение | Особенности |
@@ -292,6 +337,12 @@ erDiagram
 | Tariff | Basic (0), Standard (1), Premium (2), VIP (3) |
 | DeliveryType | Paper (0), Electronic (1) |
 | HolderRole | Owner (0), Beneficiary (1), Trustee (2), PowerOfAttorney (3), Custodian (4), Authorized (5) |
+| OrderCategory | Trade (0), NonTrade (1) |
+| OrderStatus | New (0), PendingApproval (1), Approved (2), Rejected (3), InProgress (4), PartiallyFilled (5), Filled (6), Completed (7), Cancelled (8), Failed (9) |
+| TradeSide | Buy (0), Sell (1), ShortSell (2), BuyToCover (3) |
+| TradeOrderType | Market (0), Limit (1), Stop (2), StopLimit (3) |
+| TimeInForce | Day (0), GTC (1), IOC (2), FOK (3), GTD (4) |
+| NonTradeOrderType | Deposit (0), Withdrawal (1), Dividend (2), CorporateAction (3), Fee (4), Interest (5), Transfer (6), Adjustment (7) |
 
 ## Миграции
 
@@ -308,6 +359,9 @@ EF Core Code-First миграции:
 | 7 | 20260221... | Instruments, Exchanges, Currencies |
 | 8 | 20260222063356_AddEntityChanges | EntityChanges (поле-уровневый аудит) |
 | 9 | 20260222150000_AddEntityChangeDisplayNames | EntityDisplayName, RelatedEntityDisplayName в EntityChanges |
+| 10 | 20260225192736_AddOrders | Orders (STI — торговые и неторговые поручения) |
+| 11 | 20260225195544_ChangeOrderFkToOrderId | Изменение FK-стратегии для Order |
+| 12 | 20260225232527_AddOrderDate | Добавление обязательного поля OrderDate |
 
 Миграции применяются **автоматически** при старте приложения (`context.Database.MigrateAsync()`).
 
@@ -315,13 +369,13 @@ EF Core Code-First миграции:
 
 При первом запуске засеиваются:
 
-1. **Permissions** (23 права) -- из массива `Permissions.All` в коде
+1. **Permissions** (27 прав) -- из массива `Permissions.All` в коде
 2. **Countries** -- полный список стран с ISO-кодами и флагами
 3. **Admin user** -- логин `admin`, пароль из переменной окружения `ADMIN_PASSWORD`
 4. **Роль Administrator** -- системная роль со всеми permissions
 5. **Clearers** -- справочник клиринговых компаний (Apex Clearing, Pershing, Interactive Brokers, Hilltop Securities)
 6. **TradePlatforms** -- справочник торговых платформ (MetaTrader 5, Sterling Trader, DAS Trader, Thinkorswim)
-7. **Demo data** (опционально, `SEED_DEMO_DATA=true`) -- тестовые пользователи, роли, клиенты, счета (150 шт.), холдеры
+7. **Demo data** (опционально, `SEED_DEMO_DATA=true`) -- тестовые пользователи, роли, клиенты, счета (150 шт.), холдеры, торговые и неторговые поручения
 
 ## Конкурентность и транзакции
 

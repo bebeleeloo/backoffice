@@ -11,6 +11,8 @@ import type {
   AccountHolderInput, ClientAccountDto, ClientAccountInput,
   ExchangeDto, CurrencyDto,
   InstrumentListItemDto, InstrumentDto, CreateInstrumentRequest, UpdateInstrumentRequest, InstrumentsParams,
+  TradeOrderListItemDto, TradeOrderDto, CreateTradeOrderRequest, UpdateTradeOrderRequest, TradeOrdersParams,
+  NonTradeOrderListItemDto, NonTradeOrderDto, CreateNonTradeOrderRequest, UpdateNonTradeOrderRequest, NonTradeOrdersParams,
   OperationDto, EntityChangesParams,
   GlobalOperationDto, AllEntityChangesParams,
   DashboardStatsDto,
@@ -377,6 +379,94 @@ export const useDeleteInstrument = () => {
     mutationFn: (id: string) => apiClient.delete(`/instruments/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["instruments"] }),
     meta: { successMessage: "Instrument deleted" },
+  });
+};
+
+// Trade Orders
+export const useTradeOrders = (params: TradeOrdersParams) =>
+  useQuery({
+    queryKey: ["trade-orders", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<TradeOrderListItemDto>>("/trade-orders", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+  });
+
+export const useTradeOrder = (id: string) =>
+  useQuery({
+    queryKey: ["trade-orders", id],
+    queryFn: () => apiClient.get<TradeOrderDto>(`/trade-orders/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+export const useCreateTradeOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateTradeOrderRequest) =>
+      apiClient.post<TradeOrderDto>("/trade-orders", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-orders"] }),
+    meta: { successMessage: "Trade order created" },
+  });
+};
+
+export const useUpdateTradeOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateTradeOrderRequest) =>
+      apiClient.put<TradeOrderDto>(`/trade-orders/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-orders"] }),
+    meta: { successMessage: "Trade order updated" },
+  });
+};
+
+export const useDeleteTradeOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/trade-orders/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-orders"] }),
+    meta: { successMessage: "Trade order deleted" },
+  });
+};
+
+// Non-Trade Orders
+export const useNonTradeOrders = (params: NonTradeOrdersParams) =>
+  useQuery({
+    queryKey: ["non-trade-orders", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<NonTradeOrderListItemDto>>("/non-trade-orders", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+  });
+
+export const useNonTradeOrder = (id: string) =>
+  useQuery({
+    queryKey: ["non-trade-orders", id],
+    queryFn: () => apiClient.get<NonTradeOrderDto>(`/non-trade-orders/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+export const useCreateNonTradeOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateNonTradeOrderRequest) =>
+      apiClient.post<NonTradeOrderDto>("/non-trade-orders", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["non-trade-orders"] }),
+    meta: { successMessage: "Non-trade order created" },
+  });
+};
+
+export const useUpdateNonTradeOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateNonTradeOrderRequest) =>
+      apiClient.put<NonTradeOrderDto>(`/non-trade-orders/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["non-trade-orders"] }),
+    meta: { successMessage: "Non-trade order updated" },
+  });
+};
+
+export const useDeleteNonTradeOrder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/non-trade-orders/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["non-trade-orders"] }),
+    meta: { successMessage: "Non-trade order deleted" },
   });
 };
 

@@ -1,11 +1,10 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, TextField, InputAdornment, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import SearchIcon from "@mui/icons-material/Search";
 import { useAccounts, useDeleteAccount } from "../api/hooks";
 import type { AccountListItemDto, AccountStatus, AccountType, MarginType, Tariff } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
@@ -19,6 +18,7 @@ import { apiClient } from "../api/client";
 import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
+import { GlobalSearchBar } from "../components/GlobalSearchBar";
 
 const STATUS_OPTIONS: { value: AccountStatus; label: string }[] = [
   { value: "Active", label: "Active" },
@@ -88,7 +88,6 @@ export function AccountsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<AccountListItemDto | null>(null);
-  const [search, setSearch] = useState(params.q ?? "");
 
   const canCreate = useHasPermission("accounts.create");
   const canUpdate = useHasPermission("accounts.update");
@@ -145,10 +144,6 @@ export function AccountsPage() {
   const handleSort = (model: GridSortModel) => {
     const s = model[0];
     setParam({ sort: s ? `${s.field} ${s.sort}` : undefined, page: "1" });
-  };
-
-  const handleSearch = () => {
-    setParam({ q: search || undefined, page: "1" });
   };
 
   const handleDelete = async (id: string) => {
@@ -314,21 +309,10 @@ export function AccountsPage() {
         </>
       }
       subheaderLeft={
-        <TextField
-          fullWidth
+        <GlobalSearchBar
+          value={params.q ?? ""}
+          onChange={(v) => setFilterParam("q", v || undefined)}
           placeholder="Search accounts..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={handleSearch}><SearchIcon /></IconButton>
-                </InputAdornment>
-              ),
-            },
-          }}
         />
       }
     >

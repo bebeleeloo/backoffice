@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { TextField, InputAdornment, IconButton, Paper, Chip } from "@mui/material";
+import { Paper, Chip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
-import SearchIcon from "@mui/icons-material/Search";
 import { useAllEntityChanges, useUsers } from "../api/hooks";
 import type { GlobalOperationDto, PagedResult } from "../api/types";
 import { useSearchParams } from "react-router-dom";
@@ -10,6 +9,7 @@ import type { ExcelColumn } from "../utils/exportToExcel";
 import { apiClient } from "../api/client";
 import { PageContainer } from "../components/PageContainer";
 import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
+import { GlobalSearchBar } from "../components/GlobalSearchBar";
 import { CHANGE_TYPE_COLORS, getEntityTypeLabel } from "../components/changeHistoryUtils";
 import { AuditDetailDialog } from "../components/AuditDetailDialog";
 
@@ -56,7 +56,6 @@ export function AuditPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = readParams(searchParams);
 
-  const [search, setSearch] = useState(params.q ?? "");
   const [selectedOp, setSelectedOp] = useState<GlobalOperationDto | null>(null);
 
   const { data, isLoading } = useAllEntityChanges(params);
@@ -116,10 +115,6 @@ export function AuditPage() {
   const handleSort = (model: GridSortModel) => {
     const s = model[0];
     setParam({ sort: s ? `${s.field} ${s.sort}` : undefined, page: "1" });
-  };
-
-  const handleSearch = () => {
-    setParam({ q: search || undefined, page: "1" });
   };
 
   const columns: GridColDef<GlobalOperationDto>[] = [
@@ -212,21 +207,10 @@ export function AuditPage() {
         <ExportButton fetchData={fetchAllAudit} columns={exportColumns} filename="audit-log" />
       }
       subheaderLeft={
-        <TextField
-          fullWidth
-          placeholder="Search audit log..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={handleSearch}><SearchIcon /></IconButton>
-                </InputAdornment>
-              ),
-            },
-          }}
+        <GlobalSearchBar
+          placeholder="Search audit logs..."
+          value={params.q ?? ""}
+          onChange={(v) => setFilterParam("q", v || undefined)}
         />
       }
     >

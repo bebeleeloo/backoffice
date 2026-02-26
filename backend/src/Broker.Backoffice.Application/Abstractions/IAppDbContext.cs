@@ -4,6 +4,7 @@ using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
+using Broker.Backoffice.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -31,6 +32,9 @@ public interface IAppDbContext
     DbSet<Instrument> Instruments { get; }
     DbSet<Exchange> Exchanges { get; }
     DbSet<Currency> Currencies { get; }
+    DbSet<Order> Orders { get; }
+    DbSet<TradeOrder> TradeOrders { get; }
+    DbSet<NonTradeOrder> NonTradeOrders { get; }
     DbSet<EntityChange> EntityChanges { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

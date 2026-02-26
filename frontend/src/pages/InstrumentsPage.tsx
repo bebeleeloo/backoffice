@@ -1,11 +1,10 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, TextField, InputAdornment, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import SearchIcon from "@mui/icons-material/Search";
 import { useInstruments, useDeleteInstrument } from "../api/hooks";
 import type {
   InstrumentListItemDto, InstrumentType, AssetClass, InstrumentStatus, Sector,
@@ -20,6 +19,7 @@ import type { ExcelColumn } from "../utils/exportToExcel";
 import { apiClient } from "../api/client";
 import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
+import { GlobalSearchBar } from "../components/GlobalSearchBar";
 import { FilteredDataGrid, InlineTextFilter, CompactMultiSelect, DateRangePopover } from "../components/grid";
 
 const STATUS_OPTIONS: { value: InstrumentStatus; label: string }[] = [
@@ -104,7 +104,6 @@ export function InstrumentsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editInstrument, setEditInstrument] = useState<InstrumentListItemDto | null>(null);
-  const [search, setSearch] = useState(params.q ?? "");
 
   const canCreate = useHasPermission("instruments.create");
   const canUpdate = useHasPermission("instruments.update");
@@ -161,10 +160,6 @@ export function InstrumentsPage() {
   const handleSort = (model: GridSortModel) => {
     const s = model[0];
     setParam({ sort: s ? `${s.field} ${s.sort}` : undefined, page: "1" });
-  };
-
-  const handleSearch = () => {
-    setParam({ q: search || undefined, page: "1" });
   };
 
   const handleDelete = async (id: string) => {
@@ -344,21 +339,10 @@ export function InstrumentsPage() {
         </>
       }
       subheaderLeft={
-        <TextField
-          fullWidth
+        <GlobalSearchBar
+          value={params.q ?? ""}
+          onChange={(v) => setFilterParam("q", v || undefined)}
           placeholder="Search instruments..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={handleSearch}><SearchIcon /></IconButton>
-                </InputAdornment>
-              ),
-            },
-          }}
         />
       }
     >

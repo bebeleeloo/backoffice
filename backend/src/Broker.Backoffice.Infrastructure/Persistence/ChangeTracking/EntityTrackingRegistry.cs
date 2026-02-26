@@ -2,6 +2,7 @@ using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
+using Broker.Backoffice.Domain.Orders;
 
 namespace Broker.Backoffice.Infrastructure.Persistence.ChangeTracking;
 
@@ -100,6 +101,27 @@ public static class EntityTrackingRegistry
             ClrType = typeof(RolePermission),
             ParentMappings = [new() { ParentEntityTypeName = "Role", ForeignKeyProperty = "RoleId" }],
             ExcludedProperties = ["Id", "RoleId", "Role", "Permission", "CreatedAt", "CreatedBy"]
+        },
+        [typeof(Order)] = new TrackedEntityConfig
+        {
+            EntityTypeName = "Order",
+            ClrType = typeof(Order),
+            IsRoot = true,
+            ExcludedProperties = [..AuditableExcluded]
+        },
+        [typeof(TradeOrder)] = new TrackedEntityConfig
+        {
+            EntityTypeName = "TradeOrder",
+            ClrType = typeof(TradeOrder),
+            ParentMappings = [new() { ParentEntityTypeName = "Order", ForeignKeyProperty = "OrderId" }],
+            ExcludedProperties = ["Order", "Instrument"]
+        },
+        [typeof(NonTradeOrder)] = new TrackedEntityConfig
+        {
+            EntityTypeName = "NonTradeOrder",
+            ClrType = typeof(NonTradeOrder),
+            ParentMappings = [new() { ParentEntityTypeName = "Order", ForeignKeyProperty = "OrderId" }],
+            ExcludedProperties = ["Order", "Currency", "Instrument"]
         }
     };
 

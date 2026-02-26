@@ -5,6 +5,7 @@ using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
+using Broker.Backoffice.Domain.Orders;
 using Broker.Backoffice.Infrastructure.Persistence.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -50,6 +51,9 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Instrument> Instruments => Set<Instrument>();
     public DbSet<Exchange> Exchanges => Set<Exchange>();
     public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<TradeOrder> TradeOrders => Set<TradeOrder>();
+    public DbSet<NonTradeOrder> NonTradeOrders => Set<NonTradeOrder>();
     public DbSet<EntityChange> EntityChanges => Set<EntityChange>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -479,7 +483,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
 
     private static string GetEntityId(EntityEntry entry, TrackedEntityConfig config)
     {
-        // Check if entity has Id property (Entity<Guid> subclasses)
+        // Check if entity has Id property (Entity subclasses)
         var idProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "Id");
         if (idProp is not null)
             return ValueToString(idProp.CurrentValue ?? idProp.OriginalValue) ?? "";
@@ -555,6 +559,9 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             "AccountHolder" => BuildAccountHolderDisplayName(entry, parentMapping),
             "UserRole" => ResolveRoleName(entry),
             "RolePermission" => ResolvePermissionCode(entry),
+            "Order" => GetPropertyStringValueOrNull(entry, "OrderNumber"),
+            "TradeOrder" => null,
+            "NonTradeOrder" => null,
             _ => null
         };
     }
@@ -601,6 +608,14 @@ public sealed class AppDbContext : DbContext, IAppDbContext
         Set<Currency>().Local.FirstOrDefault(c => c.Id == id)?.Code
         ?? Currencies.AsNoTracking().Where(c => c.Id == id).Select(c => c.Code).FirstOrDefault();
 
+    private string? ResolveAccountNumber(Guid id) =>
+        Set<Account>().Local.FirstOrDefault(a => a.Id == id)?.Number
+        ?? Accounts.AsNoTracking().Where(a => a.Id == id).Select(a => a.Number).FirstOrDefault();
+
+    private string? ResolveInstrumentSymbol(Guid id) =>
+        Set<Instrument>().Local.FirstOrDefault(i => i.Id == id)?.Symbol
+        ?? Instruments.AsNoTracking().Where(i => i.Id == id).Select(i => i.Symbol).FirstOrDefault();
+
     /// <summary>
     /// Resolves FK GUID values to human-readable names for known reference fields.
     /// Returns null if the field is not a reference field or resolution fails.
@@ -619,6 +634,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             "CurrencyId" => ResolveCurrencyCode(id),
             "PermissionId" => ResolvePermissionCode(id),
             "RoleId" => ResolveRoleName(id),
+            "AccountId" => ResolveAccountNumber(id),
+            "InstrumentId" => ResolveInstrumentSymbol(id),
             _ => null
         };
     }
@@ -690,6 +707,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
                       ?? Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Username).FirstOrDefault(),
             "Role" => Set<Role>().Local.FirstOrDefault(r => r.Id == id)?.Name
                       ?? Roles.AsNoTracking().Where(r => r.Id == id).Select(r => r.Name).FirstOrDefault(),
+            "Order" => Set<Order>().Local.FirstOrDefault(o => o.Id == id)?.OrderNumber
+                       ?? Orders.AsNoTracking().Where(o => o.Id == id).Select(o => o.OrderNumber).FirstOrDefault(),
             _ => null
         };
     }

@@ -3,7 +3,7 @@ using Broker.Backoffice.Domain.Countries;
 
 namespace Broker.Backoffice.Domain.Clients;
 
-public sealed class ClientAddress : Entity<Guid>
+public sealed class ClientAddress : Entity
 {
     public Guid ClientId { get; set; }
     public Client Client { get; set; } = null!;

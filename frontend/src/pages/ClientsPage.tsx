@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useCallback, useMemo, type ReactNode } from "react";
 import {
-  Button, IconButton, Chip, Paper, Tooltip, TextField, InputAdornment,
+  Button, IconButton, Chip, Paper, Tooltip,
 } from "@mui/material";
 import {
   type GridColDef,
@@ -12,8 +12,6 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
-import SearchIcon from "@mui/icons-material/Search";
-import { useDebounce } from "../hooks/useDebounce";
 import { useClients, useDeleteClient, useCountries } from "../api/hooks";
 import type {
   ClientListItemDto,
@@ -32,6 +30,7 @@ import type { ExcelColumn } from "../utils/exportToExcel";
 import { apiClient } from "../api/client";
 import type { PagedResult } from "../api/types";
 import { PageContainer } from "../components/PageContainer";
+import { GlobalSearchBar } from "../components/GlobalSearchBar";
 import {
   FilteredDataGrid,
   InlineTextFilter,
@@ -111,45 +110,6 @@ function readParams(sp: URLSearchParams) {
           ? false
           : undefined,
   };
-}
-
-/* ── Global search bar ── */
-
-function GlobalSearchBar({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const [local, setLocal] = useState(value);
-  const debounced = useDebounce(local, 300);
-
-  useEffect(() => {
-    if (debounced !== value) onChange(debounced);
-  }, [debounced]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-
-  return (
-    <TextField
-      placeholder="Search clients..."
-      value={local}
-      onChange={(e) => setLocal(e.target.value)}
-      slotProps={{
-        input: {
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon sx={{ fontSize: 20, color: "action.disabled" }} />
-            </InputAdornment>
-          ),
-        },
-      }}
-      fullWidth
-    />
-  );
 }
 
 /* ── Page ── */
@@ -438,6 +398,7 @@ export function ClientsPage() {
         <GlobalSearchBar
           value={params.q ?? ""}
           onChange={(v) => setFilterParam("q", v || undefined)}
+          placeholder="Search clients..."
         />
       }
     >

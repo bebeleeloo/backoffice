@@ -1,12 +1,12 @@
 namespace Broker.Backoffice.Domain.Common;
 
-public abstract class Entity<TId> where TId : notnull
+public abstract class Entity
 {
-    public TId Id { get; init; } = default!;
+    public Guid Id { get; init; }
 
     public override bool Equals(object? obj)
     {
-        if (obj is not Entity<TId> other) return false;
+        if (obj is not Entity other) return false;
         if (ReferenceEquals(this, other)) return true;
         return Id.Equals(other.Id);
     }

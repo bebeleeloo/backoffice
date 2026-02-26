@@ -2,7 +2,7 @@ using Broker.Backoffice.Domain.Common;
 
 namespace Broker.Backoffice.Domain.Identity;
 
-public sealed class RolePermission : Entity<Guid>
+public sealed class RolePermission : Entity
 {
     public Guid RoleId { get; set; }
     public Role Role { get; set; } = null!;

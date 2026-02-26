@@ -5,6 +5,7 @@ export {
   CompactMultiSelect,
   CompactCountrySelect,
   DateRangePopover,
+  NumericRangePopover,
   InlineBooleanFilter,
 } from "./GridFilterRow";
 

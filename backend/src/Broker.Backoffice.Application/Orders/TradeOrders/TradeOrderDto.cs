@@ -1,0 +1,50 @@
+using Broker.Backoffice.Domain.Orders;
+
+namespace Broker.Backoffice.Application.Orders.TradeOrders;
+
+public sealed record TradeOrderDto(
+    Guid Id,
+    Guid AccountId,
+    string AccountNumber,
+    string OrderNumber,
+    OrderStatus Status,
+    DateTime OrderDate,
+    string? Comment,
+    string? ExternalId,
+    Guid InstrumentId,
+    string InstrumentSymbol,
+    string InstrumentName,
+    TradeSide Side,
+    TradeOrderType OrderType,
+    TimeInForce TimeInForce,
+    decimal Quantity,
+    decimal? Price,
+    decimal? StopPrice,
+    decimal ExecutedQuantity,
+    decimal? AveragePrice,
+    decimal? Commission,
+    DateTime? ExecutedAt,
+    DateTime? ExpirationDate,
+    DateTime CreatedAt,
+    byte[] RowVersion);
+
+public sealed record TradeOrderListItemDto(
+    Guid Id,
+    string AccountNumber,
+    string OrderNumber,
+    OrderStatus Status,
+    DateTime OrderDate,
+    string InstrumentSymbol,
+    string InstrumentName,
+    TradeSide Side,
+    TradeOrderType OrderType,
+    TimeInForce TimeInForce,
+    decimal Quantity,
+    decimal? Price,
+    decimal ExecutedQuantity,
+    decimal? AveragePrice,
+    decimal? Commission,
+    DateTime? ExecutedAt,
+    string? ExternalId,
+    DateTime CreatedAt,
+    byte[] RowVersion);
