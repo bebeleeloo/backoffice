@@ -3,6 +3,7 @@ using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Orders;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Backoffice.Application.Orders.TradeOrders;
 
@@ -31,6 +32,12 @@ public sealed class CreateTradeOrderCommandValidator : AbstractValidator<CreateT
         RuleFor(x => x.Price).GreaterThan(0).When(x => x.Price.HasValue);
         RuleFor(x => x.StopPrice).GreaterThan(0).When(x => x.StopPrice.HasValue);
         RuleFor(x => x.Commission).GreaterThanOrEqualTo(0).When(x => x.Commission.HasValue);
+        RuleFor(x => x.Price).NotEmpty().WithMessage("Price is required for Limit/StopLimit orders")
+            .When(x => x.OrderType is TradeOrderType.Limit or TradeOrderType.StopLimit);
+        RuleFor(x => x.StopPrice).NotEmpty().WithMessage("Stop Price is required for Stop/StopLimit orders")
+            .When(x => x.OrderType is TradeOrderType.Stop or TradeOrderType.StopLimit);
+        RuleFor(x => x.ExpirationDate).NotEmpty().WithMessage("Expiration Date is required for GTD orders")
+            .When(x => x.TimeInForce == TimeInForce.GTD);
         RuleFor(x => x.Comment).MaximumLength(500);
         RuleFor(x => x.ExternalId).MaximumLength(64);
     }
@@ -44,6 +51,11 @@ public sealed class CreateTradeOrderCommandHandler(
 {
     public async Task<TradeOrderDto> Handle(CreateTradeOrderCommand request, CancellationToken ct)
     {
+        if (!await db.Accounts.AnyAsync(a => a.Id == request.AccountId, ct))
+            throw new KeyNotFoundException($"Account {request.AccountId} not found");
+        if (!await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId, ct))
+            throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
+
         var orderId = Guid.NewGuid();
         var orderNumber = $"TO-{clock.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
 

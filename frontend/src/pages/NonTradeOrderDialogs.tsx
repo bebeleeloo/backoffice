@@ -154,12 +154,19 @@ function NonTradeOrderFormFields({ form, set, errors = {}, showStatusFields = fa
 
 /* ── Create Dialog ── */
 
-interface CreateProps { open: boolean; onClose: () => void }
+interface CreateProps { open: boolean; onClose: () => void; currentAccount?: { id: string; number: string } | null }
 
-export function CreateNonTradeOrderDialog({ open, onClose }: CreateProps) {
+export function CreateNonTradeOrderDialog({ open, onClose, currentAccount }: CreateProps) {
   const [form, setForm] = useState<CreateNonTradeOrderRequest>(emptyForm);
   const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateNonTradeOrder();
+
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setForm({ ...emptyForm(), ...(currentAccount ? { accountId: currentAccount.id } : {}) });
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   const set = <K extends keyof CreateNonTradeOrderRequest>(key: K, value: CreateNonTradeOrderRequest[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -193,7 +200,7 @@ export function CreateNonTradeOrderDialog({ open, onClose }: CreateProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Create Non-Trade Order</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <NonTradeOrderFormFields form={form} set={set} errors={errors} />
+        <NonTradeOrderFormFields form={form} set={set} errors={errors} currentAccount={currentAccount} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>

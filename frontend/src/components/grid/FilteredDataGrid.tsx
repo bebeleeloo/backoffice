@@ -1,7 +1,19 @@
 import { useMemo, type ReactNode } from "react";
+import { Box, Typography } from "@mui/material";
+import SearchOffIcon from "@mui/icons-material/SearchOff";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { DataGrid, type DataGridProps } from "@mui/x-data-grid";
 import { FilterRowProvider, CustomColumnHeaders } from "./GridFilterRow";
+
+function CustomNoRowsOverlay() {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 1 }}>
+      <SearchOffIcon sx={{ fontSize: 48, color: "text.disabled" }} />
+      <Typography variant="body1" color="text.secondary">No results found</Typography>
+      <Typography variant="body2" color="text.disabled">Try adjusting your search or filter criteria</Typography>
+    </Box>
+  );
+}
 
 const BASE_HEADER_HEIGHT = 44;
 const FILTER_ROW_HEIGHT = 36;
@@ -60,7 +72,7 @@ export function FilteredDataGrid({ filterDefs, slots, sx, ...gridProps }: Filter
         {...gridProps}
         columnHeaderHeight={BASE_HEADER_HEIGHT}
         disableColumnFilter
-        slots={{ ...slots, columnHeaders: CustomColumnHeaders as never }}
+        slots={{ noRowsOverlay: CustomNoRowsOverlay, ...slots, columnHeaders: CustomColumnHeaders as never }}
         sx={[internalSx, ...(Array.isArray(sx) ? sx : sx ? [sx] : [])]}
       />
     </FilterRowProvider>

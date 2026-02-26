@@ -39,10 +39,7 @@ public sealed class GetTradeOrdersQueryHandler(IAppDbContext db)
 {
     public async Task<PagedResult<TradeOrderListItemDto>> Handle(GetTradeOrdersQuery request, CancellationToken ct)
     {
-        var query = db.TradeOrders
-            .Include(t => t.Order!).ThenInclude(o => o.Account!)
-            .Include(t => t.Instrument!)
-            .AsQueryable();
+        var query = db.TradeOrders.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.OrderNumber))
             query = query.Where(t => EF.Functions.Like(t.Order!.OrderNumber, $"%{request.OrderNumber}%"));
@@ -115,31 +112,30 @@ public sealed class GetTradeOrdersQueryHandler(IAppDbContext db)
         query = ApplySort(query, request.Sort ?? "-CreatedAt");
 
         var totalCount = await query.CountAsync(ct);
-        var entities = await query
+        var items = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
+            .Select(t => new TradeOrderListItemDto(
+                t.OrderId,
+                t.Order!.Account!.Number,
+                t.Order.OrderNumber,
+                t.Order.Status,
+                t.Order.OrderDate,
+                t.Instrument!.Symbol,
+                t.Instrument.Name,
+                t.Side,
+                t.OrderType,
+                t.TimeInForce,
+                t.Quantity,
+                t.Price,
+                t.ExecutedQuantity,
+                t.AveragePrice,
+                t.Commission,
+                t.ExecutedAt,
+                t.Order.ExternalId,
+                t.Order.CreatedAt,
+                t.Order.RowVersion))
             .ToListAsync(ct);
-
-        var items = entities.Select(t => new TradeOrderListItemDto(
-            t.OrderId,
-            t.Order!.Account?.Number ?? "",
-            t.Order.OrderNumber,
-            t.Order.Status,
-            t.Order.OrderDate,
-            t.Instrument!.Symbol,
-            t.Instrument.Name,
-            t.Side,
-            t.OrderType,
-            t.TimeInForce,
-            t.Quantity,
-            t.Price,
-            t.ExecutedQuantity,
-            t.AveragePrice,
-            t.Commission,
-            t.ExecutedAt,
-            t.Order.ExternalId,
-            t.Order.CreatedAt,
-            t.Order.RowVersion)).ToList();
 
         return new PagedResult<TradeOrderListItemDto>
         {

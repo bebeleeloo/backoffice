@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Paper, Chip } from "@mui/material";
+import { Paper, Chip, IconButton, Tooltip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useAllEntityChanges, useUsers } from "../api/hooks";
 import type { GlobalOperationDto, PagedResult } from "../api/types";
 import { useSearchParams } from "react-router-dom";
@@ -108,6 +109,15 @@ export function AuditPage() {
     [setSearchParams],
   );
 
+  const clearAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
+  const hasActiveFilters = !!(
+    params.q || params.from || params.to || params.entityType || params.changeType ||
+    params.userName?.length
+  );
+
   const handlePagination = (model: GridPaginationModel) => {
     setParam({ page: String(model.page + 1), pageSize: String(model.pageSize) });
   };
@@ -204,7 +214,14 @@ export function AuditPage() {
       variant="list"
       title="Audit Log"
       actions={
-        <ExportButton fetchData={fetchAllAudit} columns={exportColumns} filename="audit-log" />
+        <>
+          {hasActiveFilters && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+            </Tooltip>
+          )}
+          <ExportButton fetchData={fetchAllAudit} columns={exportColumns} filename="audit-log" />
+        </>
       }
       subheaderLeft={
         <GlobalSearchBar

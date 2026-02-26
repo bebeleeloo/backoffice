@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useRoles, useDeleteRole } from "../api/hooks";
 import type { RoleDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
@@ -78,6 +79,15 @@ export function RolesPage() {
       });
     },
     [setSearchParams],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
+  const hasActiveFilters = !!(
+    params.q || params.name || params.description || params.permission ||
+    params.isSystem !== undefined
   );
 
   const handlePagination = (model: GridPaginationModel) => {
@@ -183,6 +193,11 @@ export function RolesPage() {
       title="Roles"
       actions={
         <>
+          {hasActiveFilters && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+            </Tooltip>
+          )}
           <ExportButton fetchData={fetchAllRoles} columns={exportColumns} filename="roles" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>

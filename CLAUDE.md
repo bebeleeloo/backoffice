@@ -216,13 +216,14 @@ frontend/
     │   └── usePermission.ts    # useHasPermission() hook
     ├── components/
     │   ├── Breadcrumbs.tsx      # MUI breadcrumb navigation for detail pages
+    │   ├── DetailField.tsx      # Reusable label+value field for detail pages
     │   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
     │   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant, breadcrumbs)
     │   ├── ExportButton.tsx     # Excel export button with loading state
     │   ├── ConfirmDialog.tsx    # MUI confirmation dialog for delete actions
     │   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
     │   ├── grid/
-    │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row
+    │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row + empty state overlay
     │   │   ├── GridFilterRow.tsx      # Filter row rendering (native scroll sync, theme-aware)
     │   │   ├── InlineTextFilter.tsx   # Debounced text input (300ms)
     │   │   ├── CompactMultiSelect.tsx # Checkbox multi-select dropdown
@@ -262,6 +263,7 @@ frontend/
     ├── utils/
     │   ├── exportToExcel.ts     # ExcelJS-based export utility
     │   ├── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
+    │   ├── orderConstants.ts    # Order status descriptions for tooltips
     │   └── validateFields.ts    # Inline form validation helpers (validateRequired, validateEmail)
     └── test/
         ├── setupTests.ts
@@ -286,6 +288,14 @@ frontend/
 - `PageContainer` with `breadcrumbs` prop for navigation (e.g., Clients > John Doe)
 - `Breadcrumbs` component with `BreadcrumbItem[]` — last item is text, others are RouterLinks
 - No Back button — breadcrumbs replace it
+- `DetailField` component for label+value pairs (auto-hides when value is null/undefined/empty)
+- Order detail pages show status tooltip on hover (descriptions from `orderConstants.ts`)
+- AccountDetailsPage has "Trade Order" / "Non-Trade Order" buttons (gated by `orders.create`) that open create dialogs with account pre-populated
+
+**List page UX:**
+- `FilteredDataGrid` shows `CustomNoRowsOverlay` (SearchOffIcon + "No results found") when grid is empty
+- All list pages have a "Clear all filters" icon button (FilterListOffIcon) when any filter is active
+- Clear filters resets URL search params: `setSearchParams(new URLSearchParams())`
 
 **API client:**
 - Base URL: `VITE_API_URL` env var, defaults to `/api/v1`
@@ -418,13 +428,14 @@ Request → ValidationBehavior (FluentValidation) → Handler → Response
 No repository layer. All data access via DbContext DbSets with LINQ.
 
 ### Mutation pattern
-1. Validate (automatic via pipeline)
+1. Validate (automatic via pipeline, including business rules like Price required for Limit orders)
 2. Check existence (`?? throw new KeyNotFoundException`)
-3. Check uniqueness (`throw new InvalidOperationException` if duplicate)
-4. Modify entity
-5. Set audit context (BeforeJson/AfterJson)
-6. SaveChangesAsync (triggers change tracking)
-7. Return DTO
+3. Check FK references exist (`AnyAsync` for Account, Instrument, Currency etc. → `KeyNotFoundException`)
+4. Check uniqueness (`throw new InvalidOperationException` if duplicate)
+5. Modify entity
+6. Set audit context (BeforeJson/AfterJson)
+7. SaveChangesAsync (triggers change tracking)
+8. Return DTO
 
 ## 8. Permission Model
 

@@ -52,6 +52,14 @@ public sealed class UpdateNonTradeOrderCommandHandler(
             ?? throw new KeyNotFoundException($"Non-trade order {request.Id} not found");
 
         var order = nonTrade.Order!;
+
+        if (request.AccountId != order.AccountId && !await db.Accounts.AnyAsync(a => a.Id == request.AccountId, ct))
+            throw new KeyNotFoundException($"Account {request.AccountId} not found");
+        if (request.CurrencyId != nonTrade.CurrencyId && !await db.Currencies.AnyAsync(c => c.Id == request.CurrencyId, ct))
+            throw new KeyNotFoundException($"Currency {request.CurrencyId} not found");
+        if (request.InstrumentId.HasValue && request.InstrumentId != nonTrade.InstrumentId && !await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId.Value, ct))
+            throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
+
         var before = JsonSerializer.Serialize(new { order.Id, order.OrderNumber, order.Status });
         db.Orders.Entry(order).Property(o => o.RowVersion).OriginalValue = request.RowVersion;
 

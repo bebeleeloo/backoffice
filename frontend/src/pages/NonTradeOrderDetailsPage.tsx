@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import {
-  Box, Button, Card, CardContent, Chip, CircularProgress, Typography, Link,
+  Box, Button, Card, CardContent, Chip, CircularProgress, Tooltip, Typography, Link,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
@@ -11,6 +11,8 @@ import { useHasPermission } from "../auth/usePermission";
 import { EditNonTradeOrderDialog } from "./NonTradeOrderDialogs";
 import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { PageContainer } from "../components/PageContainer";
+import { DetailField } from "../components/DetailField";
+import { STATUS_DESCRIPTIONS } from "../utils/orderConstants";
 import type { OrderStatus, NonTradeOrderType } from "../api/types";
 
 const STATUS_COLORS: Record<OrderStatus, "success" | "error" | "default" | "warning" | "info" | "primary"> = {
@@ -36,16 +38,6 @@ const TYPE_COLORS: Record<NonTradeOrderType, "success" | "error" | "default" | "
   Transfer: "default",
   Adjustment: "warning",
 };
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  if (value === null || value === undefined || value === "") return null;
-  return (
-    <Box sx={{ minWidth: 180 }}>
-      <Typography variant="caption" color="text.secondary">{label}</Typography>
-      <Typography variant="body2">{value}</Typography>
-    </Box>
-  );
-}
 
 export function NonTradeOrderDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -100,15 +92,15 @@ export function NonTradeOrderDetailsPage() {
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Order Info</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-            <Field label="Order Number" value={order.orderNumber} />
-            <Field label="Status" value={<Chip label={order.status} color={STATUS_COLORS[order.status] ?? "default"} size="small" />} />
-            <Field label="Order Date" value={new Date(order.orderDate).toLocaleDateString()} />
-            <Field label="Account" value={
+            <DetailField label="Order Number" value={order.orderNumber} />
+            <DetailField label="Status" value={<Tooltip title={STATUS_DESCRIPTIONS[order.status]} arrow><Chip label={order.status} color={STATUS_COLORS[order.status] ?? "default"} size="small" /></Tooltip>} />
+            <DetailField label="Order Date" value={new Date(order.orderDate).toLocaleDateString()} />
+            <DetailField label="Account" value={
               <Link component={RouterLink} to={`/accounts/${order.accountId}`}>
                 {order.accountNumber}
               </Link>
             } />
-            <Field label="Type" value={<Chip label={order.nonTradeType} color={TYPE_COLORS[order.nonTradeType] ?? "default"} size="small" />} />
+            <DetailField label="Type" value={<Chip label={order.nonTradeType} color={TYPE_COLORS[order.nonTradeType] ?? "default"} size="small" />} />
           </Box>
         </CardContent>
       </Card>
@@ -118,9 +110,9 @@ export function NonTradeOrderDetailsPage() {
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Financial</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-            <Field label="Amount" value={order.amount} />
-            <Field label="Currency" value={order.currencyCode} />
-            <Field label="Instrument" value={order.instrumentId ? (
+            <DetailField label="Amount" value={order.amount} />
+            <DetailField label="Currency" value={order.currencyCode} />
+            <DetailField label="Instrument" value={order.instrumentId ? (
               <Link component={RouterLink} to={`/instruments/${order.instrumentId}`}>
                 {order.instrumentSymbol} — {order.instrumentName}
               </Link>
@@ -134,11 +126,11 @@ export function NonTradeOrderDetailsPage() {
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Details</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-            <Field label="Reference Number" value={order.referenceNumber} />
-            <Field label="Description" value={order.description} />
-            <Field label="Processed At" value={order.processedAt ? new Date(order.processedAt).toLocaleString() : null} />
-            <Field label="External ID" value={order.externalId} />
-            <Field label="Created" value={new Date(order.createdAt).toLocaleString()} />
+            <DetailField label="Reference Number" value={order.referenceNumber} />
+            <DetailField label="Description" value={order.description} />
+            <DetailField label="Processed At" value={order.processedAt ? new Date(order.processedAt).toLocaleString() : null} />
+            <DetailField label="External ID" value={order.externalId} />
+            <DetailField label="Created" value={new Date(order.createdAt).toLocaleString()} />
           </Box>
           {order.comment && (
             <Box sx={{ mt: 2 }}>

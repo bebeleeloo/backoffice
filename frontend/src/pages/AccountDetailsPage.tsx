@@ -6,27 +6,21 @@ import {
   Typography, Paper, Link,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import { useAccount } from "../api/hooks";
 import { useHasPermission } from "../auth/usePermission";
 import { EditAccountDialog } from "./AccountDialogs";
+import { CreateTradeOrderDialog } from "./TradeOrderDialogs";
+import { CreateNonTradeOrderDialog } from "./NonTradeOrderDialogs";
 import { EntityHistoryDialog } from "../components/EntityHistoryDialog";
 import { PageContainer } from "../components/PageContainer";
+import { DetailField } from "../components/DetailField";
 
 const STATUS_COLORS: Record<string, "success" | "error" | "default" | "warning"> = {
   Active: "success", Blocked: "error", Closed: "default", Suspended: "warning",
 };
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  if (value === null || value === undefined || value === "") return null;
-  return (
-    <Box sx={{ minWidth: 180 }}>
-      <Typography variant="caption" color="text.secondary">{label}</Typography>
-      <Typography variant="body2">{value}</Typography>
-    </Box>
-  );
-}
 
 export function AccountDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,8 +28,11 @@ export function AccountDetailsPage() {
   const { data: account, isLoading } = useAccount(id ?? "");
   const canUpdate = useHasPermission("accounts.update");
   const canAudit = useHasPermission("audit.read");
+  const canCreateOrders = useHasPermission("orders.create");
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [createTradeOpen, setCreateTradeOpen] = useState(false);
+  const [createNonTradeOpen, setCreateNonTradeOpen] = useState(false);
 
   const breadcrumbs = useMemo(() => [
     { label: "Accounts", to: "/accounts" },
@@ -67,6 +64,12 @@ export function AccountDetailsPage() {
       breadcrumbs={breadcrumbs}
       actions={
         <Box sx={{ display: "flex", gap: 1 }}>
+          {canCreateOrders && (
+            <>
+              <Button startIcon={<AddIcon />} onClick={() => setCreateTradeOpen(true)}>Trade Order</Button>
+              <Button startIcon={<AddIcon />} onClick={() => setCreateNonTradeOpen(true)}>Non-Trade Order</Button>
+            </>
+          )}
           {canAudit && (
             <Button startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>History</Button>
           )}
@@ -81,19 +84,19 @@ export function AccountDetailsPage() {
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>General</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-            <Field label="Number" value={account.number} />
-            <Field label="Status" value={<Chip label={account.status} color={STATUS_COLORS[account.status] ?? "default"} size="small" />} />
-            <Field label="Account Type" value={account.accountType} />
-            <Field label="Margin Type" value={account.marginType} />
-            <Field label="Option Level" value={account.optionLevel} />
-            <Field label="Tariff" value={<Chip label={account.tariff} size="small" variant="outlined" />} />
-            <Field label="Delivery Type" value={account.deliveryType} />
-            <Field label="Clearer" value={account.clearerName} />
-            <Field label="Trade Platform" value={account.tradePlatformName} />
-            <Field label="Opened At" value={account.openedAt ? new Date(account.openedAt).toLocaleDateString() : null} />
-            <Field label="Closed At" value={account.closedAt ? new Date(account.closedAt).toLocaleDateString() : null} />
-            <Field label="External ID" value={account.externalId} />
-            <Field label="Created" value={new Date(account.createdAt).toLocaleString()} />
+            <DetailField label="Number" value={account.number} />
+            <DetailField label="Status" value={<Chip label={account.status} color={STATUS_COLORS[account.status] ?? "default"} size="small" />} />
+            <DetailField label="Account Type" value={account.accountType} />
+            <DetailField label="Margin Type" value={account.marginType} />
+            <DetailField label="Option Level" value={account.optionLevel} />
+            <DetailField label="Tariff" value={<Chip label={account.tariff} size="small" variant="outlined" />} />
+            <DetailField label="Delivery Type" value={account.deliveryType} />
+            <DetailField label="Clearer" value={account.clearerName} />
+            <DetailField label="Trade Platform" value={account.tradePlatformName} />
+            <DetailField label="Opened At" value={account.openedAt ? new Date(account.openedAt).toLocaleDateString() : null} />
+            <DetailField label="Closed At" value={account.closedAt ? new Date(account.closedAt).toLocaleDateString() : null} />
+            <DetailField label="External ID" value={account.externalId} />
+            <DetailField label="Created" value={new Date(account.createdAt).toLocaleString()} />
           </Box>
           {account.comment && (
             <Box sx={{ mt: 2 }}>
@@ -145,6 +148,16 @@ export function AccountDetailsPage() {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         account={account ? { id: account.id } : null}
+      />
+      <CreateTradeOrderDialog
+        open={createTradeOpen}
+        onClose={() => setCreateTradeOpen(false)}
+        currentAccount={{ id: account.id, number: account.number }}
+      />
+      <CreateNonTradeOrderDialog
+        open={createNonTradeOpen}
+        onClose={() => setCreateNonTradeOpen(false)}
+        currentAccount={{ id: account.id, number: account.number }}
       />
       <EntityHistoryDialog entityType="Account" entityId={account.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </PageContainer>

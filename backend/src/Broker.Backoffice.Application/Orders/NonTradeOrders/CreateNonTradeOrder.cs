@@ -3,6 +3,7 @@ using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Orders;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Backoffice.Application.Orders.NonTradeOrders;
 
@@ -40,6 +41,13 @@ public sealed class CreateNonTradeOrderCommandHandler(
 {
     public async Task<NonTradeOrderDto> Handle(CreateNonTradeOrderCommand request, CancellationToken ct)
     {
+        if (!await db.Accounts.AnyAsync(a => a.Id == request.AccountId, ct))
+            throw new KeyNotFoundException($"Account {request.AccountId} not found");
+        if (!await db.Currencies.AnyAsync(c => c.Id == request.CurrencyId, ct))
+            throw new KeyNotFoundException($"Currency {request.CurrencyId} not found");
+        if (request.InstrumentId.HasValue && !await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId.Value, ct))
+            throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
+
         var orderId = Guid.NewGuid();
         var orderNumber = $"NTO-{clock.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
 

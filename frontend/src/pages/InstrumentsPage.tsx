@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useInstruments, useDeleteInstrument } from "../api/hooks";
 import type {
   InstrumentListItemDto, InstrumentType, AssetClass, InstrumentStatus, Sector,
@@ -151,6 +152,16 @@ export function InstrumentsPage() {
       });
     },
     [setSearchParams],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
+  const hasActiveFilters = !!(
+    params.q || params.symbol || params.name || params.exchangeName || params.currencyCode ||
+    params.type?.length || params.assetClass?.length || params.status?.length || params.sector?.length ||
+    params.createdFrom || params.createdTo
   );
 
   const handlePagination = (model: GridPaginationModel) => {
@@ -330,6 +341,11 @@ export function InstrumentsPage() {
       title="Instruments"
       actions={
         <>
+          {hasActiveFilters && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+            </Tooltip>
+          )}
           <ExportButton fetchData={fetchAllInstruments} columns={exportColumns} filename="instruments" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>

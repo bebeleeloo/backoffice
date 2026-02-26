@@ -169,6 +169,8 @@ GET без `/all` возвращает только active-записи (для 
 
 **Фильтры GET /trade-orders:** AccountId[], InstrumentId[], Status[], Side[], OrderType[], TimeInForce[], OrderDateFrom, OrderDateTo, QuantityFrom, QuantityTo, PriceFrom, PriceTo.
 
+**Бизнес-валидация (Create/Update):** Price обязателен для Limit/StopLimit, StopPrice обязателен для Stop/StopLimit, ExpirationDate обязателен для GTD. FK-валидация: Account и Instrument проверяются через `AnyAsync` перед сохранением.
+
 ### Неторговые поручения (NonTradeOrdersController)
 
 | Метод | Маршрут | Permission | Аудит |
@@ -180,6 +182,8 @@ GET без `/all` возвращает только active-записи (для 
 | DELETE | `/non-trade-orders/{id}` | orders.delete | Да |
 
 **Фильтры GET /non-trade-orders:** AccountId[], InstrumentId[], Status[], NonTradeType[], OrderDateFrom, OrderDateTo, AmountFrom, AmountTo.
+
+**FK-валидация (Create/Update):** Account, Currency и Instrument (если указан) проверяются через `AnyAsync` перед сохранением.
 
 ### Дашборд (DashboardController)
 

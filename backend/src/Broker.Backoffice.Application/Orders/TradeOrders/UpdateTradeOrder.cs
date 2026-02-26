@@ -40,6 +40,12 @@ public sealed class UpdateTradeOrderCommandValidator : AbstractValidator<UpdateT
         RuleFor(x => x.ExecutedQuantity).GreaterThanOrEqualTo(0);
         RuleFor(x => x.AveragePrice).GreaterThan(0).When(x => x.AveragePrice.HasValue);
         RuleFor(x => x.Commission).GreaterThanOrEqualTo(0).When(x => x.Commission.HasValue);
+        RuleFor(x => x.Price).NotEmpty().WithMessage("Price is required for Limit/StopLimit orders")
+            .When(x => x.OrderType is TradeOrderType.Limit or TradeOrderType.StopLimit);
+        RuleFor(x => x.StopPrice).NotEmpty().WithMessage("Stop Price is required for Stop/StopLimit orders")
+            .When(x => x.OrderType is TradeOrderType.Stop or TradeOrderType.StopLimit);
+        RuleFor(x => x.ExpirationDate).NotEmpty().WithMessage("Expiration Date is required for GTD orders")
+            .When(x => x.TimeInForce == TimeInForce.GTD);
         RuleFor(x => x.RowVersion).NotEmpty();
         RuleFor(x => x.Comment).MaximumLength(500);
         RuleFor(x => x.ExternalId).MaximumLength(64);
@@ -60,6 +66,12 @@ public sealed class UpdateTradeOrderCommandHandler(
             ?? throw new KeyNotFoundException($"Trade order {request.Id} not found");
 
         var order = trade.Order!;
+
+        if (request.AccountId != order.AccountId && !await db.Accounts.AnyAsync(a => a.Id == request.AccountId, ct))
+            throw new KeyNotFoundException($"Account {request.AccountId} not found");
+        if (request.InstrumentId != trade.InstrumentId && !await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId, ct))
+            throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
+
         var before = JsonSerializer.Serialize(new { order.Id, order.OrderNumber, order.Status });
         db.Orders.Entry(order).Property(o => o.RowVersion).OriginalValue = request.RowVersion;
 

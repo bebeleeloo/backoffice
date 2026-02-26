@@ -102,7 +102,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Status", "AccountType");
 
-                    b.ToTable("Accounts");
+                    b.ToTable("Accounts", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.AccountHolder", b =>
@@ -128,7 +128,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ClientId");
 
-                    b.ToTable("AccountHolders");
+                    b.ToTable("AccountHolders", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.Clearer", b =>
@@ -156,7 +156,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Clearers");
+                    b.ToTable("Clearers", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.TradePlatform", b =>
@@ -184,7 +184,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("TradePlatforms");
+                    b.ToTable("TradePlatforms", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Audit.AuditLog", b =>
@@ -262,7 +262,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Audit.EntityChange", b =>
@@ -337,7 +337,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("EntityType", "EntityId");
 
-                    b.ToTable("EntityChanges");
+                    b.ToTable("EntityChanges", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Clients.Client", b =>
@@ -470,7 +470,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ClientType", "Status");
 
-                    b.ToTable("Clients");
+                    b.ToTable("Clients", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Clients.ClientAddress", b =>
@@ -516,7 +516,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CountryId");
 
-                    b.ToTable("ClientAddresses");
+                    b.ToTable("ClientAddresses", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Clients.InvestmentProfile", b =>
@@ -555,7 +555,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClientId")
                         .IsUnique();
 
-                    b.ToTable("InvestmentProfiles");
+                    b.ToTable("InvestmentProfiles", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Countries.Country", b =>
@@ -597,7 +597,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("[Iso3] IS NOT NULL");
 
-                    b.ToTable("Countries");
+                    b.ToTable("Countries", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.DataScope", b =>
@@ -631,7 +631,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "ScopeType", "ScopeValue")
                         .IsUnique();
 
-                    b.ToTable("DataScopes");
+                    b.ToTable("DataScopes", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.Permission", b =>
@@ -684,7 +684,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Permissions");
+                    b.ToTable("Permissions", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.Role", b =>
@@ -730,7 +730,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.RolePermission", b =>
@@ -759,7 +759,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("RoleId", "PermissionId")
                         .IsUnique();
 
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.User", b =>
@@ -817,7 +817,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserPermissionOverride", b =>
@@ -849,7 +849,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "PermissionId")
                         .IsUnique();
 
-                    b.ToTable("UserPermissionOverrides");
+                    b.ToTable("UserPermissionOverrides", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserRefreshToken", b =>
@@ -886,7 +886,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UserRefreshTokens");
+                    b.ToTable("UserRefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserRole", b =>
@@ -915,7 +915,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "RoleId")
                         .IsUnique();
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Instruments.Currency", b =>
@@ -948,7 +948,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Currencies");
+                    b.ToTable("Currencies", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Instruments.Exchange", b =>
@@ -982,7 +982,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CountryId");
 
-                    b.ToTable("Exchanges");
+                    b.ToTable("Exchanges", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Instruments.Instrument", b =>
@@ -1102,7 +1102,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Type", "AssetClass", "Status");
 
-                    b.ToTable("Instruments");
+                    b.ToTable("Instruments", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Orders.NonTradeOrder", b =>
@@ -1149,7 +1149,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrderId")
                         .IsUnique();
 
-                    b.ToTable("NonTradeOrders");
+                    b.ToTable("NonTradeOrders", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Orders.Order", b =>
@@ -1212,7 +1212,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Category", "Status");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Orders.TradeOrder", b =>
@@ -1277,7 +1277,7 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Side", "OrderType");
 
-                    b.ToTable("TradeOrders");
+                    b.ToTable("TradeOrders", (string)null);
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.Account", b =>

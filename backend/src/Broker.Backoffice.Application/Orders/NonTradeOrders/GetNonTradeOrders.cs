@@ -31,11 +31,7 @@ public sealed class GetNonTradeOrdersQueryHandler(IAppDbContext db)
 {
     public async Task<PagedResult<NonTradeOrderListItemDto>> Handle(GetNonTradeOrdersQuery request, CancellationToken ct)
     {
-        var query = db.NonTradeOrders
-            .Include(n => n.Order!).ThenInclude(o => o.Account!)
-            .Include(n => n.Currency!)
-            .Include(n => n.Instrument)
-            .AsQueryable();
+        var query = db.NonTradeOrders.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.OrderNumber))
             query = query.Where(n => EF.Functions.Like(n.Order!.OrderNumber, $"%{request.OrderNumber}%"));
@@ -90,27 +86,26 @@ public sealed class GetNonTradeOrdersQueryHandler(IAppDbContext db)
         query = ApplySort(query, request.Sort ?? "-CreatedAt");
 
         var totalCount = await query.CountAsync(ct);
-        var entities = await query
+        var items = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
+            .Select(n => new NonTradeOrderListItemDto(
+                n.OrderId,
+                n.Order!.Account!.Number,
+                n.Order.OrderNumber,
+                n.Order.Status,
+                n.Order.OrderDate,
+                n.NonTradeType,
+                n.Amount,
+                n.Currency!.Code,
+                n.Instrument != null ? n.Instrument.Symbol : null,
+                n.Instrument != null ? n.Instrument.Name : null,
+                n.ReferenceNumber,
+                n.ProcessedAt,
+                n.Order.ExternalId,
+                n.Order.CreatedAt,
+                n.Order.RowVersion))
             .ToListAsync(ct);
-
-        var items = entities.Select(n => new NonTradeOrderListItemDto(
-            n.OrderId,
-            n.Order!.Account?.Number ?? "",
-            n.Order.OrderNumber,
-            n.Order.Status,
-            n.Order.OrderDate,
-            n.NonTradeType,
-            n.Amount,
-            n.Currency!.Code,
-            n.Instrument?.Symbol,
-            n.Instrument?.Name,
-            n.ReferenceNumber,
-            n.ProcessedAt,
-            n.Order.ExternalId,
-            n.Order.CreatedAt,
-            n.Order.RowVersion)).ToList();
 
         return new PagedResult<NonTradeOrderListItemDto>
         {

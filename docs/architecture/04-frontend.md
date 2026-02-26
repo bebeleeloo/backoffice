@@ -146,6 +146,18 @@ Request interceptor:
 - Встроенная строка фильтров (`FilterRowProvider` + контекст)
 - Синхронизация скролла фильтров с таблицей
 - Inline-фильтры: `InlineTextFilter`, `CompactMultiSelect`, `CompactCountrySelect`, `DateRangePopover`, `InlineBooleanFilter`
+- `CustomNoRowsOverlay` — пустое состояние с иконкой SearchOff и текстом "No results found" / "Try adjusting your filters"
+
+### Кнопка «Очистить фильтры»
+
+Все страницы-списки содержат кнопку `FilterListOffIcon` (clear all filters), отображаемую при наличии активных фильтров:
+- `clearAllFilters = useCallback(() => setSearchParams(new URLSearchParams()), [setSearchParams])`
+- `hasActiveFilters` — вычисляется на основе текущих параметров URL (q, status, type, accountId и т.д.)
+- Страницы: ClientsPage, TradeOrdersPage, NonTradeOrdersPage, AccountsPage, InstrumentsPage, UsersPage, RolesPage, AuditPage
+
+### DetailField
+
+Общий компонент `DetailField` (`components/DetailField.tsx`) для отображения пар label/value на страницах деталей. Автоматически скрывается если `value` равно null/undefined/"". Используется на всех detail pages (Client, Account, TradeOrder, NonTradeOrder, Instrument).
 
 ### Диалоги
 
@@ -181,9 +193,17 @@ if (open && !populated && fullData) {
 
 Этот паттерн решает проблему с React Query кешем: если данные уже закешированы (например, на странице деталей), `useQuery` возвращает тот же объект при монтировании диалога. Флаг `populated` гарантирует одноразовое заполнение формы при каждом открытии.
 
+#### Создание ордера со страницы счёта
+
+`AccountDetailsPage` содержит кнопки "Trade Order" и "Non-Trade Order" (gated by `orders.create`), открывающие `CreateTradeOrderDialog` / `CreateNonTradeOrderDialog` с предзаполненным полем Account. Диалоги принимают проп `currentAccount?: { id: string; number: string }` и используют `prevOpen` паттерн для инициализации `form.accountId`.
+
+#### Тултип статуса на страницах деталей ордеров
+
+`TradeOrderDetailsPage` и `NonTradeOrderDetailsPage` оборачивают Status Chip в MUI `<Tooltip>` с описанием из `STATUS_DESCRIPTIONS` (`utils/orderConstants.ts`). При наведении курсора на чип статуса показывается описание (например, "Order created, awaiting processing" для статуса New).
+
 Страницы деталей:
 - `ClientDetailsPage` -- просмотр клиента со связанными счетами (с навигацией на счёт)
-- `AccountDetailsPage` -- просмотр счёта со связанными холдерами (с навигацией на клиента)
+- `AccountDetailsPage` -- просмотр счёта со связанными холдерами (с навигацией на клиента), кнопки создания Trade/Non-Trade ордеров
 - `InstrumentDetailsPage` -- просмотр инструмента со всеми параметрами
 - `RoleDetailsPage` -- просмотр роли: общие данные + permissions с чекбоксами (read-only, сгруппированные по группам)
 
@@ -255,6 +275,4 @@ Redux, Zustand и другие стейт-менеджеры **не исполь
 
 ## Отсутствующие паттерны
 
-- **Error Boundaries** -- не реализованы
-- **Suspense / lazy loading** -- не используется (весь бандл загружается сразу, ~1.2 MB gzip ~370 KB)
 - **i18n** -- не реализовано (UI на английском)

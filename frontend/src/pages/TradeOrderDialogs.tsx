@@ -113,11 +113,13 @@ function TradeOrderFormFields({ form, set, errors = {}, isEdit = false, currentA
           label="Price" type="number" value={form.price ?? ""}
           onChange={(e) => set("price", e.target.value === "" ? undefined : Number(e.target.value))}
           size="small" slotProps={{ htmlInput: { min: 0, step: "any" } }}
+          error={!!errors.price} helperText={errors.price}
         />
         <TextField
           label="Stop Price" type="number" value={form.stopPrice ?? ""}
           onChange={(e) => set("stopPrice", e.target.value === "" ? undefined : Number(e.target.value))}
           size="small" slotProps={{ htmlInput: { min: 0, step: "any" } }}
+          error={!!errors.stopPrice} helperText={errors.stopPrice}
         />
         <TextField
           label="Commission" type="number" value={form.commission ?? ""}
@@ -147,6 +149,7 @@ function TradeOrderFormFields({ form, set, errors = {}, isEdit = false, currentA
           label="Expiration Date" type="date" value={form.expirationDate ?? ""}
           onChange={(e) => set("expirationDate", e.target.value || undefined)}
           size="small" slotProps={{ inputLabel: { shrink: true } }}
+          error={!!errors.expirationDate} helperText={errors.expirationDate}
         />
         <TextField label="External ID" value={form.externalId ?? ""} onChange={(e) => set("externalId", e.target.value || undefined)} size="small" />
       </Box>
@@ -161,12 +164,19 @@ function TradeOrderFormFields({ form, set, errors = {}, isEdit = false, currentA
 
 /* ── Create Dialog ── */
 
-interface CreateProps { open: boolean; onClose: () => void }
+interface CreateProps { open: boolean; onClose: () => void; currentAccount?: { id: string; number: string } | null }
 
-export function CreateTradeOrderDialog({ open, onClose }: CreateProps) {
+export function CreateTradeOrderDialog({ open, onClose, currentAccount }: CreateProps) {
   const [form, setForm] = useState<CreateTradeOrderRequest>(emptyForm);
   const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateTradeOrder();
+
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setForm({ ...emptyForm(), ...(currentAccount ? { accountId: currentAccount.id } : {}) });
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   const set = (key: string, value: unknown) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -179,6 +189,12 @@ export function CreateTradeOrderDialog({ open, onClose }: CreateProps) {
       instrumentId: validateRequired(form.instrumentId),
       orderDate: validateRequired(form.orderDate),
       quantity: form.quantity > 0 ? undefined : "Quantity is required",
+      price: (form.orderType === "Limit" || form.orderType === "StopLimit") && !form.price
+        ? "Price is required for Limit/StopLimit orders" : undefined,
+      stopPrice: (form.orderType === "Stop" || form.orderType === "StopLimit") && !form.stopPrice
+        ? "Stop Price is required for Stop/StopLimit orders" : undefined,
+      expirationDate: form.timeInForce === "GTD" && !form.expirationDate
+        ? "Expiration Date is required for GTD orders" : undefined,
     };
     if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
@@ -201,7 +217,7 @@ export function CreateTradeOrderDialog({ open, onClose }: CreateProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Create Trade Order</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
-        <TradeOrderFormFields form={form} set={set} errors={errors} />
+        <TradeOrderFormFields form={form} set={set} errors={errors} currentAccount={currentAccount} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
@@ -289,6 +305,12 @@ export function EditTradeOrderDialog({ order, onClose }: EditProps) {
       instrumentId: validateRequired(form.instrumentId),
       orderDate: validateRequired(form.orderDate),
       quantity: form.quantity > 0 ? undefined : "Quantity is required",
+      price: (form.orderType === "Limit" || form.orderType === "StopLimit") && !form.price
+        ? "Price is required for Limit/StopLimit orders" : undefined,
+      stopPrice: (form.orderType === "Stop" || form.orderType === "StopLimit") && !form.stopPrice
+        ? "Stop Price is required for Stop/StopLimit orders" : undefined,
+      expirationDate: form.timeInForce === "GTD" && !form.expirationDate
+        ? "Expiration Date is required for GTD orders" : undefined,
     };
     if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {

@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useNonTradeOrders, useDeleteNonTradeOrder, useAccounts, useInstruments } from "../api/hooks";
 import type { NonTradeOrderListItemDto, OrderStatus, NonTradeOrderType } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
@@ -163,6 +164,19 @@ export function NonTradeOrdersPage() {
       });
     },
     [setSearchParams],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
+  const hasActiveFilters = !!(
+    params.q || params.orderNumber || params.currencyCode || params.referenceNumber || params.externalId ||
+    params.status?.length || params.nonTradeType?.length ||
+    params.accountId?.length || params.instrumentId?.length ||
+    params.orderDateFrom || params.orderDateTo || params.createdFrom || params.createdTo ||
+    params.processedFrom || params.processedTo ||
+    params.amountMin || params.amountMax
   );
 
   const handlePagination = (model: GridPaginationModel) => {
@@ -370,6 +384,11 @@ export function NonTradeOrdersPage() {
       title="Non-Trade Orders"
       actions={
         <>
+          {hasActiveFilters && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+            </Tooltip>
+          )}
           <ExportButton fetchData={fetchAllOrders} columns={exportColumns} filename="non-trade-orders" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>

@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useTradeOrders, useDeleteTradeOrder, useAccounts, useInstruments } from "../api/hooks";
 import type { TradeOrderListItemDto, OrderStatus, TradeSide, TradeOrderType, TimeInForce } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
@@ -177,6 +178,22 @@ export function TradeOrdersPage() {
       });
     },
     [setSearchParams],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
+  const hasActiveFilters = !!(
+    params.q || params.orderNumber || params.externalId ||
+    params.status?.length || params.side?.length || params.orderType?.length || params.timeInForce?.length ||
+    params.accountId?.length || params.instrumentId?.length ||
+    params.orderDateFrom || params.orderDateTo || params.createdFrom || params.createdTo ||
+    params.executedFrom || params.executedTo ||
+    params.quantityMin || params.quantityMax || params.priceMin || params.priceMax ||
+    params.executedQuantityMin || params.executedQuantityMax ||
+    params.averagePriceMin || params.averagePriceMax ||
+    params.commissionMin || params.commissionMax
   );
 
   const handlePagination = (model: GridPaginationModel) => {
@@ -434,6 +451,11 @@ export function TradeOrdersPage() {
       title="Trade Orders"
       actions={
         <>
+          {hasActiveFilters && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+            </Tooltip>
+          )}
           <ExportButton fetchData={fetchAllTradeOrders} columns={exportColumns} filename="trade-orders" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>

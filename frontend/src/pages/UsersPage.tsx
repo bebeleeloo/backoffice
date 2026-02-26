@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import HistoryIcon from "@mui/icons-material/History";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useUsers, useDeleteUser } from "../api/hooks";
 import type { UserDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
@@ -82,6 +83,15 @@ export function UsersPage() {
       });
     },
     [setSearchParams],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
+  const hasActiveFilters = !!(
+    params.q || params.username || params.email || params.fullName || params.role ||
+    params.isActive !== undefined
   );
 
   const handlePagination = (model: GridPaginationModel) => {
@@ -201,6 +211,11 @@ export function UsersPage() {
       title="Users"
       actions={
         <>
+          {hasActiveFilters && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+            </Tooltip>
+          )}
           <ExportButton fetchData={fetchAllUsers} columns={exportColumns} filename="users" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>

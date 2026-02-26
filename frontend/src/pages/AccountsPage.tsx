@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper } from "@mui/material";
+import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useAccounts, useDeleteAccount } from "../api/hooks";
 import type { AccountListItemDto, AccountStatus, AccountType, MarginType, Tariff } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
@@ -135,6 +136,16 @@ export function AccountsPage() {
       });
     },
     [setSearchParams],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
+  const hasActiveFilters = !!(
+    params.q || params.number || params.clearerName || params.tradePlatformName || params.externalId ||
+    params.status?.length || params.accountType?.length || params.marginType?.length || params.tariff?.length ||
+    params.createdFrom || params.createdTo
   );
 
   const handlePagination = (model: GridPaginationModel) => {
@@ -300,6 +311,11 @@ export function AccountsPage() {
       title="Accounts"
       actions={
         <>
+          {hasActiveFilters && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+            </Tooltip>
+          )}
           <ExportButton fetchData={fetchAllAccounts} columns={exportColumns} filename="accounts" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
