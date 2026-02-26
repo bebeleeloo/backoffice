@@ -1659,7 +1659,7 @@ public static class SeedDemoData
 
     // ── Orders ─────────────────────────────────────────────────────
 
-    private const int TradeOrderCount = 200;
+    private const int TradeOrderCount = 1200;
     private const int NonTradeOrderCount = 100;
 
     private static async Task<int> SeedOrdersAsync(AppDbContext db, ILogger logger)
