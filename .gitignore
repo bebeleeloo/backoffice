@@ -10,6 +10,10 @@ obj/
 # Node
 node_modules/
 dist/
+tsconfig.tsbuildinfo
+
+# Test
+test-results/
 
 # Environment
 .env
