@@ -14,9 +14,9 @@ public sealed record DashboardStatsDto
     public Dictionary<string, int> AccountsByStatus { get; init; } = new();
     public Dictionary<string, int> AccountsByType { get; init; } = new();
 
-    public int TotalInstruments { get; init; }
-    public Dictionary<string, int> InstrumentsByStatus { get; init; } = new();
-    public Dictionary<string, int> InstrumentsByType { get; init; } = new();
+    public int TotalOrders { get; init; }
+    public Dictionary<string, int> OrdersByStatus { get; init; } = new();
+    public Dictionary<string, int> OrdersByCategory { get; init; } = new();
 
     public int TotalUsers { get; init; }
     public int ActiveUsers { get; init; }
@@ -49,13 +49,13 @@ public sealed class GetDashboardStatsQueryHandler(IAppDbContext db)
             .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        var instrumentsByStatus = await db.Instruments
-            .GroupBy(i => i.Status)
+        var ordersByStatus = await db.Orders
+            .GroupBy(o => o.Status)
             .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        var instrumentsByType = await db.Instruments
-            .GroupBy(i => i.Type)
+        var ordersByCategory = await db.Orders
+            .GroupBy(o => o.Category)
             .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
@@ -70,9 +70,9 @@ public sealed class GetDashboardStatsQueryHandler(IAppDbContext db)
             TotalAccounts = accountsByStatus.Values.Sum(),
             AccountsByStatus = accountsByStatus,
             AccountsByType = accountsByType,
-            TotalInstruments = instrumentsByStatus.Values.Sum(),
-            InstrumentsByStatus = instrumentsByStatus,
-            InstrumentsByType = instrumentsByType,
+            TotalOrders = ordersByStatus.Values.Sum(),
+            OrdersByStatus = ordersByStatus,
+            OrdersByCategory = ordersByCategory,
             TotalUsers = totalUsers,
             ActiveUsers = activeUsers,
         };

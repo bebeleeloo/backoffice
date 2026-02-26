@@ -617,9 +617,9 @@ export interface DashboardStatsDto {
   totalAccounts: number;
   accountsByStatus: Record<string, number>;
   accountsByType: Record<string, number>;
-  totalInstruments: number;
-  instrumentsByStatus: Record<string, number>;
-  instrumentsByType: Record<string, number>;
+  totalOrders: number;
+  ordersByStatus: Record<string, number>;
+  ordersByCategory: Record<string, number>;
   totalUsers: number;
   activeUsers: number;
 }

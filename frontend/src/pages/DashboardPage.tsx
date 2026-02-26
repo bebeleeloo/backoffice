@@ -1,7 +1,7 @@
 import { Box, Card, CardActionArea, Typography, Skeleton } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,8 +17,18 @@ const STATUS_COLORS: Record<string, string> = {
   PendingKyc: "#ff9800",
   Closed: "#9e9e9e",
   Suspended: "#ff9800",
-  Inactive: "#9e9e9e",
-  Delisted: "#f44336",
+  New: "#2196f3",
+  PendingApproval: "#ff9800",
+  Approved: "#1565c0",
+  Rejected: "#f44336",
+  InProgress: "#2196f3",
+  PartiallyFilled: "#ff9800",
+  Filled: "#4caf50",
+  Completed: "#4caf50",
+  Cancelled: "#9e9e9e",
+  Failed: "#f44336",
+  Trade: "#1565c0",
+  NonTrade: "#7e57c2",
 };
 
 const TYPE_COLORS = [
@@ -170,11 +180,11 @@ export function DashboardPage() {
           loading={isLoading}
         />
         <StatCard
-          title="Instruments"
-          total={data?.totalInstruments}
-          breakdown={data?.instrumentsByStatus}
-          icon={<ShowChartIcon sx={{ fontSize: 36 }} />}
-          href="/instruments"
+          title="Orders"
+          total={data?.totalOrders}
+          breakdown={data?.ordersByCategory}
+          icon={<ReceiptLongIcon sx={{ fontSize: 36 }} />}
+          href="/trade-orders"
           loading={isLoading}
         />
         <StatCard
@@ -190,8 +200,8 @@ export function DashboardPage() {
       <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
         <StatusPie title="Clients by Status" data={data?.clientsByStatus} loading={isLoading} />
         <StatusPie title="Accounts by Status" data={data?.accountsByStatus} loading={isLoading} />
-        <TypeBar title="Instruments by Type" data={data?.instrumentsByType} loading={isLoading} />
-        <StatusPie title="Instruments by Status" data={data?.instrumentsByStatus} loading={isLoading} />
+        <StatusPie title="Orders by Status" data={data?.ordersByStatus} loading={isLoading} />
+        <TypeBar title="Orders by Category" data={data?.ordersByCategory} loading={isLoading} />
       </Box>
     </PageContainer>
   );
