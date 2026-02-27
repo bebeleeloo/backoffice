@@ -20,6 +20,10 @@ const TradeOrdersPage = React.lazy(() => import("../pages/TradeOrdersPage").then
 const TradeOrderDetailsPage = React.lazy(() => import("../pages/TradeOrderDetailsPage").then((m) => ({ default: m.TradeOrderDetailsPage })));
 const NonTradeOrdersPage = React.lazy(() => import("../pages/NonTradeOrdersPage").then((m) => ({ default: m.NonTradeOrdersPage })));
 const NonTradeOrderDetailsPage = React.lazy(() => import("../pages/NonTradeOrderDetailsPage").then((m) => ({ default: m.NonTradeOrderDetailsPage })));
+const TradeTransactionsPage = React.lazy(() => import("../pages/TradeTransactionsPage").then((m) => ({ default: m.TradeTransactionsPage })));
+const TradeTransactionDetailsPage = React.lazy(() => import("../pages/TradeTransactionDetailsPage").then((m) => ({ default: m.TradeTransactionDetailsPage })));
+const NonTradeTransactionsPage = React.lazy(() => import("../pages/NonTradeTransactionsPage").then((m) => ({ default: m.NonTradeTransactionsPage })));
+const NonTradeTransactionDetailsPage = React.lazy(() => import("../pages/NonTradeTransactionDetailsPage").then((m) => ({ default: m.NonTradeTransactionDetailsPage })));
 const AuditPage = React.lazy(() => import("../pages/AuditPage").then((m) => ({ default: m.AuditPage })));
 const SettingsPage = React.lazy(() => import("../pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 
@@ -52,6 +56,10 @@ export const router = createBrowserRouter([
       { path: "trade-orders/:id", element: withSuspense(TradeOrderDetailsPage) },
       { path: "non-trade-orders", element: withSuspense(NonTradeOrdersPage) },
       { path: "non-trade-orders/:id", element: withSuspense(NonTradeOrderDetailsPage) },
+      { path: "trade-transactions", element: withSuspense(TradeTransactionsPage) },
+      { path: "trade-transactions/:id", element: withSuspense(TradeTransactionDetailsPage) },
+      { path: "non-trade-transactions", element: withSuspense(NonTradeTransactionsPage) },
+      { path: "non-trade-transactions/:id", element: withSuspense(NonTradeTransactionDetailsPage) },
       { path: "users", element: withSuspense(UsersPage) },
       { path: "roles", element: withSuspense(RolesPage) },
       { path: "roles/:id", element: withSuspense(RoleDetailsPage) },

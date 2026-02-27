@@ -5,6 +5,7 @@ import { auditHandlers } from "./handlers/audit";
 import { clientsHandlers } from "./handlers/clients";
 import { countriesHandlers } from "./handlers/countries";
 import { permissionsHandlers } from "./handlers/permissions";
+import { transactionsHandlers } from "./handlers/transactions";
 
 export const handlers = [
   ...authHandlers,
@@ -14,4 +15,5 @@ export const handlers = [
   ...clientsHandlers,
   ...countriesHandlers,
   ...permissionsHandlers,
+  ...transactionsHandlers,
 ];

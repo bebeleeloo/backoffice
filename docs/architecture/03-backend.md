@@ -185,6 +185,36 @@ GET без `/all` возвращает только active-записи (для 
 
 **FK-валидация (Create/Update):** Account, Currency и Instrument (если указан) проверяются через `AnyAsync` перед сохранением.
 
+### Торговые транзакции (TradeTransactionsController)
+
+| Метод | Маршрут | Permission | Аудит |
+|-------|---------|-----------|-------|
+| GET | `/trade-transactions` | transactions.read | - |
+| GET | `/trade-transactions/{id}` | transactions.read | - |
+| GET | `/trade-transactions/by-order/{orderId}` | transactions.read | - |
+| POST | `/trade-transactions` | transactions.create | Да |
+| PUT | `/trade-transactions/{id}` | transactions.update | Да |
+| DELETE | `/trade-transactions/{id}` | transactions.delete | Да |
+
+**Фильтры GET /trade-transactions:** Status[], Side[], OrderId[], AccountId[], InstrumentId[], TransactionNumber, OrderNumber, ExternalId, TransactionDateFrom, TransactionDateTo, CreatedFrom, CreatedTo, SettlementDateFrom, SettlementDateTo, QuantityMin, QuantityMax, PriceMin, PriceMax, CommissionMin, CommissionMax.
+
+**FK-валидация (Create/Update):** Order (если указан) и Instrument проверяются через `AnyAsync`. OrderId опционален (транзакция может существовать без ордера).
+
+### Неторговые транзакции (NonTradeTransactionsController)
+
+| Метод | Маршрут | Permission | Аудит |
+|-------|---------|-----------|-------|
+| GET | `/non-trade-transactions` | transactions.read | - |
+| GET | `/non-trade-transactions/{id}` | transactions.read | - |
+| GET | `/non-trade-transactions/by-order/{orderId}` | transactions.read | - |
+| POST | `/non-trade-transactions` | transactions.create | Да |
+| PUT | `/non-trade-transactions/{id}` | transactions.update | Да |
+| DELETE | `/non-trade-transactions/{id}` | transactions.delete | Да |
+
+**Фильтры GET /non-trade-transactions:** Status[], OrderId[], AccountId[], InstrumentId[], TransactionNumber, OrderNumber, CurrencyCode, ReferenceNumber, ExternalId, TransactionDateFrom, TransactionDateTo, CreatedFrom, CreatedTo, ProcessedFrom, ProcessedTo, AmountMin, AmountMax.
+
+**FK-валидация (Create/Update):** Order (если указан), Currency и Instrument (если указан) проверяются через `AnyAsync`. OrderId опционален.
+
 ### Дашборд (DashboardController)
 
 | Метод | Маршрут | Авторизация | Описание |
@@ -251,7 +281,7 @@ sequenceDiagram
 
 ## Оптимистичная конкурентность
 
-Все мутирующие операции над User, Role, Client, Account, Order используют `RowVersion` (SQL Server `rowversion`):
+Все мутирующие операции над User, Role, Client, Account, Order, Transaction используют `RowVersion` (SQL Server `rowversion`):
 
 1. Клиент получает сущность с `RowVersion`
 2. При обновлении передает `RowVersion` обратно
@@ -297,6 +327,7 @@ SaveChangesAsync()
 | AccountHolder | child | Account + Client | Связь счёт-клиент (dual parent) |
 | Instrument | root | — | Инструменты |
 | Order | root | — | Поручения (торговые и неторговые) |
+| Transaction | root | — | Транзакции (торговые и неторговые) |
 | User | root | — | Пользователи (PasswordHash исключён) |
 | UserRole | child | User | Роли пользователя |
 | Role | root | — | Роли |

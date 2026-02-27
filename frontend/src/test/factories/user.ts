@@ -5,8 +5,13 @@ export const ALL_PERMISSIONS = [
   "users.read", "users.create", "users.update", "users.delete",
   "roles.read", "roles.create", "roles.update", "roles.delete",
   "clients.read", "clients.create", "clients.update", "clients.delete",
+  "accounts.read", "accounts.create", "accounts.update", "accounts.delete",
+  "instruments.read", "instruments.create", "instruments.update", "instruments.delete",
+  "orders.read", "orders.create", "orders.update", "orders.delete",
+  "transactions.read", "transactions.create", "transactions.update", "transactions.delete",
   "audit.read",
   "permissions.read",
+  "settings.manage",
 ];
 
 export function buildUserDto(overrides: Partial<UserDto> = {}): UserDto {

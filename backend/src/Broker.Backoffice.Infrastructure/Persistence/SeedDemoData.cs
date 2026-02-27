@@ -4,6 +4,7 @@ using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
 using Broker.Backoffice.Domain.Orders;
+using Broker.Backoffice.Domain.Transactions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,12 +27,13 @@ public static class SeedDemoData
         var accountsCreated = await SeedAccountsAsync(db, logger);
         var instrumentsCreated = await SeedInstrumentsAsync(db, logger);
         var ordersCreated = await SeedOrdersAsync(db, logger);
+        var transactionsCreated = await SeedTransactionsAsync(db, logger);
 
         await tx.CommitAsync();
 
-        if (usersCreated + clientsCreated + accountsCreated + instrumentsCreated + ordersCreated > 0)
-            logger.LogInformation("Demo seed complete: {Users} users, {Clients} clients, {Accounts} accounts, {Instruments} instruments, {Orders} orders created",
-                usersCreated, clientsCreated, accountsCreated, instrumentsCreated, ordersCreated);
+        if (usersCreated + clientsCreated + accountsCreated + instrumentsCreated + ordersCreated + transactionsCreated > 0)
+            logger.LogInformation("Demo seed complete: {Users} users, {Clients} clients, {Accounts} accounts, {Instruments} instruments, {Orders} orders, {Transactions} transactions created",
+                usersCreated, clientsCreated, accountsCreated, instrumentsCreated, ordersCreated, transactionsCreated);
         else
             logger.LogInformation("Demo seed: all data already present, 0 created");
     }
@@ -1660,7 +1662,7 @@ public static class SeedDemoData
     // ── Orders ─────────────────────────────────────────────────────
 
     private const int TradeOrderCount = 1200;
-    private const int NonTradeOrderCount = 100;
+    private const int NonTradeOrderCount = 800;
 
     private static async Task<int> SeedOrdersAsync(AppDbContext db, ILogger logger)
     {
@@ -1858,6 +1860,162 @@ public static class SeedDemoData
         await db.SaveChangesAsync();
         logger.LogInformation("Demo seed: created {Count} orders ({Trade} trade, {NonTrade} non-trade)",
             created, TradeOrderCount, NonTradeOrderCount);
+        return created;
+    }
+
+    // ── Transactions ───────────────────────────────────────────────
+
+    private static async Task<int> SeedTransactionsAsync(AppDbContext db, ILogger logger)
+    {
+        if (await db.Transactions.AnyAsync())
+            return 0;
+
+        // Get filled/completed trade orders and completed non-trade orders
+        var tradeOrderIds = await db.Orders
+            .Where(o => o.Category == OrderCategory.Trade &&
+                        (o.Status == OrderStatus.Filled || o.Status == OrderStatus.Completed || o.Status == OrderStatus.PartiallyFilled))
+            .Select(o => new { o.Id, o.CreatedAt })
+            .ToArrayAsync();
+
+        var nonTradeOrderIds = await db.Orders
+            .Where(o => o.Category == OrderCategory.NonTrade &&
+                        (o.Status == OrderStatus.Completed || o.Status == OrderStatus.Filled || o.Status == OrderStatus.PartiallyFilled))
+            .Select(o => new { o.Id, o.CreatedAt })
+            .ToArrayAsync();
+
+        var instrumentIds = await db.Instruments.Where(i => i.Status == InstrumentStatus.Active)
+            .Select(i => i.Id).ToArrayAsync();
+        var currencyIds = await db.Currencies.Where(c => c.IsActive)
+            .Select(c => c.Id).ToArrayAsync();
+
+        if (instrumentIds.Length == 0 || currencyIds.Length == 0)
+        {
+            logger.LogWarning("Demo seed: skipping transactions — no instruments or currencies found");
+            return 0;
+        }
+
+        var created = 0;
+
+        // ── Trade Transactions ──
+        for (var i = 0; i < tradeOrderIds.Length; i++)
+        {
+            var order = tradeOrderIds[i];
+            var rng = new Random(130_000 + i);
+            var txnCount = rng.Next(1, 4); // 1-3 transactions per order
+
+            for (var j = 0; j < txnCount; j++)
+            {
+                var txnId = Guid.NewGuid();
+                var txnDate = order.CreatedAt.AddMinutes(rng.Next(1, 480));
+
+                var status = PickWeighted(rng,
+                    (TransactionStatus.Settled, 70),
+                    (TransactionStatus.Pending, 15),
+                    (TransactionStatus.Failed, 10),
+                    (TransactionStatus.Cancelled, 5));
+
+                var side = PickWeighted(rng,
+                    (TradeSide.Buy, 45),
+                    (TradeSide.Sell, 45),
+                    (TradeSide.ShortSell, 5),
+                    (TradeSide.BuyToCover, 5));
+
+                var quantity = Math.Round((decimal)(rng.Next(1, 200) * rng.Next(1, 5)), 2);
+                var price = Math.Round((decimal)(rng.NextDouble() * 500 + 1), 2);
+                var commission = rng.Next(3) > 0 ? Math.Round((decimal)(rng.NextDouble() * 20 + 0.5), 2) : (decimal?)null;
+                var settlementDate = status == TransactionStatus.Settled ? txnDate.AddDays(rng.Next(1, 3)) : (DateTime?)null;
+
+                db.Transactions.Add(new Transaction
+                {
+                    Id = txnId,
+                    OrderId = order.Id,
+                    TransactionNumber = $"TT-{txnDate:yyyyMMdd}-{txnId.ToString("N")[..8].ToUpper()}",
+                    Category = OrderCategory.Trade,
+                    Status = status,
+                    TransactionDate = txnDate,
+                    Comment = rng.Next(8) == 0 ? "Demo trade transaction" : null,
+                    ExternalId = rng.Next(5) == 0 ? $"EXT-TT-{rng.Next(10000, 99999)}" : null,
+                    CreatedAt = txnDate,
+                    CreatedBy = "seed",
+                });
+
+                db.TradeTransactions.Add(new TradeTransaction
+                {
+                    TransactionId = txnId,
+                    InstrumentId = instrumentIds[rng.Next(instrumentIds.Length)],
+                    Side = side,
+                    Quantity = quantity,
+                    Price = price,
+                    Commission = commission,
+                    SettlementDate = settlementDate,
+                    Venue = rng.Next(4) == 0 ? PickRandom(rng, "NYSE", "NASDAQ", "LSE", "HKEX", "Euronext") : null,
+                });
+
+                created++;
+            }
+
+            if (i % 25 == 24)
+                await db.SaveChangesAsync();
+        }
+
+        await db.SaveChangesAsync();
+
+        // ── Non-Trade Transactions ──
+        for (var i = 0; i < nonTradeOrderIds.Length; i++)
+        {
+            var order = nonTradeOrderIds[i];
+            var rng = new Random(140_000 + i);
+            var txnCount = rng.Next(1, 3); // 1-2 transactions per order
+
+            for (var j = 0; j < txnCount; j++)
+            {
+                var txnId = Guid.NewGuid();
+                var txnDate = order.CreatedAt.AddHours(rng.Next(1, 48));
+
+                var status = PickWeighted(rng,
+                    (TransactionStatus.Settled, 75),
+                    (TransactionStatus.Pending, 15),
+                    (TransactionStatus.Failed, 5),
+                    (TransactionStatus.Cancelled, 5));
+
+                var amount = Math.Round((decimal)(rng.NextDouble() * 10000 + 10), 2);
+                var processedAt = status == TransactionStatus.Settled ? txnDate.AddHours(rng.Next(1, 24)) : (DateTime?)null;
+
+                db.Transactions.Add(new Transaction
+                {
+                    Id = txnId,
+                    OrderId = order.Id,
+                    TransactionNumber = $"NTT-{txnDate:yyyyMMdd}-{txnId.ToString("N")[..8].ToUpper()}",
+                    Category = OrderCategory.NonTrade,
+                    Status = status,
+                    TransactionDate = txnDate,
+                    Comment = rng.Next(8) == 0 ? "Demo non-trade transaction" : null,
+                    ExternalId = rng.Next(5) == 0 ? $"EXT-NTT-{rng.Next(10000, 99999)}" : null,
+                    CreatedAt = txnDate,
+                    CreatedBy = "seed",
+                });
+
+                db.NonTradeTransactions.Add(new NonTradeTransaction
+                {
+                    TransactionId = txnId,
+                    Amount = amount,
+                    CurrencyId = currencyIds[rng.Next(currencyIds.Length)],
+                    InstrumentId = rng.Next(3) == 0 ? instrumentIds[rng.Next(instrumentIds.Length)] : null,
+                    ReferenceNumber = rng.Next(3) == 0 ? $"REF-{rng.Next(100000, 999999)}" : null,
+                    Description = rng.Next(4) == 0 ? "Demo non-trade transaction" : null,
+                    ProcessedAt = processedAt,
+                });
+
+                created++;
+            }
+
+            if (i % 50 == 49)
+                await db.SaveChangesAsync();
+        }
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("Demo seed: created {Count} transactions ({Trade} trade, {NonTrade} non-trade)",
+            created, created - nonTradeOrderIds.Length, nonTradeOrderIds.Length);
         return created;
     }
 

@@ -36,6 +36,11 @@ public static class Permissions
     public const string OrdersUpdate = "orders.update";
     public const string OrdersDelete = "orders.delete";
 
+    public const string TransactionsRead = "transactions.read";
+    public const string TransactionsCreate = "transactions.create";
+    public const string TransactionsUpdate = "transactions.update";
+    public const string TransactionsDelete = "transactions.delete";
+
     public const string SettingsManage = "settings.manage";
 
     public static readonly (string Code, string Name, string Group)[] All =
@@ -66,6 +71,10 @@ public static class Permissions
         (OrdersCreate, "Create orders", "Orders"),
         (OrdersUpdate, "Update orders", "Orders"),
         (OrdersDelete, "Delete orders", "Orders"),
+        (TransactionsRead, "View transactions", "Transactions"),
+        (TransactionsCreate, "Create transactions", "Transactions"),
+        (TransactionsUpdate, "Update transactions", "Transactions"),
+        (TransactionsDelete, "Delete transactions", "Transactions"),
         (SettingsManage, "Manage reference data settings", "Settings"),
     ];
 }

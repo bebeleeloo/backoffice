@@ -38,6 +38,10 @@ erDiagram
     Order }o--o| Instrument : "instrument"
     Order }o--o| Currency : "currency"
 
+    Transaction }o--o| Order : "order"
+    Transaction }o--o| Instrument : "instrument"
+    Transaction }o--o| Currency : "currency"
+
     EntityChange }o..o| User : "who changed"
 
     User {
@@ -225,6 +229,32 @@ erDiagram
         datetime CreatedAt
     }
 
+    Transaction {
+        guid Id PK
+        string TransactionNumber UK
+        guid OrderId FK
+        enum TransactionStatus
+        datetime TransactionDate
+        string Comment
+        string ExternalId
+        guid InstrumentId FK
+        enum TradeSide
+        decimal Quantity
+        decimal Price
+        decimal Commission
+        datetime SettlementDate
+        string Venue
+        decimal Amount
+        guid CurrencyId FK
+        string InstrumentSymbol
+        string InstrumentName
+        string ReferenceNumber
+        string Description
+        datetime ProcessedAt
+        binary RowVersion
+        datetime CreatedAt
+    }
+
     AuditLog {
         guid Id PK
         guid UserId IX
@@ -267,7 +297,7 @@ erDiagram
 |---------|------------|-------------------|
 | Users | Пользователи системы | Username, Email |
 | Roles | Роли (в т.ч. системные) | Name |
-| Permissions | Гранулярные права (27 шт.) | Code |
+| Permissions | Гранулярные права (31 шт.) | Code |
 | UserRoles | Связь M:N User <-> Role | (UserId, RoleId) |
 | RolePermissions | Связь M:N Role <-> Permission | (RoleId, PermissionId) |
 | UserPermissionOverrides | Персональные переопределения прав | (UserId, PermissionId) |
@@ -310,6 +340,16 @@ erDiagram
 
 **Неторговые (Category = NonTrade):** NonTradeType, Amount, CurrencyId, ReferenceNumber, Description, ProcessedAt.
 
+### Транзакции
+
+| Таблица | Назначение | Особенности |
+|---------|------------|-------------|
+| Transactions | Торговые и неторговые транзакции (STI — single table inheritance) | RowVersion, FK на Order? (опциональный), Instrument?, Currency?, TransactionNumber уникален |
+
+**Торговые (Category = Trade):** Side, Quantity, Price, Commission, SettlementDate, Venue.
+
+**Неторговые (Category = NonTrade):** Amount, CurrencyId, InstrumentId?, ReferenceNumber, Description, ProcessedAt.
+
 ### Аудит и отслеживание изменений
 
 | Таблица | Назначение | Особенности |
@@ -343,6 +383,7 @@ erDiagram
 | TradeOrderType | Market (0), Limit (1), Stop (2), StopLimit (3) |
 | TimeInForce | Day (0), GTC (1), IOC (2), FOK (3), GTD (4) |
 | NonTradeOrderType | Deposit (0), Withdrawal (1), Dividend (2), CorporateAction (3), Fee (4), Interest (5), Transfer (6), Adjustment (7) |
+| TransactionStatus | Pending (0), Settled (1), Failed (2), Cancelled (3) |
 
 ## Миграции
 
@@ -362,6 +403,8 @@ EF Core Code-First миграции:
 | 10 | 20260225192736_AddOrders | Orders (STI — торговые и неторговые поручения) |
 | 11 | 20260225195544_ChangeOrderFkToOrderId | Изменение FK-стратегии для Order |
 | 12 | 20260225232527_AddOrderDate | Добавление обязательного поля OrderDate |
+| 13 | 20260227142421_AddTransactions | Transactions (STI — торговые и неторговые транзакции) |
+| 14 | 20260227155308_MakeTransactionOrderIdOptional | OrderId nullable (транзакция может жить без ордера) |
 
 Миграции применяются **автоматически** при старте приложения (`context.Database.MigrateAsync()`).
 
@@ -369,13 +412,13 @@ EF Core Code-First миграции:
 
 При первом запуске засеиваются:
 
-1. **Permissions** (27 прав) -- из массива `Permissions.All` в коде
+1. **Permissions** (31 прав) -- из массива `Permissions.All` в коде
 2. **Countries** -- полный список стран с ISO-кодами и флагами
 3. **Admin user** -- логин `admin`, пароль из переменной окружения `ADMIN_PASSWORD`
 4. **Роль Administrator** -- системная роль со всеми permissions
 5. **Clearers** -- справочник клиринговых компаний (Apex Clearing, Pershing, Interactive Brokers, Hilltop Securities)
 6. **TradePlatforms** -- справочник торговых платформ (MetaTrader 5, Sterling Trader, DAS Trader, Thinkorswim)
-7. **Demo data** (опционально, `SEED_DEMO_DATA=true`) -- тестовые пользователи, роли, клиенты, счета (150 шт.), холдеры, торговые и неторговые поручения
+7. **Demo data** (опционально, `SEED_DEMO_DATA=true`) -- тестовые пользователи, роли, клиенты, счета (150 шт.), холдеры, торговые и неторговые поручения, торговые и неторговые транзакции
 
 ## Конкурентность и транзакции
 
@@ -390,4 +433,5 @@ EF Core Code-First миграции:
 - `ON DELETE RESTRICT`: Clients -> Countries (нельзя удалить страну, если есть клиенты)
 - `ON DELETE RESTRICT`: AccountHolders -> Clients (нельзя удалить клиента, если он холдер счёта)
 - `ON DELETE SET NULL`: Accounts -> Clearers, Accounts -> TradePlatforms
+- `ON DELETE RESTRICT`: Transactions -> Orders (нельзя удалить ордер, если есть транзакции)
 - `ON DELETE CASCADE`: UserRoles, RolePermissions (при удалении User/Role)

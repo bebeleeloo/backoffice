@@ -20,6 +20,8 @@ import AssignmentIcon from "@mui/icons-material/Assignment";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import { useAuth } from "../auth/useAuth";
 import { useHasPermission } from "../auth/usePermission";
 import { ErrorBoundary } from "../components/ErrorBoundary";
@@ -36,12 +38,16 @@ export function MainLayout() {
   const canViewAccounts = useHasPermission("accounts.read");
   const canViewInstruments = useHasPermission("instruments.read");
   const canViewOrders = useHasPermission("orders.read");
+  const canViewTransactions = useHasPermission("transactions.read");
   const canViewUsers = useHasPermission("users.read");
   const canViewRoles = useHasPermission("roles.read");
   const canViewAudit = useHasPermission("audit.read");
 
   const isOrdersPath = location.pathname.startsWith("/trade-orders") || location.pathname.startsWith("/non-trade-orders");
   const [ordersOpen, setOrdersOpen] = useState(isOrdersPath);
+
+  const isTransactionsPath = location.pathname.startsWith("/trade-transactions") || location.pathname.startsWith("/non-trade-transactions");
+  const [transactionsOpen, setTransactionsOpen] = useState(isTransactionsPath);
 
   const menuItems = [
     { label: "Dashboard", path: "/", icon: <DashboardIcon />, visible: true },
@@ -112,6 +118,36 @@ export function MainLayout() {
                 >
                   <ListItemIcon><SwapHorizIcon /></ListItemIcon>
                   <ListItemText primary="Non-Trade Orders" />
+                </ListItemButton>
+              </List>
+            </Collapse>
+          </>
+        )}
+
+        {canViewTransactions && (
+          <>
+            <ListItemButton onClick={() => setTransactionsOpen(!transactionsOpen)} selected={isTransactionsPath}>
+              <ListItemIcon><ReceiptIcon /></ListItemIcon>
+              <ListItemText primary="Transactions" />
+              {transactionsOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+            <Collapse in={transactionsOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                <ListItemButton
+                  sx={{ pl: 4 }}
+                  selected={location.pathname.startsWith("/trade-transactions")}
+                  onClick={() => { navigate("/trade-transactions"); setMobileOpen(false); }}
+                >
+                  <ListItemIcon><ReceiptLongIcon /></ListItemIcon>
+                  <ListItemText primary="Trade Transactions" />
+                </ListItemButton>
+                <ListItemButton
+                  sx={{ pl: 4 }}
+                  selected={location.pathname.startsWith("/non-trade-transactions")}
+                  onClick={() => { navigate("/non-trade-transactions"); setMobileOpen(false); }}
+                >
+                  <ListItemIcon><AccountBalanceWalletIcon /></ListItemIcon>
+                  <ListItemText primary="Non-Trade Transactions" />
                 </ListItemButton>
               </List>
             </Collapse>

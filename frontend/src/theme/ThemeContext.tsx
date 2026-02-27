@@ -12,7 +12,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-const ListThemeContext = createContext<Theme | null>(null);
+export const ListThemeContext = createContext<Theme | null>(null);
 
 const STORAGE_KEY = "themeMode";
 

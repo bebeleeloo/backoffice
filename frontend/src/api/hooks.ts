@@ -13,6 +13,8 @@ import type {
   InstrumentListItemDto, InstrumentDto, CreateInstrumentRequest, UpdateInstrumentRequest, InstrumentsParams,
   TradeOrderListItemDto, TradeOrderDto, CreateTradeOrderRequest, UpdateTradeOrderRequest, TradeOrdersParams,
   NonTradeOrderListItemDto, NonTradeOrderDto, CreateNonTradeOrderRequest, UpdateNonTradeOrderRequest, NonTradeOrdersParams,
+  TradeTransactionListItemDto, TradeTransactionDto, CreateTradeTransactionRequest, UpdateTradeTransactionRequest, TradeTransactionsParams,
+  NonTradeTransactionListItemDto, NonTradeTransactionDto, CreateNonTradeTransactionRequest, UpdateNonTradeTransactionRequest, NonTradeTransactionsParams,
   OperationDto, EntityChangesParams,
   GlobalOperationDto, AllEntityChangesParams,
   DashboardStatsDto,
@@ -665,3 +667,107 @@ export const useAllEntityChanges = (params: AllEntityChangesParams) =>
       apiClient.get<PagedResult<GlobalOperationDto>>("/entity-changes/all", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
     placeholderData: keepPreviousData,
   });
+
+// Trade Transactions
+export const useTradeTransactions = (params: TradeTransactionsParams) =>
+  useQuery({
+    queryKey: ["trade-transactions", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<TradeTransactionListItemDto>>("/trade-transactions", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
+  });
+
+export const useTradeTransaction = (id: string) =>
+  useQuery({
+    queryKey: ["trade-transactions", id],
+    queryFn: () => apiClient.get<TradeTransactionDto>(`/trade-transactions/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+export const useTradeTransactionsByOrder = (orderId: string) =>
+  useQuery({
+    queryKey: ["trade-transactions", "by-order", orderId],
+    queryFn: () => apiClient.get<TradeTransactionListItemDto[]>(`/trade-transactions/by-order/${orderId}`).then((r) => r.data),
+    enabled: !!orderId,
+  });
+
+export const useCreateTradeTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateTradeTransactionRequest) =>
+      apiClient.post<TradeTransactionDto>("/trade-transactions", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-transactions"] }),
+    meta: { successMessage: "Trade transaction created" },
+  });
+};
+
+export const useUpdateTradeTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateTradeTransactionRequest) =>
+      apiClient.put<TradeTransactionDto>(`/trade-transactions/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-transactions"] }),
+    meta: { successMessage: "Trade transaction updated" },
+  });
+};
+
+export const useDeleteTradeTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/trade-transactions/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trade-transactions"] }),
+    meta: { successMessage: "Trade transaction deleted" },
+  });
+};
+
+// Non-Trade Transactions
+export const useNonTradeTransactions = (params: NonTradeTransactionsParams) =>
+  useQuery({
+    queryKey: ["non-trade-transactions", params],
+    queryFn: () =>
+      apiClient.get<PagedResult<NonTradeTransactionListItemDto>>("/non-trade-transactions", { params: cleanParams(params as Record<string, unknown>) }).then((r) => r.data),
+    placeholderData: keepPreviousData,
+  });
+
+export const useNonTradeTransaction = (id: string) =>
+  useQuery({
+    queryKey: ["non-trade-transactions", id],
+    queryFn: () => apiClient.get<NonTradeTransactionDto>(`/non-trade-transactions/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+export const useNonTradeTransactionsByOrder = (orderId: string) =>
+  useQuery({
+    queryKey: ["non-trade-transactions", "by-order", orderId],
+    queryFn: () => apiClient.get<NonTradeTransactionListItemDto[]>(`/non-trade-transactions/by-order/${orderId}`).then((r) => r.data),
+    enabled: !!orderId,
+  });
+
+export const useCreateNonTradeTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateNonTradeTransactionRequest) =>
+      apiClient.post<NonTradeTransactionDto>("/non-trade-transactions", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["non-trade-transactions"] }),
+    meta: { successMessage: "Non-trade transaction created" },
+  });
+};
+
+export const useUpdateNonTradeTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateNonTradeTransactionRequest) =>
+      apiClient.put<NonTradeTransactionDto>(`/non-trade-transactions/${data.id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["non-trade-transactions"] }),
+    meta: { successMessage: "Non-trade transaction updated" },
+  });
+};
+
+export const useDeleteNonTradeTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/non-trade-transactions/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["non-trade-transactions"] }),
+    meta: { successMessage: "Non-trade transaction deleted" },
+  });
+};

@@ -31,6 +31,10 @@ QueryClientProvider (retry: 1, refetchOnWindowFocus: false)
   /trade-orders/:id      -> TradeOrderDetailsPage
   /non-trade-orders      -> NonTradeOrdersPage
   /non-trade-orders/:id  -> NonTradeOrderDetailsPage
+  /trade-transactions    -> TradeTransactionsPage
+  /trade-transactions/:id -> TradeTransactionDetailsPage
+  /non-trade-transactions -> NonTradeTransactionsPage
+  /non-trade-transactions/:id -> NonTradeTransactionDetailsPage
   /users                 -> UsersPage
   /roles                 -> RolesPage
   /roles/:id             -> RoleDetailsPage
@@ -120,13 +124,19 @@ Request interceptor:
 | `useTradeOrder(id)` | GET /trade-orders/{id} | default |
 | `useNonTradeOrders(params)` | GET /non-trade-orders | default |
 | `useNonTradeOrder(id)` | GET /non-trade-orders/{id} | default |
+| `useTradeTransactions(params)` | GET /trade-transactions | default |
+| `useTradeTransaction(id)` | GET /trade-transactions/{id} | default |
+| `useTradeTransactionsByOrder(orderId)` | GET /trade-transactions/by-order/{orderId} | default |
+| `useNonTradeTransactions(params)` | GET /non-trade-transactions | default |
+| `useNonTradeTransaction(id)` | GET /non-trade-transactions/{id} | default |
+| `useNonTradeTransactionsByOrder(orderId)` | GET /non-trade-transactions/by-order/{orderId} | default |
 | `useDashboardStats()` | GET /dashboard/stats | default |
 | `useAllClearers()` | GET /clearers/all | default |
 | `useAllTradePlatforms()` | GET /trade-platforms/all | default |
 | `useAllExchanges()` | GET /exchanges/all | default |
 | `useAllCurrencies()` | GET /currencies/all | default |
 
-Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useCreateClient`, `useUpdateClient`, `useDeleteClient`, `useCreateAccount`, `useUpdateAccount`, `useDeleteAccount`, `useSetAccountHolders`, `useSetClientAccounts`, `useCreateInstrument`, `useUpdateInstrument`, `useDeleteInstrument`, `useUpdateProfile`, `useChangePassword`, `useCreateClearer`, `useUpdateClearer`, `useDeleteClearer`, `useCreateTradePlatform`, `useUpdateTradePlatform`, `useDeleteTradePlatform`, `useCreateExchange`, `useUpdateExchange`, `useDeleteExchange`, `useCreateCurrency`, `useUpdateCurrency`, `useDeleteCurrency` и т.д.) инвалидируют соответствующий queryKey при успехе.
+Мутации (`useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useCreateClient`, `useUpdateClient`, `useDeleteClient`, `useCreateAccount`, `useUpdateAccount`, `useDeleteAccount`, `useSetAccountHolders`, `useSetClientAccounts`, `useCreateInstrument`, `useUpdateInstrument`, `useDeleteInstrument`, `useCreateTradeOrder`, `useUpdateTradeOrder`, `useDeleteTradeOrder`, `useCreateNonTradeOrder`, `useUpdateNonTradeOrder`, `useDeleteNonTradeOrder`, `useCreateTradeTransaction`, `useUpdateTradeTransaction`, `useDeleteTradeTransaction`, `useCreateNonTradeTransaction`, `useUpdateNonTradeTransaction`, `useDeleteNonTradeTransaction`, `useUpdateProfile`, `useChangePassword`, `useCreateClearer`, `useUpdateClearer`, `useDeleteClearer`, `useCreateTradePlatform`, `useUpdateTradePlatform`, `useDeleteTradePlatform`, `useCreateExchange`, `useUpdateExchange`, `useDeleteExchange`, `useCreateCurrency`, `useUpdateCurrency`, `useDeleteCurrency`) инвалидируют соответствующий queryKey при успехе.
 
 Все хуки используют `cleanParams()` для удаления undefined/null/empty значений перед отправкой.
 
@@ -153,11 +163,11 @@ Request interceptor:
 Все страницы-списки содержат кнопку `FilterListOffIcon` (clear all filters), отображаемую при наличии активных фильтров:
 - `clearAllFilters = useCallback(() => setSearchParams(new URLSearchParams()), [setSearchParams])`
 - `hasActiveFilters` — вычисляется на основе текущих параметров URL (q, status, type, accountId и т.д.)
-- Страницы: ClientsPage, TradeOrdersPage, NonTradeOrdersPage, AccountsPage, InstrumentsPage, UsersPage, RolesPage, AuditPage
+- Страницы: ClientsPage, AccountsPage, InstrumentsPage, TradeOrdersPage, NonTradeOrdersPage, TradeTransactionsPage, NonTradeTransactionsPage, UsersPage, RolesPage, AuditPage
 
 ### DetailField
 
-Общий компонент `DetailField` (`components/DetailField.tsx`) для отображения пар label/value на страницах деталей. Автоматически скрывается если `value` равно null/undefined/"". Используется на всех detail pages (Client, Account, TradeOrder, NonTradeOrder, Instrument).
+Общий компонент `DetailField` (`components/DetailField.tsx`) для отображения пар label/value на страницах деталей. Автоматически скрывается если `value` равно null/undefined/"". Используется на всех detail pages (Client, Account, Instrument, TradeOrder, NonTradeOrder, TradeTransaction, NonTradeTransaction).
 
 ### Диалоги
 
@@ -167,6 +177,8 @@ Request interceptor:
 - `ClientDialogs` -- сложные формы с условными полями (Individual vs Corporate), адресами, инвестиционным профилем, привязкой счетов
 - `AccountDialogs` -- создание/редактирование счёта с Autocomplete для Clearer/TradePlatform, управление холдерами
 - `InstrumentDialogs` -- создание/редактирование инструмента с Autocomplete для Exchange/Currency/Country
+- `TradeTransactionDialogs` -- создание/редактирование торговой транзакции с Autocomplete для Order (опционально) и Instrument
+- `NonTradeTransactionDialogs` -- создание/редактирование неторговой транзакции с Autocomplete для Order (опционально), Currency и Instrument
 - `ClearerDialogs`, `TradePlatformDialogs`, `ExchangeDialogs`, `CurrencyDialogs` -- CRUD-диалоги для справочников (Settings → Reference Data)
 
 #### Паттерн заполнения Edit-диалогов
@@ -204,13 +216,17 @@ if (open && !populated && fullData) {
 Страницы деталей:
 - `ClientDetailsPage` -- просмотр клиента со связанными счетами (с навигацией на счёт)
 - `AccountDetailsPage` -- просмотр счёта со связанными холдерами (с навигацией на клиента), кнопки создания Trade/Non-Trade ордеров
+- `TradeOrderDetailsPage` -- просмотр торгового ордера, связанные торговые транзакции, кнопка создания транзакции
+- `NonTradeOrderDetailsPage` -- просмотр неторгового ордера, связанные неторговые транзакции, кнопка создания транзакции
+- `TradeTransactionDetailsPage` -- просмотр торговой транзакции с навигацией к ордеру и инструменту
+- `NonTradeTransactionDetailsPage` -- просмотр неторговой транзакции с навигацией к ордеру и инструменту
 - `InstrumentDetailsPage` -- просмотр инструмента со всеми параметрами
 - `RoleDetailsPage` -- просмотр роли: общие данные + permissions с чекбоксами (read-only, сгруппированные по группам)
 
 ### EntityHistoryDialog
 
 Переиспользуемый компонент `EntityHistoryDialog` для просмотра поле-уровневой истории изменений сущности. Интегрирован в:
-- `ClientDetailsPage`, `AccountDetailsPage`, `InstrumentDetailsPage`, `RoleDetailsPage` — кнопка "History"
+- `ClientDetailsPage`, `AccountDetailsPage`, `InstrumentDetailsPage`, `TradeOrderDetailsPage`, `NonTradeOrderDetailsPage`, `TradeTransactionDetailsPage`, `NonTradeTransactionDetailsPage`, `RoleDetailsPage` — кнопка "History"
 - `UsersPage` — иконка History в строке DataGrid
 
 ### AuditPage (глобальная лента изменений)

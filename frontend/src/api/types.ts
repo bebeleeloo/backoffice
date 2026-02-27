@@ -929,3 +929,189 @@ export interface NonTradeOrdersParams extends PagedParams {
   amountMin?: string;
   amountMax?: string;
 }
+
+// Transactions
+export type TransactionStatus = "Pending" | "Settled" | "Failed" | "Cancelled";
+
+export interface TradeTransactionListItemDto {
+  id: string;
+  transactionNumber: string;
+  orderNumber: string | null;
+  accountNumber: string | null;
+  status: TransactionStatus;
+  transactionDate: string;
+  instrumentSymbol: string;
+  instrumentName: string;
+  side: TradeSide;
+  quantity: number;
+  price: number;
+  commission: number | null;
+  settlementDate: string | null;
+  venue: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface TradeTransactionDto {
+  id: string;
+  orderId: string | null;
+  orderNumber: string | null;
+  accountNumber: string | null;
+  transactionNumber: string;
+  status: TransactionStatus;
+  transactionDate: string;
+  instrumentId: string;
+  instrumentSymbol: string;
+  instrumentName: string;
+  side: TradeSide;
+  quantity: number;
+  price: number;
+  commission: number | null;
+  settlementDate: string | null;
+  venue: string | null;
+  comment: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface NonTradeTransactionListItemDto {
+  id: string;
+  transactionNumber: string;
+  orderNumber: string | null;
+  accountNumber: string | null;
+  status: TransactionStatus;
+  transactionDate: string;
+  amount: number;
+  currencyCode: string;
+  instrumentSymbol: string | null;
+  referenceNumber: string | null;
+  processedAt: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface NonTradeTransactionDto {
+  id: string;
+  orderId: string | null;
+  orderNumber: string | null;
+  accountNumber: string | null;
+  transactionNumber: string;
+  status: TransactionStatus;
+  transactionDate: string;
+  amount: number;
+  currencyId: string;
+  currencyCode: string;
+  instrumentId: string | null;
+  instrumentSymbol: string | null;
+  instrumentName: string | null;
+  referenceNumber: string | null;
+  description: string | null;
+  processedAt: string | null;
+  comment: string | null;
+  externalId: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface CreateTradeTransactionRequest {
+  orderId?: string;
+  instrumentId: string;
+  transactionDate: string;
+  side: TradeSide;
+  quantity: number;
+  price: number;
+  commission?: number;
+  settlementDate?: string;
+  venue?: string;
+  comment?: string;
+  externalId?: string;
+}
+
+export interface UpdateTradeTransactionRequest {
+  id: string;
+  orderId?: string;
+  instrumentId: string;
+  transactionDate: string;
+  status: TransactionStatus;
+  side: TradeSide;
+  quantity: number;
+  price: number;
+  commission?: number;
+  settlementDate?: string;
+  venue?: string;
+  comment?: string;
+  externalId?: string;
+  rowVersion: string;
+}
+
+export interface CreateNonTradeTransactionRequest {
+  orderId?: string;
+  transactionDate: string;
+  amount: number;
+  currencyId: string;
+  instrumentId?: string;
+  referenceNumber?: string;
+  description?: string;
+  comment?: string;
+  externalId?: string;
+}
+
+export interface UpdateNonTradeTransactionRequest {
+  id: string;
+  orderId?: string;
+  transactionDate: string;
+  status: TransactionStatus;
+  amount: number;
+  currencyId: string;
+  instrumentId?: string;
+  referenceNumber?: string;
+  description?: string;
+  processedAt?: string;
+  comment?: string;
+  externalId?: string;
+  rowVersion: string;
+}
+
+export interface TradeTransactionsParams extends PagedParams {
+  status?: TransactionStatus[];
+  side?: TradeSide[];
+  accountId?: string[];
+  instrumentId?: string[];
+  transactionNumber?: string;
+  orderNumber?: string;
+  externalId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  settlementDateFrom?: string;
+  settlementDateTo?: string;
+  quantityMin?: string;
+  quantityMax?: string;
+  priceMin?: string;
+  priceMax?: string;
+  commissionMin?: string;
+  commissionMax?: string;
+}
+
+export interface NonTradeTransactionsParams extends PagedParams {
+  status?: TransactionStatus[];
+  accountId?: string[];
+  instrumentId?: string[];
+  transactionNumber?: string;
+  orderNumber?: string;
+  currencyCode?: string;
+  referenceNumber?: string;
+  externalId?: string;
+  transactionDateFrom?: string;
+  transactionDateTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  processedFrom?: string;
+  processedTo?: string;
+  amountMin?: string;
+  amountMax?: string;
+}

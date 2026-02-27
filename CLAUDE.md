@@ -95,6 +95,7 @@ backend/src/
 │   ├── Accounts/            # Account, AccountHolder, Clearer, TradePlatform + enums
 │   ├── Instruments/         # Instrument, Exchange, Currency + enums
 │   ├── Orders/              # Order, TradeOrder, NonTradeOrder + enums
+│   ├── Transactions/        # Transaction, TradeTransaction, NonTradeTransaction + enums
 │   ├── Audit/               # AuditLog, EntityChange
 │   └── Countries/           # Country
 │
@@ -109,6 +110,9 @@ backend/src/
 │   ├── Orders/
 │   │   ├── TradeOrders/     # CRUD commands/queries + DTOs for trade orders
 │   │   └── NonTradeOrders/  # CRUD commands/queries + DTOs for non-trade orders
+│   ├── Transactions/
+│   │   ├── TradeTransactions/    # CRUD commands/queries + DTOs for trade transactions
+│   │   └── NonTradeTransactions/ # CRUD commands/queries + DTOs for non-trade transactions
 │   ├── Users/               # CRUD commands/queries + DTOs
 │   ├── Roles/               # CRUD commands/queries + DTOs + SetRolePermissions
 │   ├── Clearers/            # CRUD + GetAll / GetActive
@@ -128,7 +132,7 @@ backend/src/
 │   │   ├── ChangeTracking/           # EntityTrackingRegistry, ChangeTrackingContext
 │   │   ├── Migrations/              # EF Core code-first migrations
 │   │   ├── SeedData.cs              # Countries, ref data, admin user, permissions
-│   │   └── SeedDemoData.cs          # Demo users, clients, accounts, instruments
+│   │   └── SeedDemoData.cs          # Demo users, clients, accounts, instruments, orders, transactions
 │   ├── Services/                     # JwtTokenService, CurrentUser, DateTimeProvider
 │   ├── Auth/                         # HasPermissionAttribute, PermissionPolicyProvider
 │   ├── Middleware/                    # ExceptionHandling, CorrelationId
@@ -145,7 +149,7 @@ backend/src/
 **Entity base classes:**
 - `Entity<TId>` — Abstract generic base with ID and equality by ID
 - `AuditableEntity` — Extends `Entity<Guid>`, adds CreatedAt/By, UpdatedAt/By, RowVersion
-- Aggregate roots (Client, Account, Instrument, Order, User, Role) inherit `AuditableEntity`
+- Aggregate roots (Client, Account, Instrument, Order, Transaction, User, Role) inherit `AuditableEntity`
 - Reference entities (Country, Currency, Exchange, Clearer, TradePlatform) have no base class
 
 **CQRS file organization:**
@@ -245,6 +249,8 @@ frontend/
     │   ├── InstrumentsPage.tsx / InstrumentDetailsPage.tsx / InstrumentDialogs.tsx
     │   ├── TradeOrdersPage.tsx / TradeOrderDetailsPage.tsx / TradeOrderDialogs.tsx
     │   ├── NonTradeOrdersPage.tsx / NonTradeOrderDetailsPage.tsx / NonTradeOrderDialogs.tsx
+    │   ├── TradeTransactionsPage.tsx / TradeTransactionDetailsPage.tsx / TradeTransactionDialogs.tsx
+    │   ├── NonTradeTransactionsPage.tsx / NonTradeTransactionDetailsPage.tsx / NonTradeTransactionDialogs.tsx
     │   ├── UsersPage.tsx / UserDialogs.tsx
     │   ├── RolesPage.tsx / RoleDetailsPage.tsx / RoleDialogs.tsx
     │   ├── AuditPage.tsx
@@ -264,6 +270,7 @@ frontend/
     │   ├── exportToExcel.ts     # ExcelJS-based export utility
     │   ├── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
     │   ├── orderConstants.ts    # Order status descriptions for tooltips
+    │   ├── transactionConstants.ts # Transaction status descriptions for tooltips
     │   └── validateFields.ts    # Inline form validation helpers (validateRequired, validateEmail)
     └── test/
         ├── setupTests.ts
@@ -289,8 +296,9 @@ frontend/
 - `Breadcrumbs` component with `BreadcrumbItem[]` — last item is text, others are RouterLinks
 - No Back button — breadcrumbs replace it
 - `DetailField` component for label+value pairs (auto-hides when value is null/undefined/empty)
-- Order detail pages show status tooltip on hover (descriptions from `orderConstants.ts`)
+- Order/Transaction detail pages show status tooltip on hover (descriptions from `orderConstants.ts` / `transactionConstants.ts`)
 - AccountDetailsPage has "Trade Order" / "Non-Trade Order" buttons (gated by `orders.create`) that open create dialogs with account pre-populated
+- Order detail pages have Trade/Non-Trade Transaction sections with create buttons (gated by `transactions.create`)
 
 **List page UX:**
 - `FilteredDataGrid` shows `CustomNoRowsOverlay` (SearchOffIcon + "No results found") when grid is empty
@@ -338,7 +346,7 @@ frontend/
 - Page components loaded via `React.lazy()` with `.then(m => ({ default: m.PageName }))` for named exports
 - `withSuspense()` helper wraps each lazy route in `<Suspense fallback={<RouteLoadingFallback />}>`
 - Eager-loaded: `LoginPage`, `MainLayout`, `RequireAuth`, `NotFoundPage`
-- Lazy-loaded: all 16 authenticated page routes (Dashboard, Clients, Accounts, Trade Orders, Non-Trade Orders, etc.)
+- Lazy-loaded: all 20 authenticated page routes (Dashboard, Clients, Accounts, Trade Orders, Non-Trade Orders, Trade Transactions, Non-Trade Transactions, etc.)
 
 **Theme (dark mode):**
 - `AppThemeProvider` in `theme/ThemeContext.tsx` wraps the app (above SnackbarProvider in main.tsx)
@@ -382,6 +390,13 @@ frontend/
 - Fields: OrderNumber (unique), Category, Status, OrderDate, Comment, ExternalId
 - Children: TradeOrder (Side, OrderType, TimeInForce, Quantity, Price, StopPrice, etc.)
 - Children: NonTradeOrder (NonTradeType, Amount, CurrencyId, InstrumentId?, ReferenceNumber, etc.)
+
+**Transaction** (AuditableEntity) — Base transaction aggregate (Trade or NonTrade)
+- Owns: TradeTransaction? (cascade), NonTradeTransaction? (cascade)
+- References: Order? (optional FK), Instrument
+- Fields: TransactionNumber (unique), Status, TransactionDate, Comment, ExternalId
+- Children: TradeTransaction (Side, Quantity, Price, Commission, SettlementDate, Venue)
+- Children: NonTradeTransaction (Amount, CurrencyId, InstrumentId?, ReferenceNumber, Description, ProcessedAt)
 
 **User** (AuditableEntity) — System user
 - Owns: UserRole[], UserPermissionOverride[], UserRefreshToken[], DataScope[]
@@ -439,7 +454,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 
 ## 8. Permission Model
 
-### 27 permissions in 9 groups:
+### 31 permissions in 10 groups:
 | Group | Permissions |
 |-------|------------|
 | Users | users.read, users.create, users.update, users.delete |
@@ -450,6 +465,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 | Accounts | accounts.read, accounts.create, accounts.update, accounts.delete |
 | Instruments | instruments.read, instruments.create, instruments.update, instruments.delete |
 | Orders | orders.read, orders.create, orders.update, orders.delete |
+| Transactions | transactions.read, transactions.create, transactions.update, transactions.delete |
 | Settings | settings.manage |
 
 ### Authorization flow:
@@ -476,7 +492,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Records: operationId, entityType, entityId, displayName, changeType, fieldName, oldValue, newValue
 - Grouped by operationId for atomic operations
 - Deduplicates "delete + recreate" patterns for child entities (addresses, holders)
-- Tracked entities configured in `EntityTrackingRegistry` (Client, Account, Instrument, Order, User, Role + children)
+- Tracked entities configured in `EntityTrackingRegistry` (Client, Account, Instrument, Order, Transaction, User, Role + children)
 - Excludes: RowVersion, timestamps, PasswordHash, navigation properties
 
 ## 10. Coding Conventions

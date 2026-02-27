@@ -6,6 +6,7 @@ using Broker.Backoffice.Domain.Countries;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
 using Broker.Backoffice.Domain.Orders;
+using Broker.Backoffice.Domain.Transactions;
 using Broker.Backoffice.Infrastructure.Persistence.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -54,6 +55,9 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<TradeOrder> TradeOrders => Set<TradeOrder>();
     public DbSet<NonTradeOrder> NonTradeOrders => Set<NonTradeOrder>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<TradeTransaction> TradeTransactions => Set<TradeTransaction>();
+    public DbSet<NonTradeTransaction> NonTradeTransactions => Set<NonTradeTransaction>();
     public DbSet<EntityChange> EntityChanges => Set<EntityChange>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -562,6 +566,9 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             "Order" => GetPropertyStringValueOrNull(entry, "OrderNumber"),
             "TradeOrder" => null,
             "NonTradeOrder" => null,
+            "Transaction" => GetPropertyStringValueOrNull(entry, "TransactionNumber"),
+            "TradeTransaction" => null,
+            "NonTradeTransaction" => null,
             _ => null
         };
     }
@@ -709,6 +716,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
                       ?? Roles.AsNoTracking().Where(r => r.Id == id).Select(r => r.Name).FirstOrDefault(),
             "Order" => Set<Order>().Local.FirstOrDefault(o => o.Id == id)?.OrderNumber
                        ?? Orders.AsNoTracking().Where(o => o.Id == id).Select(o => o.OrderNumber).FirstOrDefault(),
+            "Transaction" => Set<Transaction>().Local.FirstOrDefault(t => t.Id == id)?.TransactionNumber
+                             ?? Transactions.AsNoTracking().Where(t => t.Id == id).Select(t => t.TransactionNumber).FirstOrDefault(),
             _ => null
         };
     }
