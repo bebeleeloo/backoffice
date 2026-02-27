@@ -170,6 +170,24 @@ public class TradeTransactionsTests(CustomWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task CreateTradeTransaction_SideMismatchWithOrder_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var (orderId, instrumentId) = await CreateTradeOrderAsync(); // order has Side = "Buy"
+
+        var response = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Sell", // mismatch — order is Buy
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
     public async Task CreateTradeTransaction_InvalidData_ShouldReturn400()
     {
         await AuthenticateAsync();

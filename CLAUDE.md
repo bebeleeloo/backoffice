@@ -446,11 +446,12 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 1. Validate (automatic via pipeline, including business rules like Price required for Limit orders)
 2. Check existence (`?? throw new KeyNotFoundException`)
 3. Check FK references exist (`AnyAsync` for Account, Instrument, Currency etc. → `KeyNotFoundException`)
-4. Check uniqueness (`throw new InvalidOperationException` if duplicate)
-5. Modify entity
-6. Set audit context (BeforeJson/AfterJson)
-7. SaveChangesAsync (triggers change tracking)
-8. Return DTO
+4. Check cross-entity consistency (`throw new InvalidOperationException` if mismatch, e.g. trade transaction Side must match order Side)
+5. Check uniqueness (`throw new InvalidOperationException` if duplicate)
+6. Modify entity
+7. Set audit context (BeforeJson/AfterJson)
+8. SaveChangesAsync (triggers change tracking)
+9. Return DTO
 
 ## 8. Permission Model
 

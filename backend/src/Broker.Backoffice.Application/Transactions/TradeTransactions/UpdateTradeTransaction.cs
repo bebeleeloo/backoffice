@@ -54,9 +54,18 @@ public sealed class UpdateTradeTransactionCommandHandler(
 
         var transaction = trade.Transaction!;
 
-        if (request.OrderId.HasValue && request.OrderId != transaction.OrderId
-            && !await db.Orders.AnyAsync(o => o.Id == request.OrderId.Value && o.Category == OrderCategory.Trade, ct))
-            throw new KeyNotFoundException($"Trade order {request.OrderId} not found");
+        if (request.OrderId.HasValue)
+        {
+            var tradeOrder = await db.TradeOrders
+                .Where(to => to.OrderId == request.OrderId.Value)
+                .Select(to => new { to.Side })
+                .FirstOrDefaultAsync(ct)
+                ?? throw new KeyNotFoundException($"Trade order {request.OrderId} not found");
+
+            if (request.Side != tradeOrder.Side)
+                throw new InvalidOperationException($"Transaction side must match the order side ({tradeOrder.Side})");
+        }
+
         if (request.InstrumentId != trade.InstrumentId && !await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId, ct))
             throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
 

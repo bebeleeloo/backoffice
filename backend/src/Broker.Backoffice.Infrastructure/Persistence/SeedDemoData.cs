@@ -1871,10 +1871,9 @@ public static class SeedDemoData
             return 0;
 
         // Get filled/completed trade orders and completed non-trade orders
-        var tradeOrderIds = await db.Orders
-            .Where(o => o.Category == OrderCategory.Trade &&
-                        (o.Status == OrderStatus.Filled || o.Status == OrderStatus.Completed || o.Status == OrderStatus.PartiallyFilled))
-            .Select(o => new { o.Id, o.CreatedAt })
+        var tradeOrderIds = await db.TradeOrders
+            .Where(to => to.Order!.Status == OrderStatus.Filled || to.Order!.Status == OrderStatus.Completed || to.Order!.Status == OrderStatus.PartiallyFilled)
+            .Select(to => new { Id = to.OrderId, to.Order!.CreatedAt, to.Side })
             .ToArrayAsync();
 
         var nonTradeOrderIds = await db.Orders
@@ -1914,12 +1913,6 @@ public static class SeedDemoData
                     (TransactionStatus.Failed, 10),
                     (TransactionStatus.Cancelled, 5));
 
-                var side = PickWeighted(rng,
-                    (TradeSide.Buy, 45),
-                    (TradeSide.Sell, 45),
-                    (TradeSide.ShortSell, 5),
-                    (TradeSide.BuyToCover, 5));
-
                 var quantity = Math.Round((decimal)(rng.Next(1, 200) * rng.Next(1, 5)), 2);
                 var price = Math.Round((decimal)(rng.NextDouble() * 500 + 1), 2);
                 var commission = rng.Next(3) > 0 ? Math.Round((decimal)(rng.NextDouble() * 20 + 0.5), 2) : (decimal?)null;
@@ -1943,7 +1936,7 @@ public static class SeedDemoData
                 {
                     TransactionId = txnId,
                     InstrumentId = instrumentIds[rng.Next(instrumentIds.Length)],
-                    Side = side,
+                    Side = order.Side,
                     Quantity = quantity,
                     Price = price,
                     Commission = commission,

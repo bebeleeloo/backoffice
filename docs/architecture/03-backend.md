@@ -200,6 +200,8 @@ GET без `/all` возвращает только active-записи (для 
 
 **FK-валидация (Create/Update):** Order (если указан) и Instrument проверяются через `AnyAsync`. OrderId опционален (транзакция может существовать без ордера).
 
+**Бизнес-валидация (Create/Update):** Если указан OrderId, Side транзакции должен совпадать с Side ордера (`InvalidOperationException` → 409 при несовпадении).
+
 ### Неторговые транзакции (NonTradeTransactionsController)
 
 | Метод | Маршрут | Permission | Аудит |
