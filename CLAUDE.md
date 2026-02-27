@@ -208,7 +208,7 @@ backend/src/
 frontend/
 ├── public/
 │   ├── logo.svg              # App logo (SVG) — sidebar, login page, favicon
-│   └── login-bg.jpg          # Login page background image
+│   └── login-bg.jpg          # Login page background image (legacy, not used)
 ├── index.html                # Entry HTML (favicon → /logo.svg)
 └── src/
     ├── api/
@@ -240,9 +240,9 @@ frontend/
     │   ├── AuditDetailDialog.tsx      # Audit log entry detail
     │   └── ChangeHistoryComponents.tsx
     ├── layouts/
-    │   └── MainLayout.tsx      # Sidebar navigation (logo + menu) + content area
+    │   └── MainLayout.tsx      # Dark collapsible sidebar (no AppBar) + content area
     ├── pages/
-    │   ├── LoginPage.tsx        # Login form with logo
+    │   ├── LoginPage.tsx        # Split-screen login (branded left panel + form right)
     │   ├── DashboardPage.tsx
     │   ├── ClientsPage.tsx / ClientDetailsPage.tsx / ClientDialogs.tsx
     │   ├── AccountsPage.tsx / AccountDetailsPage.tsx / AccountDialogs.tsx
@@ -259,7 +259,7 @@ frontend/
     ├── router/
     │   └── index.tsx            # Route definitions with RequireAuth + React.lazy()
     ├── theme/
-    │   ├── index.ts             # createAppTheme(mode), createAppListTheme(base) — theme factories
+    │   ├── index.ts             # createAppTheme(mode), createAppListTheme(base), SIDEBAR_COLORS, STAT_GRADIENTS
     │   └── ThemeContext.tsx      # AppThemeProvider, useThemeMode, useListTheme — dark/light/system
     ├── hooks/
     │   ├── useDebounce.ts
@@ -295,7 +295,7 @@ frontend/
 - `PageContainer` with `breadcrumbs` prop for navigation (e.g., Clients > John Doe)
 - `Breadcrumbs` component with `BreadcrumbItem[]` — last item is text, others are RouterLinks
 - No Back button — breadcrumbs replace it
-- `DetailField` component for label+value pairs (auto-hides when value is null/undefined/empty)
+- `DetailField` component for label+value pairs (uppercase labels, auto-hides when value is null/undefined/empty)
 - Order/Transaction detail pages show status tooltip on hover (descriptions from `orderConstants.ts` / `transactionConstants.ts`)
 - AccountDetailsPage has "Trade Order" / "Non-Trade Order" buttons (gated by `orders.create`) that open create dialogs with account pre-populated
 - Order detail pages have Trade/Non-Trade Transaction sections with create buttons (gated by `transactions.create`)
@@ -348,7 +348,12 @@ frontend/
 - Eager-loaded: `LoginPage`, `MainLayout`, `RequireAuth`, `NotFoundPage`
 - Lazy-loaded: all 20 authenticated page routes (Dashboard, Clients, Accounts, Trade Orders, Non-Trade Orders, Trade Transactions, Non-Trade Transactions, etc.)
 
-**Theme (dark mode):**
+**Theme & visual design:**
+- Fintech professional style with Teal/Emerald palette
+- Primary: `#0D9488` (teal-600), Secondary: `#059669` (emerald-600)
+- `SIDEBAR_COLORS` exported from `theme/index.ts` — dark sidebar tokens (bg: `#0F172A`, text: `#CBD5E1`, active indicator: teal)
+- `STAT_GRADIENTS` exported from `theme/index.ts` — 4 teal/emerald gradients for dashboard stat cards
+- Gradient primary buttons (`containedPrimary`), rounded cards (12px), subtle shadows
 - `AppThemeProvider` in `theme/ThemeContext.tsx` wraps the app (above SnackbarProvider in main.tsx)
 - Preference stored in `localStorage` key `"themeMode"`: `"light"` | `"dark"` | `"system"` (default: `"light"`)
 - `"system"` follows OS via `prefers-color-scheme` media query listener
@@ -356,6 +361,24 @@ frontend/
 - `useListTheme()` — get scoped list theme (replaces static `listTheme` import)
 - `createAppTheme(mode)` / `createAppListTheme(base)` in `theme/index.ts` — factory functions
 - Settings > Appearance tab (`AppearanceTab.tsx`) — ToggleButtonGroup with Light/Dark/System
+
+**Sidebar / Layout:**
+- No AppBar — sidebar is the only navigation element
+- Dark sidebar (`#0F172A`) persists in both light and dark mode
+- Collapsible: 260px (expanded) ↔ 72px (collapsed, icons + tooltips)
+- Collapse state persisted in `localStorage` key `"sidebarCollapsed"`
+- Collapse toggle: ChevronLeft/ChevronRight button below logo
+- Menu items: rounded (borderRadius 1.5), left teal border on active, hover highlight
+- Sub-menus (Orders, Transactions): collapse in expanded mode, navigate to first child in collapsed mode
+- User section: avatar with initial + name + logout; in collapsed mode only avatar with tooltip
+- Mobile: floating hamburger button (fixed, top-left), temporary drawer always expanded
+- ErrorBoundary wraps `<Outlet />` — page crashes don't break sidebar
+
+**Login page:**
+- Split-screen: dark gradient left panel (45%, hidden on mobile) + form right panel (55%)
+- Left panel: logo, "Broker Backoffice" title, "Internal Management System" subtitle, decorative circles
+- Right panel: "Welcome back" heading, username/password fields, gradient Sign In button
+- Mobile: only form panel with compact logo header
 
 **State management:**
 - Server state: React Query (no Redux/Zustand)
@@ -516,8 +539,14 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Named exports only (no default exports)
 - Files: PascalCase for components, camelCase for utilities
 - ESLint 9 flat config (`eslint.config.js`): TS recommended + react-hooks + react-refresh
-- ErrorBoundary wraps `<Outlet />` in MainLayout — page crashes don't break sidebar/navigation
 - 404 wildcard route inside authenticated layout shows NotFoundPage
+
+**Dashboard:**
+- 4 gradient stat cards (teal/emerald gradients, white text, hover lift effect) — Clients, Accounts, Orders, Users
+- Each card links to its list page via `CardActionArea`
+- 4 charts: 3 status pie charts (Recharts) + 1 category bar chart
+- Status colors: emerald (Active), red (Blocked/Rejected/Failed), amber (Pending*), cyan (InProgress/New), gray (Closed/Cancelled)
+- Responsive grid: 1→2→4 columns for stat cards, 1→2 for charts
 
 ### Shared
 - API route format: `/api/v1/{entity}` (kebab-case for multi-word: `entity-changes`, `trade-platforms`)
@@ -654,7 +683,7 @@ dotnet run
 - Add route in `router/index.tsx` using `React.lazy()` + `withSuspense()` under RequireAuth
 - Delete actions: use `useConfirm()` + `<ConfirmDialog />` (not native `confirm()`)
 - Dialog `handleSubmit`: wrap `mutateAsync` in `try/catch` (error toast via MutationCache)
-- Detail pages: use `PageContainer` with `breadcrumbs` prop, no Back button
+- Detail pages: use `PageContainer` with `breadcrumbs` prop, no Back button, `<Card>` without `variant="outlined"` (uses theme shadow)
 - Dialog forms: add inline validation with `FieldErrors` state + `validateRequired`/`validateEmail` from `utils/validateFields.ts`
 
 ### When modifying existing code:
@@ -689,3 +718,6 @@ dotnet run
 - Skip inline validation on required fields in dialog forms
 - Add Zod/Yup — use `validateFields.ts` helpers for simple inline validation
 - Use Back buttons in detail pages — use breadcrumbs instead
+- Use `variant="outlined"` on Cards in detail pages — use default shadow-based cards
+- Add an AppBar — the sidebar is the only navigation element
+- Change sidebar color tokens — use `SIDEBAR_COLORS` from `theme/index.ts`

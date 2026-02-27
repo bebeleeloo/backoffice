@@ -10,30 +10,31 @@ import {
 } from "recharts";
 import { useDashboardStats } from "../api/hooks";
 import { PageContainer } from "../components/PageContainer";
+import { STAT_GRADIENTS } from "../theme";
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: "#4caf50",
-  Blocked: "#f44336",
-  PendingKyc: "#ff9800",
-  Closed: "#9e9e9e",
-  Suspended: "#ff9800",
-  New: "#2196f3",
-  PendingApproval: "#ff9800",
-  Approved: "#1565c0",
-  Rejected: "#f44336",
-  InProgress: "#2196f3",
-  PartiallyFilled: "#ff9800",
-  Filled: "#4caf50",
-  Completed: "#4caf50",
-  Cancelled: "#9e9e9e",
-  Failed: "#f44336",
-  Trade: "#1565c0",
-  NonTrade: "#7e57c2",
+  Active: "#10B981",
+  Blocked: "#EF4444",
+  PendingKyc: "#F59E0B",
+  Closed: "#6B7280",
+  Suspended: "#F59E0B",
+  New: "#06B6D4",
+  PendingApproval: "#F59E0B",
+  Approved: "#0D9488",
+  Rejected: "#EF4444",
+  InProgress: "#06B6D4",
+  PartiallyFilled: "#F59E0B",
+  Filled: "#10B981",
+  Completed: "#10B981",
+  Cancelled: "#6B7280",
+  Failed: "#EF4444",
+  Trade: "#0D9488",
+  NonTrade: "#8B5CF6",
 };
 
 const TYPE_COLORS = [
-  "#1565c0", "#42a5f5", "#0d47a1", "#5c6bc0", "#7e57c2",
-  "#26a69a", "#66bb6a", "#ffa726", "#ef5350", "#8d6e63",
+  "#0D9488", "#14B8A6", "#059669", "#10B981", "#06B6D4",
+  "#0891B2", "#8B5CF6", "#F59E0B", "#EF4444", "#6B7280",
 ];
 
 function toChartData(map: Record<string, number> | undefined) {
@@ -55,24 +56,39 @@ interface StatCardProps {
   icon: React.ReactNode;
   href: string;
   loading: boolean;
+  gradientIndex: number;
 }
 
-function StatCard({ title, total, breakdown, icon, href, loading }: StatCardProps) {
+function StatCard({ title, total, breakdown, icon, href, loading, gradientIndex }: StatCardProps) {
   const navigate = useNavigate();
   return (
-    <Card variant="outlined">
+    <Card
+      sx={{
+        background: STAT_GRADIENTS[gradientIndex % STAT_GRADIENTS.length],
+        color: "#FFFFFF",
+        borderRadius: 3,
+        boxShadow: "0 4px 16px rgba(13, 148, 136, 0.2)",
+        transition: "transform 200ms, box-shadow 200ms",
+        "&:hover": {
+          transform: "translateY(-2px)",
+          boxShadow: "0 8px 24px rgba(13, 148, 136, 0.3)",
+        },
+      }}
+    >
       <CardActionArea onClick={() => navigate(href)} sx={{ p: 2.5 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Box sx={{ color: "primary.main", display: "flex" }}>{icon}</Box>
+          <Box sx={{ display: "flex", bgcolor: "rgba(255,255,255,0.2)", borderRadius: 2, p: 1 }}>
+            {icon}
+          </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" color="text.secondary">{title}</Typography>
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)" }}>{title}</Typography>
             {loading ? (
-              <Skeleton width={60} height={36} />
+              <Skeleton width={60} height={36} sx={{ bgcolor: "rgba(255,255,255,0.2)" }} />
             ) : (
-              <Typography variant="h4" fontWeight={600}>{total ?? 0}</Typography>
+              <Typography variant="h4" fontWeight={700}>{total ?? 0}</Typography>
             )}
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {loading ? <Skeleton width={120} /> : breakdownText(breakdown)}
+            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)" }} noWrap>
+              {loading ? <Skeleton width={120} sx={{ bgcolor: "rgba(255,255,255,0.2)" }} /> : breakdownText(breakdown)}
             </Typography>
           </Box>
         </Box>
@@ -90,7 +106,7 @@ interface StatusPieProps {
 function StatusPie({ title, data, loading }: StatusPieProps) {
   const chartData = toChartData(data);
   return (
-    <Card variant="outlined" sx={{ p: 2, height: "100%" }}>
+    <Card sx={{ p: 2, height: "100%", borderRadius: 3 }}>
       <Typography variant="subtitle2" gutterBottom>{title}</Typography>
       {loading ? (
         <Skeleton variant="circular" width={180} height={180} sx={{ mx: "auto", my: 2 }} />
@@ -132,7 +148,7 @@ interface TypeBarProps {
 function TypeBar({ title, data, loading }: TypeBarProps) {
   const chartData = toChartData(data);
   return (
-    <Card variant="outlined" sx={{ p: 2, height: "100%" }}>
+    <Card sx={{ p: 2, height: "100%", borderRadius: 3 }}>
       <Typography variant="subtitle2" gutterBottom>{title}</Typography>
       {loading ? (
         <Skeleton variant="rectangular" height={220} sx={{ my: 1 }} />
@@ -162,7 +178,7 @@ export function DashboardPage() {
 
   return (
     <PageContainer title="Dashboard">
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2, mb: 3 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }, gap: 2, mb: 3 }}>
         <StatCard
           title="Clients"
           total={data?.totalClients}
@@ -170,6 +186,7 @@ export function DashboardPage() {
           icon={<PeopleIcon sx={{ fontSize: 36 }} />}
           href="/clients"
           loading={isLoading}
+          gradientIndex={0}
         />
         <StatCard
           title="Accounts"
@@ -178,6 +195,7 @@ export function DashboardPage() {
           icon={<AccountBalanceIcon sx={{ fontSize: 36 }} />}
           href="/accounts"
           loading={isLoading}
+          gradientIndex={1}
         />
         <StatCard
           title="Orders"
@@ -186,6 +204,7 @@ export function DashboardPage() {
           icon={<ReceiptLongIcon sx={{ fontSize: 36 }} />}
           href="/trade-orders"
           loading={isLoading}
+          gradientIndex={2}
         />
         <StatCard
           title="Users"
@@ -194,10 +213,11 @@ export function DashboardPage() {
           icon={<AdminPanelSettingsIcon sx={{ fontSize: 36 }} />}
           href="/users"
           loading={isLoading}
+          gradientIndex={3}
         />
       </Box>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
         <StatusPie title="Clients by Status" data={data?.clientsByStatus} loading={isLoading} />
         <StatusPie title="Accounts by Status" data={data?.accountsByStatus} loading={isLoading} />
         <StatusPie title="Orders by Status" data={data?.ordersByStatus} loading={isLoading} />

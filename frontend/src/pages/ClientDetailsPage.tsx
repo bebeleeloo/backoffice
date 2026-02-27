@@ -1,11 +1,10 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useParams, Link as RouterLink } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Typography, Paper, Link,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import { useClient, useClientAccounts } from "../api/hooks";
@@ -24,7 +23,6 @@ const KYC_COLORS: Record<string, "success" | "error" | "warning" | "info" | "def
 
 export function ClientDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { data: client, isLoading } = useClient(id ?? "");
   const { data: clientAccounts } = useClientAccounts(id ?? "");
   const canUpdate = useHasPermission("clients.update");
@@ -53,9 +51,9 @@ export function ClientDetailsPage() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Client not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/clients")} sx={{ mt: 1 }}>
-          Back to Clients
-        </Button>
+        <Typography sx={{ mt: 1 }}>
+          <Link component={RouterLink} to="/clients">Return to Clients list</Link>
+        </Typography>
       </Box>
     );
   }
@@ -76,7 +74,7 @@ export function ClientDetailsPage() {
       }
     >
       {/* General */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>General</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -93,7 +91,7 @@ export function ClientDetailsPage() {
       </Card>
 
       {/* Personal / Corporate */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>
             {client.clientType === "Corporate" ? "Corporate Info" : "Personal Data"}
@@ -124,7 +122,7 @@ export function ClientDetailsPage() {
       </Card>
 
       {/* KYC & Compliance */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>KYC & Compliance</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -140,7 +138,7 @@ export function ClientDetailsPage() {
 
       {/* Addresses */}
       {client.addresses.length > 0 && (
-        <Card variant="outlined">
+        <Card>
           <CardContent>
             <Typography variant="subtitle1" gutterBottom>Addresses</Typography>
             <TableContainer component={Paper} variant="outlined">
@@ -177,7 +175,7 @@ export function ClientDetailsPage() {
 
       {/* Investment Profile */}
       {client.investmentProfile && (
-        <Card variant="outlined">
+        <Card>
           <CardContent>
             <Typography variant="subtitle1" gutterBottom>Investment Profile</Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -202,7 +200,7 @@ export function ClientDetailsPage() {
       )}
 
       {/* Accounts */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Accounts</Typography>
           {clientAccounts && clientAccounts.length > 0 ? (

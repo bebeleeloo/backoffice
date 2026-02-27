@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link as RouterLink } from "react-router-dom";
 import {
-  Box, Button, Card, CardContent, Chip, CircularProgress, Typography,
+  Box, Button, Card, CardContent, Chip, CircularProgress, Link, Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import { useInstrument } from "../api/hooks";
@@ -29,7 +28,6 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function InstrumentDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { data: instrument, isLoading } = useInstrument(id ?? "");
   const canUpdate = useHasPermission("instruments.update");
   const canAudit = useHasPermission("audit.read");
@@ -53,9 +51,9 @@ export function InstrumentDetailsPage() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Instrument not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/instruments")} sx={{ mt: 1 }}>
-          Back to Instruments
-        </Button>
+        <Typography sx={{ mt: 1 }}>
+          <Link component={RouterLink} to="/instruments">Return to Instruments list</Link>
+        </Typography>
       </Box>
     );
   }
@@ -76,7 +74,7 @@ export function InstrumentDetailsPage() {
       }
     >
       {/* General */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>General</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -93,7 +91,7 @@ export function InstrumentDetailsPage() {
       </Card>
 
       {/* Market */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Market</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -113,7 +111,7 @@ export function InstrumentDetailsPage() {
       </Card>
 
       {/* Dates */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Dates</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -126,7 +124,7 @@ export function InstrumentDetailsPage() {
       </Card>
 
       {/* Additional */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Additional</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>

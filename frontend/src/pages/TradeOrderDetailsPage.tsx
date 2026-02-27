@@ -4,7 +4,6 @@ import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Tooltip, Typography, Link,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import AddIcon from "@mui/icons-material/Add";
@@ -75,9 +74,9 @@ export function TradeOrderDetailsPage() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Trade order not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/trade-orders")} sx={{ mt: 1 }}>
-          Back to Trade Orders
-        </Button>
+        <Typography sx={{ mt: 1 }}>
+          <Link component={RouterLink} to="/trade-orders">Return to Trade Orders list</Link>
+        </Typography>
       </Box>
     );
   }
@@ -98,7 +97,7 @@ export function TradeOrderDetailsPage() {
       }
     >
       {/* Order Info */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Order Info</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -118,7 +117,7 @@ export function TradeOrderDetailsPage() {
       </Card>
 
       {/* Execution */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Execution</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -135,7 +134,7 @@ export function TradeOrderDetailsPage() {
       </Card>
 
       {/* Details */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Details</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -158,7 +157,7 @@ export function TradeOrderDetailsPage() {
 
       {/* Transactions */}
       {canViewTransactions && (
-        <Card variant="outlined">
+        <Card>
           <CardContent>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
               <Typography variant="subtitle1">Transactions</Typography>

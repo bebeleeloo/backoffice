@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useParams, Link as RouterLink } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Tooltip, Typography, Link,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import { useNonTradeTransaction } from "../api/hooks";
@@ -24,7 +23,6 @@ const STATUS_COLORS: Record<TransactionStatus, "success" | "error" | "default" |
 
 export function NonTradeTransactionDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { data: transaction, isLoading } = useNonTradeTransaction(id ?? "");
   const canUpdate = useHasPermission("transactions.update");
   const canAudit = useHasPermission("audit.read");
@@ -48,9 +46,9 @@ export function NonTradeTransactionDetailsPage() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Non-trade transaction not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/non-trade-transactions")} sx={{ mt: 1 }}>
-          Back to Non-Trade Transactions
-        </Button>
+        <Typography sx={{ mt: 1 }}>
+          <Link component={RouterLink} to="/non-trade-transactions">Return to Non-Trade Transactions list</Link>
+        </Typography>
       </Box>
     );
   }
@@ -71,7 +69,7 @@ export function NonTradeTransactionDetailsPage() {
       }
     >
       {/* Transaction Info */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Transaction Info</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -88,7 +86,7 @@ export function NonTradeTransactionDetailsPage() {
       </Card>
 
       {/* Financial */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Financial</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -104,7 +102,7 @@ export function NonTradeTransactionDetailsPage() {
       </Card>
 
       {/* Details */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Details</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>

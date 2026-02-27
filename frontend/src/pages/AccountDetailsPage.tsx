@@ -1,11 +1,10 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useParams, Link as RouterLink } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Typography, Paper, Link,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
@@ -24,7 +23,6 @@ const STATUS_COLORS: Record<string, "success" | "error" | "default" | "warning">
 
 export function AccountDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { data: account, isLoading } = useAccount(id ?? "");
   const canUpdate = useHasPermission("accounts.update");
   const canAudit = useHasPermission("audit.read");
@@ -51,9 +49,9 @@ export function AccountDetailsPage() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Account not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/accounts")} sx={{ mt: 1 }}>
-          Back to Accounts
-        </Button>
+        <Typography sx={{ mt: 1 }}>
+          <Link component={RouterLink} to="/accounts">Return to Accounts list</Link>
+        </Typography>
       </Box>
     );
   }
@@ -80,7 +78,7 @@ export function AccountDetailsPage() {
       }
     >
       {/* General */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>General</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -108,7 +106,7 @@ export function AccountDetailsPage() {
       </Card>
 
       {/* Holders */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Holders</Typography>
           {account.holders.length === 0 ? (

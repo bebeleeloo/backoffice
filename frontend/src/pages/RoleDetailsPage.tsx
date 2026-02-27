@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link as RouterLink } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
-  Divider, FormControlLabel, Typography,
+  Divider, FormControlLabel, Link, Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import { useRole, usePermissions } from "../api/hooks";
@@ -33,7 +32,6 @@ function groupPermissions(allPerms: PermissionDto[]) {
 
 export function RoleDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { data: role, isLoading } = useRole(id ?? "");
   const { data: allPermissions = [] } = usePermissions();
   const canUpdate = useHasPermission("roles.update");
@@ -58,9 +56,9 @@ export function RoleDetailsPage() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Role not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/roles")} sx={{ mt: 1 }}>
-          Back to Roles
-        </Button>
+        <Typography sx={{ mt: 1 }}>
+          <Link component={RouterLink} to="/roles">Return to Roles list</Link>
+        </Typography>
       </Box>
     );
   }
@@ -84,7 +82,7 @@ export function RoleDetailsPage() {
       }
     >
       {/* General */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>General</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -103,7 +101,7 @@ export function RoleDetailsPage() {
       </Card>
 
       {/* Permissions */}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>
             Permissions ({role.permissions.length})

@@ -42,8 +42,8 @@ export function PageContainer({
           ? { flexGrow: 1, minHeight: 0, overflow: "hidden" }
           : {}),
         width: "100%",
-        px: 2,
-        pt: isList ? 1 : 1.5,
+        px: 3,
+        pt: isList ? 1.5 : 2.5,
         pb: isList ? 1 : 1.5,
         gap: isList ? 1 : 1.5,
       }}
@@ -61,7 +61,7 @@ export function PageContainer({
         <Typography
           variant="h6"
           component="h1"
-          sx={{ lineHeight: 1.2, fontSize: isList ? "1.125rem" : undefined }}
+          sx={{ lineHeight: 1.2, fontSize: isList ? "1.125rem" : "1.35rem", fontWeight: 600 }}
         >
           {title}
         </Typography>
