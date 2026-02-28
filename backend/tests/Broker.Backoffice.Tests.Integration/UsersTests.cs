@@ -95,4 +95,55 @@ public class UsersTests(CustomWebApplicationFactory factory)
         var auditResp = await _client.GetAsync("/api/v1/audit?entityType=User&page=1&pageSize=5");
         auditResp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task UpdateUser_ShouldReturnUpdated()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"upd_{Guid.NewGuid():N}",
+            Email = $"upd_{Guid.NewGuid():N}@test.com",
+            Password = "Test123!",
+            FullName = "Original Name",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
+
+        var updateResp = await _client.PutAsJsonAsync($"/api/v1/users/{created!.Id}", new
+        {
+            Id = created.Id,
+            Email = created.Email,
+            FullName = "Updated Name",
+            IsActive = false,
+            RoleIds = Array.Empty<Guid>(),
+            RowVersion = created.RowVersion,
+        });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<UserDto>();
+        updated!.FullName.Should().Be("Updated Name");
+        updated.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateAndDeleteUser_ShouldWork()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"del_{Guid.NewGuid():N}",
+            Email = $"del_{Guid.NewGuid():N}@test.com",
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
+
+        var delResp = await _client.DeleteAsync($"/api/v1/users/{created!.Id}");
+        delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResp = await _client.GetAsync($"/api/v1/users/{created.Id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

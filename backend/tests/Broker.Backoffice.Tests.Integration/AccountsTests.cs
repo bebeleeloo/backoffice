@@ -138,4 +138,40 @@ public class AccountsTests(CustomWebApplicationFactory factory)
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task UpdateAccount_ShouldReturnUpdated()
+    {
+        await AuthenticateAsync();
+        var number = $"UPD-{Guid.NewGuid():N}"[..20];
+        var createResp = await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = number,
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+            Comment = "Original",
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<AccountDto>();
+
+        var updateResp = await _client.PutAsJsonAsync($"/api/v1/accounts/{created!.Id}", new
+        {
+            Id = created.Id,
+            Number = number,
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "MarginX2",
+            OptionLevel = "Level1",
+            Tariff = "Premium",
+            Comment = "Updated",
+            RowVersion = created.RowVersion,
+        });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<AccountDto>();
+        updated!.MarginType.Should().Be(MarginType.MarginX2);
+        updated.OptionLevel.Should().Be(OptionLevel.Level1);
+        updated.Comment.Should().Be("Updated");
+    }
 }

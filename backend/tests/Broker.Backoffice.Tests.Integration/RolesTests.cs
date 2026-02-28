@@ -56,4 +56,66 @@ public class RolesTests(CustomWebApplicationFactory factory)
         var response = await _client.DeleteAsync($"/api/v1/roles/{adminRole.Id}");
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    [Fact]
+    public async Task GetById_ShouldReturn200()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/roles",
+            new { Name = $"get_{Guid.NewGuid():N}", Description = "test" });
+        var created = await createResp.Content.ReadFromJsonAsync<RoleDto>();
+
+        var response = await _client.GetAsync($"/api/v1/roles/{created!.Id}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var role = await response.Content.ReadFromJsonAsync<RoleDto>();
+        role!.Id.Should().Be(created.Id);
+        role.Name.Should().Be(created.Name);
+    }
+
+    [Fact]
+    public async Task UpdateRole_ShouldReturnUpdated()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/roles",
+            new { Name = $"upd_{Guid.NewGuid():N}", Description = "original" });
+        var created = await createResp.Content.ReadFromJsonAsync<RoleDto>();
+
+        var updateResp = await _client.PutAsJsonAsync($"/api/v1/roles/{created!.Id}", new
+        {
+            Id = created.Id,
+            Name = $"upd2_{Guid.NewGuid():N}",
+            Description = "updated",
+            RowVersion = created.RowVersion,
+        });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<RoleDto>();
+        updated!.Description.Should().Be("updated");
+    }
+
+    [Fact]
+    public async Task SetPermissions_ShouldWork()
+    {
+        await AuthenticateAsync();
+
+        // Get available permissions
+        var permResp = await _client.GetAsync("/api/v1/permissions");
+        var permissions = await permResp.Content.ReadFromJsonAsync<List<PermissionIdDto>>();
+        var permId = permissions!.First().Id;
+
+        // Create role
+        var createResp = await _client.PostAsJsonAsync("/api/v1/roles",
+            new { Name = $"perm_{Guid.NewGuid():N}", Description = "test" });
+        var created = await createResp.Content.ReadFromJsonAsync<RoleDto>();
+        created!.Permissions.Should().BeEmpty();
+
+        // Set permissions
+        var setResp = await _client.PutAsJsonAsync($"/api/v1/roles/{created.Id}/permissions",
+            new List<Guid> { permId });
+        setResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await setResp.Content.ReadFromJsonAsync<RoleDto>();
+        updated!.Permissions.Should().NotBeEmpty();
+    }
+
+    // Lightweight DTO for permissions list
+    private record PermissionIdDto(Guid Id, string Code, string Name, string? Description, string Group);
 }

@@ -167,6 +167,79 @@ public class ClientsTests(CustomWebApplicationFactory factory)
         getResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task UpdateClient_ShouldReturnUpdated()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"upd_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Original",
+            LastName = "Name",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "123 Main St", City = "New York", CountryId = countryId }
+            }
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<ClientDto>();
+
+        var updateResp = await _client.PutAsJsonAsync($"/api/v1/clients/{created!.Id}", new
+        {
+            Id = created.Id,
+            ClientType = "Individual",
+            Status = "Active",
+            Email = created.Email,
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Updated",
+            LastName = "Name",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "456 Oak Ave", City = "Boston", CountryId = countryId }
+            },
+            RowVersion = created.RowVersion,
+        });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<ClientDto>();
+        updated!.FirstName.Should().Be("Updated");
+    }
+
+    [Fact]
+    public async Task GetClientAccounts_ShouldReturnList()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"acc_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Acc",
+            LastName = "Test",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<ClientDto>();
+
+        var response = await _client.GetAsync($"/api/v1/clients/{created!.Id}/accounts");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     // Lightweight DTO for countries endpoint
     private record CountryListItem(Guid Id, string Iso2, string Name);
 }
