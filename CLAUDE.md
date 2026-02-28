@@ -49,7 +49,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - Docker Compose (3 services: mssql, api, web) with restart policies, resource limits, log rotation
 - SQL Server 2022
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
-- GitHub Actions CI (backend build + unit tests, frontend tsc + eslint + vitest)
+- GitHub Actions CI (backend build + unit tests + integration tests, frontend tsc + eslint + vitest)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (MSSQL)
@@ -73,12 +73,13 @@ Backend follows Clean Architecture with 4 layers:
 
 Frontend follows feature-based organization with shared components.
 
-**Security headers** (nginx):
+**Security headers** (nginx — applied in server block AND all location blocks):
 - `Content-Security-Policy`: default-src 'self', unsafe-inline for styles (MUI), data:/blob: for images
 - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy`
 - `Strict-Transport-Security`: max-age=63072000; includeSubDomains
 - `Permissions-Policy`: camera=(), microphone=(), geolocation=()
 - `server_tokens off` — hides nginx version
+- All 7 headers duplicated in `/assets/`, `/index.html`, and `/` location blocks (nginx `add_header` in child blocks overrides parent)
 
 **Cache control** (nginx):
 - `/assets/*` (Vite hashed files): `Cache-Control: public, immutable`, expires 1y
@@ -102,7 +103,7 @@ backend/src/
 ├── Broker.Backoffice.Application/
 │   ├── Abstractions/        # IAppDbContext, ICurrentUser, IJwtTokenService, IAuditContext
 │   ├── Behaviors/           # ValidationBehavior (MediatR pipeline)
-│   ├── Common/              # PagedQuery, PagedResult, QueryableExtensions
+│   ├── Common/              # PagedQuery, PagedResult, QueryableExtensions, LikeHelper
 │   ├── Auth/                # Login, RefreshToken, GetMe, ChangePassword, UpdateProfile
 │   ├── Clients/             # CRUD commands/queries + DTOs
 │   ├── Accounts/            # CRUD commands/queries + DTOs
@@ -172,7 +173,7 @@ backend/src/
 - `QueryableExtensions.SortBy()` handles dynamic sorting via expression trees
 
 **Filtering conventions:**
-- Text: `EF.Functions.Like(field, $"%{value}%")` or `.Contains()`
+- Text: `EF.Functions.Like(field, LikeHelper.ContainsPattern(value))` — escapes `%`, `_`, `[` wildcards via `LikeHelper` in `Application/Common/LikeHelper.cs`
 - Multi-value enum: `request.Status.Contains(entity.Status)`
 - Date range: `>= from`, `< to.AddDays(1)` (inclusive end date)
 - Numeric range: `>= min`, `<= max` (optional min/max)
@@ -309,7 +310,8 @@ frontend/
 - Base URL: `VITE_API_URL` env var, defaults to `/api/v1`
 - Automatic Bearer token from localStorage
 - Correlation ID header on every request
-- 401 interceptor: refresh token → retry, on failure → redirect to /login
+- 401 interceptor: refresh token → retry, on failure → remove auth tokens and redirect to /login
+- Token cleanup uses targeted `localStorage.removeItem("accessToken"/"refreshToken")` (not `localStorage.clear()`) to preserve user preferences (theme, sidebar state)
 - `cleanParams()` strips undefined/null/empty values before sending
 
 **React Query conventions:**
@@ -559,7 +561,8 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 
 - Server-side pagination on all list endpoints (never load full datasets to grid)
 - EF Core `.Select()` projections in queries (no full entity materialization for lists)
-- Composite database indexes on frequently filtered columns
+- Composite database indexes on frequently filtered columns (Category+Status, Side+OrderType)
+- Date column indexes: `Order.OrderDate`, `Transaction.TransactionDate`, `AuditLog.CorrelationId`
 - React Query caching with appropriate stale times
 - Reference data cached 10 minutes (countries, clearers, exchanges, currencies)
 - Debounced text filters (300ms) to avoid excessive API calls
@@ -572,13 +575,14 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 ## 12. Testing Strategy
 
 ### Backend Unit Tests (326 tests, ~2s)
+
 - xUnit with `[Fact]` and `[Theory]`/`[InlineData]`
 - FluentValidation.TestHelper for validators
 - NSubstitute for mocking interfaces
 - Location: `backend/tests/Broker.Backoffice.Tests.Unit/`
 - Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Clients (Create/Update, SetAccounts), Accounts (Create/Update, SetHolders), Instruments (Create/Update), Orders (TradeOrder Create/Update, NonTradeOrder Create/Update), Transactions (TradeTransaction Create/Update, NonTradeTransaction Create/Update), Roles (Create/Update), Reference data (Clearer, Currency, Exchange, TradePlatform — Create/Update each)
 
-### Backend Integration Tests (108 tests, ~27s)
+### Backend Integration Tests (113 tests, ~27s)
 - Testcontainers (real MSSQL 2022 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
 - `[Collection("Integration")]` for shared fixture
@@ -587,7 +591,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Rate limiting disabled via `UseSetting("RateLimiting:LoginPermitLimit", "10000")`
 - Requires `backend/global.json` pinning SDK to 8.0 (avoids .NET 10 SDK incompatibility)
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
-- Coverage: all API endpoints — Health, Swagger, Auth, Clients (CRUD + Update + GetAccounts), Accounts (CRUD + Update), Users (CRUD + Update), Roles (CRUD + GetById + Update + SetPermissions), Instruments (CRUD + Update + DuplicateSymbol), TradeOrders (CRUD + Update + InvalidAccount), NonTradeOrders (CRUD + Update), TradeTransactions (CRUD + SideMismatch), NonTradeTransactions (CRUD + WithoutOrder), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName), Dashboard (stats), Audit (list + getById), EntityChanges (list + listAll), Permissions (list), Countries (list)
+- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile), Clients (CRUD + Update + GetAccounts), Accounts (CRUD + Update), Users (CRUD + Update), Roles (CRUD + GetById + Update + SetPermissions), Instruments (CRUD + Update + DuplicateSymbol), TradeOrders (CRUD + Update + InvalidAccount), NonTradeOrders (CRUD + Update), TradeTransactions (CRUD + SideMismatch), NonTradeTransactions (CRUD + WithoutOrder), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName), Dashboard (stats), Audit (list + getById), EntityChanges (list + listAll), Permissions (list), Countries (list)
 
 ### Integration test patterns
 - All update tests must include `Id` in the request body (controllers check `id != command.Id`)
@@ -596,14 +600,15 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Currency `Code` column is 3 chars max (ISO 4217); test codes must be ≤ 3 chars
 - Prerequisites helper methods (e.g., `CreatePrerequisitesAsync()`) create Account + Instrument/Currency for Order/Transaction tests
 
-### Frontend Tests
+### Frontend Tests (76 tests, ~4s)
 - Vitest with jsdom environment
 - React Testing Library + user-event
 - MSW for network-level API mocking
 - Test factories with @faker-js/faker
 - `renderWithProviders()` wraps with QueryClient, Theme, Auth, Router
 - Test scope: `src/{hooks,auth,lib,utils}/**/*.test.{ts,tsx}`
-- Location: `frontend/src/test/`
+- Location: `frontend/src/test/` (page/component tests), inline `*.test.ts` next to source (utility/hook tests)
+- Utility/hook tests: `validateFields.test.ts`, `extractErrorMessage.test.ts`, `useConfirm.test.ts`, `usePermission.test.tsx`
 
 ### Scripts
 - `scripts/test.sh [unit|integration|all]` — backend tests in Docker
@@ -674,7 +679,7 @@ dotnet run
 11. Frontend: add types, hooks, page, dialogs, route
 
 ### When adding a new API endpoint:
-- Controller route: `[Route("api/v1/[controller]")]` with `[ApiVersion("1.0")]`
+- Controller attributes: `[ApiController]`, `[ApiVersion("1.0")]` (from `Asp.Versioning`), `[Route("api/v1/[controller]")]`
 - Paginated lists return `PagedResult<T>`
 - Create returns 201 with `CreatedAtAction`
 - Update returns 200 with updated DTO
@@ -704,6 +709,7 @@ dotnet run
 - Invalidate relevant React Query keys after mutations
 - Add `meta: { successMessage: "..." }` to new mutation hooks
 - Wrap dialog `handleSubmit` with `try/catch` around `mutateAsync`
+- Use `LikeHelper.ContainsPattern()` for all `EF.Functions.Like()` calls (escapes SQL LIKE wildcards)
 
 ### Reference data (Clearers, TradePlatforms, Exchanges, Currencies):
 - Two query endpoints: `GET /entity` (active only, for dropdowns) and `GET /entity/all` (for settings CRUD)
@@ -730,3 +736,5 @@ dotnet run
 - Use `variant="outlined"` on Cards in detail pages — use default shadow-based cards
 - Add an AppBar — the sidebar is the only navigation element
 - Change sidebar color tokens — use `SIDEBAR_COLORS` from `theme/index.ts`
+- Use `localStorage.clear()` on logout/401 — use targeted `removeItem` for auth tokens only
+- Use raw `$"%{value}%"` in LIKE patterns — use `LikeHelper.ContainsPattern()` to escape wildcards
