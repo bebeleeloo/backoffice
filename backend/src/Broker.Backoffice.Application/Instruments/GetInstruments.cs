@@ -27,19 +27,31 @@ public sealed class GetInstrumentsQueryHandler(IAppDbContext db)
         var query = db.Instruments.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Symbol))
-            query = query.Where(i => EF.Functions.Like(i.Symbol, $"%{request.Symbol}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Symbol);
+            query = query.Where(i => EF.Functions.Like(i.Symbol, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Name))
-            query = query.Where(i => EF.Functions.Like(i.Name, $"%{request.Name}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Name);
+            query = query.Where(i => EF.Functions.Like(i.Name, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ExchangeName))
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ExchangeName);
             query = query.Where(i => i.Exchange != null &&
-                (EF.Functions.Like(i.Exchange.Code, $"%{request.ExchangeName}%") ||
-                 EF.Functions.Like(i.Exchange.Name, $"%{request.ExchangeName}%")));
+                (EF.Functions.Like(i.Exchange.Code, pattern) ||
+                 EF.Functions.Like(i.Exchange.Name, pattern)));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.CurrencyCode))
+        {
+            var pattern = LikeHelper.ContainsPattern(request.CurrencyCode);
             query = query.Where(i => i.Currency != null &&
-                EF.Functions.Like(i.Currency.Code, $"%{request.CurrencyCode}%"));
+                EF.Functions.Like(i.Currency.Code, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
             query = query.Where(i =>

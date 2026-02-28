@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Broker.Backoffice.Application.Common;
 using Broker.Backoffice.Application.EntityChanges;
 using Broker.Backoffice.Domain.Identity;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Broker.Backoffice.Api.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
 [Route("api/v1/entity-changes")]
 [HasPermission(Permissions.AuditRead)]
 public sealed class EntityChangesController(ISender mediator) : ControllerBase

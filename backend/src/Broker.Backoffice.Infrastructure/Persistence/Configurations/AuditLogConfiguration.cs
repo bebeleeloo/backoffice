@@ -20,6 +20,7 @@ public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         b.Property(e => e.BeforeJson).HasMaxLength(16384);
         b.Property(e => e.AfterJson).HasMaxLength(16384);
         b.Property(e => e.CorrelationId).HasMaxLength(64);
+        b.HasIndex(e => e.CorrelationId);
         b.Property(e => e.IpAddress).HasMaxLength(45);
         b.Property(e => e.UserAgent).HasMaxLength(500);
         b.Property(e => e.Path).HasMaxLength(500).IsRequired();

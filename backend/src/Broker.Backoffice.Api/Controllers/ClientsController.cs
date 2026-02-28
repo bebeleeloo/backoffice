@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Broker.Backoffice.Api.Filters;
 using Broker.Backoffice.Application.Accounts;
 using Broker.Backoffice.Application.Clients;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Broker.Backoffice.Api.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
 [Route("api/v1/clients")]
 public sealed class ClientsController(ISender mediator) : ControllerBase
 {

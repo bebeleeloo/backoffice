@@ -1,13 +1,22 @@
+import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useConfirm } from "./useConfirm";
 
 describe("useConfirm", () => {
-  it("starts with dialog closed", () => {
+  it("has open=false in initial state", () => {
     const { result } = renderHook(() => useConfirm());
+
     expect(result.current.confirmDialogProps.open).toBe(false);
   });
 
-  it("confirm() opens dialog and sets options", () => {
+  it("initial state has empty title and message", () => {
+    const { result } = renderHook(() => useConfirm());
+
+    expect(result.current.confirmDialogProps.title).toBe("");
+    expect(result.current.confirmDialogProps.message).toBe("");
+  });
+
+  it("confirm() opens the dialog and sets options", () => {
     const { result } = renderHook(() => useConfirm());
 
     act(() => {
@@ -20,65 +29,67 @@ describe("useConfirm", () => {
 
     expect(result.current.confirmDialogProps.open).toBe(true);
     expect(result.current.confirmDialogProps.title).toBe("Delete item?");
-    expect(result.current.confirmDialogProps.message).toBe("This action cannot be undone.");
+    expect(result.current.confirmDialogProps.message).toBe(
+      "This action cannot be undone.",
+    );
     expect(result.current.confirmDialogProps.confirmLabel).toBe("Delete");
   });
 
-  it("onConfirm() resolves with true and closes dialog", async () => {
+  it("confirm() returns a promise that resolves to true on onConfirm", async () => {
     const { result } = renderHook(() => useConfirm());
 
-    let promise!: Promise<boolean>;
+    let promise: Promise<boolean>;
     act(() => {
-      promise = result.current.confirm({ title: "Confirm?", message: "Sure?" });
+      promise = result.current.confirm({
+        title: "Confirm?",
+        message: "Are you sure?",
+      });
     });
 
     expect(result.current.confirmDialogProps.open).toBe(true);
 
-    await act(async () => {
+    act(() => {
       result.current.confirmDialogProps.onConfirm();
     });
 
+    const resolved = await promise!;
+    expect(resolved).toBe(true);
     expect(result.current.confirmDialogProps.open).toBe(false);
-    await expect(promise).resolves.toBe(true);
   });
 
-  it("onCancel() resolves with false and closes dialog", async () => {
+  it("confirm() returns a promise that resolves to false on onCancel", async () => {
     const { result } = renderHook(() => useConfirm());
 
-    let promise!: Promise<boolean>;
+    let promise: Promise<boolean>;
     act(() => {
-      promise = result.current.confirm({ title: "Confirm?", message: "Sure?" });
+      promise = result.current.confirm({
+        title: "Confirm?",
+        message: "Are you sure?",
+      });
     });
 
     expect(result.current.confirmDialogProps.open).toBe(true);
 
-    await act(async () => {
+    act(() => {
       result.current.confirmDialogProps.onCancel();
     });
 
+    const resolved = await promise!;
+    expect(resolved).toBe(false);
     expect(result.current.confirmDialogProps.open).toBe(false);
-    await expect(promise).resolves.toBe(false);
   });
 
-  it("supports sequential confirmations", async () => {
+  it("passes isLoading option through to dialog props", () => {
     const { result } = renderHook(() => useConfirm());
 
-    let promise1!: Promise<boolean>;
     act(() => {
-      promise1 = result.current.confirm({ title: "First?", message: "First" });
+      result.current.confirm({
+        title: "Loading test",
+        message: "Please wait...",
+        isLoading: true,
+      });
     });
-    await act(async () => {
-      result.current.confirmDialogProps.onConfirm();
-    });
-    await expect(promise1).resolves.toBe(true);
 
-    let promise2!: Promise<boolean>;
-    act(() => {
-      promise2 = result.current.confirm({ title: "Second?", message: "Second" });
-    });
-    await act(async () => {
-      result.current.confirmDialogProps.onCancel();
-    });
-    await expect(promise2).resolves.toBe(false);
+    expect(result.current.confirmDialogProps.isLoading).toBe(true);
   });
 });

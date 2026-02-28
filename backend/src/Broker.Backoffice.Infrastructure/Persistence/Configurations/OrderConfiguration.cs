@@ -30,6 +30,7 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         b.HasIndex(e => new { e.Category, e.Status });
         b.HasIndex(e => e.AccountId);
+        b.HasIndex(e => e.OrderDate);
     }
 }
 

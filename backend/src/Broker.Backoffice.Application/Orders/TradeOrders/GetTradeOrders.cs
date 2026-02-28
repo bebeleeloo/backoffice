@@ -42,10 +42,16 @@ public sealed class GetTradeOrdersQueryHandler(IAppDbContext db)
         var query = db.TradeOrders.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.OrderNumber))
-            query = query.Where(t => EF.Functions.Like(t.Order!.OrderNumber, $"%{request.OrderNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.OrderNumber);
+            query = query.Where(t => EF.Functions.Like(t.Order!.OrderNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ExternalId))
-            query = query.Where(t => t.Order!.ExternalId != null && EF.Functions.Like(t.Order.ExternalId, $"%{request.ExternalId}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ExternalId);
+            query = query.Where(t => t.Order!.ExternalId != null && EF.Functions.Like(t.Order.ExternalId, pattern));
+        }
 
         if (request.AccountId is { Count: > 0 })
             query = query.Where(t => request.AccountId.Contains(t.Order!.AccountId));

@@ -16,6 +16,15 @@ jobs:
       - run: dotnet build backend/src/Broker.Backoffice.Api/
       - run: dotnet test backend/tests/Broker.Backoffice.Tests.Unit/
 
+  backend-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet test backend/tests/Broker.Backoffice.Tests.Integration/ --verbosity normal
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -25,5 +34,5 @@ jobs:
           node-version: '20'
       - run: cd frontend && npm ci
       - run: cd frontend && npx tsc --noEmit
-      - run: cd frontend && npx eslint src/ --max-warnings 20
+      - run: cd frontend && npx eslint src/ --max-warnings 0
       - run: cd frontend && npx vitest run

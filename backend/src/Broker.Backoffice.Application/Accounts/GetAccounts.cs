@@ -26,16 +26,28 @@ public sealed class GetAccountsQueryHandler(IAppDbContext db)
         var query = db.Accounts.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Number))
-            query = query.Where(a => EF.Functions.Like(a.Number, $"%{request.Number}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Number);
+            query = query.Where(a => EF.Functions.Like(a.Number, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ExternalId))
-            query = query.Where(a => a.ExternalId != null && EF.Functions.Like(a.ExternalId, $"%{request.ExternalId}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ExternalId);
+            query = query.Where(a => a.ExternalId != null && EF.Functions.Like(a.ExternalId, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ClearerName))
-            query = query.Where(a => a.Clearer != null && EF.Functions.Like(a.Clearer.Name, $"%{request.ClearerName}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ClearerName);
+            query = query.Where(a => a.Clearer != null && EF.Functions.Like(a.Clearer.Name, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.TradePlatformName))
-            query = query.Where(a => a.TradePlatform != null && EF.Functions.Like(a.TradePlatform.Name, $"%{request.TradePlatformName}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.TradePlatformName);
+            query = query.Where(a => a.TradePlatform != null && EF.Functions.Like(a.TradePlatform.Name, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
             query = query.Where(a =>

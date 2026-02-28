@@ -44,28 +44,46 @@ public sealed class GetClientsQueryHandler(IAppDbContext db)
 
         // Per-column text filters (EF.Functions.Like for SQL LIKE)
         if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var namePattern = LikeHelper.ContainsPattern(request.Name);
             query = query.Where(c =>
-                (c.FirstName != null && EF.Functions.Like(c.FirstName, $"%{request.Name}%")) ||
-                (c.LastName != null && EF.Functions.Like(c.LastName, $"%{request.Name}%")) ||
-                (c.CompanyName != null && EF.Functions.Like(c.CompanyName, $"%{request.Name}%")) ||
-                EF.Functions.Like((c.FirstName ?? "") + " " + (c.LastName ?? ""), $"%{request.Name}%"));
+                (c.FirstName != null && EF.Functions.Like(c.FirstName, namePattern)) ||
+                (c.LastName != null && EF.Functions.Like(c.LastName, namePattern)) ||
+                (c.CompanyName != null && EF.Functions.Like(c.CompanyName, namePattern)) ||
+                EF.Functions.Like((c.FirstName ?? "") + " " + (c.LastName ?? ""), namePattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Email))
-            query = query.Where(c => EF.Functions.Like(c.Email, $"%{request.Email}%"));
+        {
+            var emailPattern = LikeHelper.ContainsPattern(request.Email);
+            query = query.Where(c => EF.Functions.Like(c.Email, emailPattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Phone))
-            query = query.Where(c => c.Phone != null && EF.Functions.Like(c.Phone, $"%{request.Phone}%"));
+        {
+            var phonePattern = LikeHelper.ContainsPattern(request.Phone);
+            query = query.Where(c => c.Phone != null && EF.Functions.Like(c.Phone, phonePattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ExternalId))
-            query = query.Where(c => c.ExternalId != null && EF.Functions.Like(c.ExternalId, $"%{request.ExternalId}%"));
+        {
+            var externalIdPattern = LikeHelper.ContainsPattern(request.ExternalId);
+            query = query.Where(c => c.ExternalId != null && EF.Functions.Like(c.ExternalId, externalIdPattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ResidenceCountryName))
+        {
+            var countryPattern = LikeHelper.ContainsPattern(request.ResidenceCountryName);
             query = query.Where(c => c.ResidenceCountry != null &&
-                EF.Functions.Like(c.ResidenceCountry.Name, $"%{request.ResidenceCountryName}%"));
+                EF.Functions.Like(c.ResidenceCountry.Name, countryPattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.CitizenshipCountryName))
+        {
+            var countryPattern = LikeHelper.ContainsPattern(request.CitizenshipCountryName);
             query = query.Where(c => c.CitizenshipCountry != null &&
-                EF.Functions.Like(c.CitizenshipCountry.Name, $"%{request.CitizenshipCountryName}%"));
+                EF.Functions.Like(c.CitizenshipCountry.Name, countryPattern));
+        }
 
         // Global search (backward compat, not used in column filters)
         if (!string.IsNullOrWhiteSpace(request.Q))

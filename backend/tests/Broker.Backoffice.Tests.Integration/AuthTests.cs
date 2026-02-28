@@ -71,4 +71,73 @@ public class AuthTests(CustomWebApplicationFactory factory)
         newAuth!.AccessToken.Should().NotBe(auth.AccessToken);
         newAuth.RefreshToken.Should().NotBe(auth.RefreshToken);
     }
+
+    [Fact]
+    public async Task ChangePassword_WithValidCurrent_ShouldReturn204()
+    {
+        await AuthenticateAsync();
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { CurrentPassword = "Admin123!", NewPassword = "NewPass123!" });
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Revert password back
+        _client.DefaultRequestHeaders.Authorization = null;
+        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
+            new { Username = "admin", Password = "NewPass123!" });
+        loginResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+        await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { CurrentPassword = "NewPass123!", NewPassword = "Admin123!" });
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithWrongCurrent_ShouldReturn401()
+    {
+        await AuthenticateAsync();
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { CurrentPassword = "WrongPass!", NewPassword = "NewPass123!" });
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ChangePassword_Unauthenticated_ShouldReturn401()
+    {
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { CurrentPassword = "Admin123!", NewPassword = "NewPass123!" });
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_ShouldReturnUpdated()
+    {
+        await AuthenticateAsync();
+        var response = await _client.PutAsJsonAsync("/api/v1/auth/profile",
+            new { FullName = "Updated Admin", Email = "admin@test.com" });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profile = await response.Content.ReadFromJsonAsync<UserProfileResponse>();
+        profile!.FullName.Should().Be("Updated Admin");
+
+        // Revert
+        await _client.PutAsJsonAsync("/api/v1/auth/profile",
+            new { FullName = "Admin", Email = "admin@admin.com" });
+    }
+
+    [Fact]
+    public async Task UpdateProfile_Unauthenticated_ShouldReturn401()
+    {
+        var response = await _client.PutAsJsonAsync("/api/v1/auth/profile",
+            new { FullName = "Hacker", Email = "hacker@test.com" });
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private async Task AuthenticateAsync()
+    {
+        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
+            new { Username = "admin", Password = "Admin123!" });
+        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+    }
 }

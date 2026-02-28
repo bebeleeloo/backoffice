@@ -2,3 +2,13 @@
 **/obj/
 **/node_modules/
 **/.git/
+.env
+.env.*
+docs/
+screenshots/
+scripts/
+.github/
+*.md
+.vscode/
+.idea/
+**/.DS_Store

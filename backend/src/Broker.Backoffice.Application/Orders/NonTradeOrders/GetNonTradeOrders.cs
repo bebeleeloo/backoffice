@@ -34,10 +34,16 @@ public sealed class GetNonTradeOrdersQueryHandler(IAppDbContext db)
         var query = db.NonTradeOrders.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.OrderNumber))
-            query = query.Where(n => EF.Functions.Like(n.Order!.OrderNumber, $"%{request.OrderNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.OrderNumber);
+            query = query.Where(n => EF.Functions.Like(n.Order!.OrderNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ExternalId))
-            query = query.Where(n => n.Order!.ExternalId != null && EF.Functions.Like(n.Order.ExternalId, $"%{request.ExternalId}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ExternalId);
+            query = query.Where(n => n.Order!.ExternalId != null && EF.Functions.Like(n.Order.ExternalId, pattern));
+        }
 
         if (request.AccountId is { Count: > 0 })
             query = query.Where(n => request.AccountId.Contains(n.Order!.AccountId));
@@ -46,10 +52,16 @@ public sealed class GetNonTradeOrdersQueryHandler(IAppDbContext db)
             query = query.Where(n => n.InstrumentId != null && request.InstrumentId.Contains(n.InstrumentId.Value));
 
         if (!string.IsNullOrWhiteSpace(request.CurrencyCode))
-            query = query.Where(n => EF.Functions.Like(n.Currency!.Code, $"%{request.CurrencyCode}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.CurrencyCode);
+            query = query.Where(n => EF.Functions.Like(n.Currency!.Code, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ReferenceNumber))
-            query = query.Where(n => n.ReferenceNumber != null && EF.Functions.Like(n.ReferenceNumber, $"%{request.ReferenceNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ReferenceNumber);
+            query = query.Where(n => n.ReferenceNumber != null && EF.Functions.Like(n.ReferenceNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
             query = query.Where(n =>

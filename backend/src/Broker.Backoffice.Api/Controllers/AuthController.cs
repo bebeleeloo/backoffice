@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Asp.Versioning;
 using Broker.Backoffice.Application.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Broker.Backoffice.Api.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
 [Route("api/v1/auth")]
 public sealed class AuthController(ISender mediator) : ControllerBase
 {

@@ -35,13 +35,22 @@ public sealed class GetNonTradeTransactionsQueryHandler(IAppDbContext db)
         var query = db.NonTradeTransactions.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.TransactionNumber))
-            query = query.Where(n => EF.Functions.Like(n.Transaction!.TransactionNumber, $"%{request.TransactionNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.TransactionNumber);
+            query = query.Where(n => EF.Functions.Like(n.Transaction!.TransactionNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.OrderNumber))
-            query = query.Where(n => n.Transaction!.Order != null && EF.Functions.Like(n.Transaction.Order.OrderNumber, $"%{request.OrderNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.OrderNumber);
+            query = query.Where(n => n.Transaction!.Order != null && EF.Functions.Like(n.Transaction.Order.OrderNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ExternalId))
-            query = query.Where(n => n.Transaction!.ExternalId != null && EF.Functions.Like(n.Transaction.ExternalId, $"%{request.ExternalId}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ExternalId);
+            query = query.Where(n => n.Transaction!.ExternalId != null && EF.Functions.Like(n.Transaction.ExternalId, pattern));
+        }
 
         if (request.OrderId is { Count: > 0 })
             query = query.Where(n => n.Transaction!.OrderId.HasValue && request.OrderId.Contains(n.Transaction.OrderId.Value));
@@ -53,10 +62,16 @@ public sealed class GetNonTradeTransactionsQueryHandler(IAppDbContext db)
             query = query.Where(n => n.InstrumentId != null && request.InstrumentId.Contains(n.InstrumentId.Value));
 
         if (!string.IsNullOrWhiteSpace(request.CurrencyCode))
-            query = query.Where(n => EF.Functions.Like(n.Currency!.Code, $"%{request.CurrencyCode}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.CurrencyCode);
+            query = query.Where(n => EF.Functions.Like(n.Currency!.Code, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ReferenceNumber))
-            query = query.Where(n => n.ReferenceNumber != null && EF.Functions.Like(n.ReferenceNumber, $"%{request.ReferenceNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ReferenceNumber);
+            query = query.Where(n => n.ReferenceNumber != null && EF.Functions.Like(n.ReferenceNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
             query = query.Where(n =>

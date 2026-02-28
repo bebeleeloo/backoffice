@@ -39,13 +39,22 @@ public sealed class GetTradeTransactionsQueryHandler(IAppDbContext db)
         var query = db.TradeTransactions.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.TransactionNumber))
-            query = query.Where(t => EF.Functions.Like(t.Transaction!.TransactionNumber, $"%{request.TransactionNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.TransactionNumber);
+            query = query.Where(t => EF.Functions.Like(t.Transaction!.TransactionNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.OrderNumber))
-            query = query.Where(t => t.Transaction!.Order != null && EF.Functions.Like(t.Transaction.Order.OrderNumber, $"%{request.OrderNumber}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.OrderNumber);
+            query = query.Where(t => t.Transaction!.Order != null && EF.Functions.Like(t.Transaction.Order.OrderNumber, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ExternalId))
-            query = query.Where(t => t.Transaction!.ExternalId != null && EF.Functions.Like(t.Transaction.ExternalId, $"%{request.ExternalId}%"));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.ExternalId);
+            query = query.Where(t => t.Transaction!.ExternalId != null && EF.Functions.Like(t.Transaction.ExternalId, pattern));
+        }
 
         if (request.OrderId is { Count: > 0 })
             query = query.Where(t => t.Transaction!.OrderId.HasValue && request.OrderId.Contains(t.Transaction.OrderId.Value));

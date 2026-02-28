@@ -31,6 +31,7 @@ public sealed class TransactionConfiguration : IEntityTypeConfiguration<Transact
 
         b.HasIndex(e => new { e.Category, e.Status });
         b.HasIndex(e => e.OrderId);
+        b.HasIndex(e => e.TransactionDate);
     }
 }
 

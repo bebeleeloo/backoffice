@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Broker.Backoffice.Application.TradePlatforms;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Infrastructure.Auth;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Broker.Backoffice.Api.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
 [Route("api/v1/trade-platforms")]
 public sealed class TradePlatformsController(ISender mediator) : ControllerBase
 {
