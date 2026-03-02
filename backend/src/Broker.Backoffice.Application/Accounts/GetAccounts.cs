@@ -66,7 +66,7 @@ public sealed class GetAccountsQueryHandler(IAppDbContext db)
         if (request.Tariff is { Count: > 0 })
             query = query.Where(a => request.Tariff.Contains(a.Tariff));
 
-        var projected = query.SortBy(request.Sort ?? "-CreatedAt")
+        var projected = ApplySort(query, request.Sort ?? "-CreatedAt")
             .Select(a => new AccountListItemDto(
                 a.Id,
                 a.Number,
@@ -86,5 +86,25 @@ public sealed class GetAccountsQueryHandler(IAppDbContext db)
                 a.Holders.Count));
 
         return await projected.ToPagedResultAsync(request.Page, request.PageSize, ct);
+    }
+
+    private static IQueryable<Account> ApplySort(IQueryable<Account> query, string sort)
+    {
+        var parts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var field = parts[0].TrimStart('-');
+        var desc = parts.Length == 2
+            ? parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+            : sort.StartsWith('-');
+
+        return field.ToLowerInvariant() switch
+        {
+            "clearername" => desc
+                ? query.OrderByDescending(a => a.Clearer != null ? a.Clearer.Name : null)
+                : query.OrderBy(a => a.Clearer != null ? a.Clearer.Name : null),
+            "tradeplatformname" => desc
+                ? query.OrderByDescending(a => a.TradePlatform != null ? a.TradePlatform.Name : null)
+                : query.OrderBy(a => a.TradePlatform != null ? a.TradePlatform.Name : null),
+            _ => query.SortBy(sort),
+        };
     }
 }

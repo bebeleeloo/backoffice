@@ -128,32 +128,7 @@ public sealed class GetClientsQueryHandler(IAppDbContext db)
         if (request.CreatedTo.HasValue)
             query = query.Where(c => c.CreatedAt < request.CreatedTo.Value.AddDays(1));
 
-        // DisplayName is a computed field (FirstName+LastName or CompanyName),
-        // so handle sorting for it before projection.
-        var sort = request.Sort ?? "-CreatedAt";
-        var sortParts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-        var sortField = sortParts[0].TrimStart('-');
-        var isDisplayNameSort = sortField.Equals("displayName", StringComparison.OrdinalIgnoreCase);
-
-        if (isDisplayNameSort)
-        {
-            var descending = sortParts.Length == 2
-                ? sortParts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
-                : sort.StartsWith('-');
-            query = descending
-                ? query.OrderByDescending(c => c.ClientType == Domain.Clients.ClientType.Corporate
-                    ? c.CompanyName ?? ""
-                    : ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim())
-                : query.OrderBy(c => c.ClientType == Domain.Clients.ClientType.Corporate
-                    ? c.CompanyName ?? ""
-                    : ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim());
-        }
-        else
-        {
-            query = query.SortBy(sort);
-        }
-
-        var projected = query
+        var projected = ApplySort(query, request.Sort ?? "-CreatedAt")
             .Select(c => new ClientListItemDto(
                 c.Id,
                 c.ClientType,
@@ -177,5 +152,36 @@ public sealed class GetClientsQueryHandler(IAppDbContext db)
                 c.CitizenshipCountry != null ? c.CitizenshipCountry.Name : null));
 
         return await projected.ToPagedResultAsync(request.Page, request.PageSize, ct);
+    }
+
+    private static IQueryable<Domain.Clients.Client> ApplySort(IQueryable<Domain.Clients.Client> query, string sort)
+    {
+        var parts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var field = parts[0].TrimStart('-');
+        var desc = parts.Length == 2
+            ? parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+            : sort.StartsWith('-');
+
+        return field.ToLowerInvariant() switch
+        {
+            "displayname" => desc
+                ? query.OrderByDescending(c => c.ClientType == Domain.Clients.ClientType.Corporate
+                    ? c.CompanyName ?? "" : ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim())
+                : query.OrderBy(c => c.ClientType == Domain.Clients.ClientType.Corporate
+                    ? c.CompanyName ?? "" : ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim()),
+            "residencecountryiso2" => desc
+                ? query.OrderByDescending(c => c.ResidenceCountry != null ? c.ResidenceCountry.Iso2 : null)
+                : query.OrderBy(c => c.ResidenceCountry != null ? c.ResidenceCountry.Iso2 : null),
+            "citizenshipcountryiso2" => desc
+                ? query.OrderByDescending(c => c.CitizenshipCountry != null ? c.CitizenshipCountry.Iso2 : null)
+                : query.OrderBy(c => c.CitizenshipCountry != null ? c.CitizenshipCountry.Iso2 : null),
+            "residencecountryname" => desc
+                ? query.OrderByDescending(c => c.ResidenceCountry != null ? c.ResidenceCountry.Name : null)
+                : query.OrderBy(c => c.ResidenceCountry != null ? c.ResidenceCountry.Name : null),
+            "citizenshipcountryname" => desc
+                ? query.OrderByDescending(c => c.CitizenshipCountry != null ? c.CitizenshipCountry.Name : null)
+                : query.OrderBy(c => c.CitizenshipCountry != null ? c.CitizenshipCountry.Name : null),
+            _ => query.SortBy(sort),
+        };
     }
 }

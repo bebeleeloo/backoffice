@@ -61,6 +61,7 @@ public sealed class GetAllEntityChangesQueryHandler(IAppDbContext db)
                 Timestamp = g.Min(e => e.Timestamp),
                 EntityDisplayName = g.Max(e => e.EntityDisplayName),
                 UserName = g.Max(e => e.UserName),
+                ChangeType = g.Min(e => e.ChangeType),
             });
 
         // Apply sorting — supports "field asc"/"field desc" and legacy "-field" formats
@@ -91,6 +92,9 @@ public sealed class GetAllEntityChangesQueryHandler(IAppDbContext db)
             "entitytype" => desc
                 ? grouped.OrderByDescending(x => x.EntityType)
                 : grouped.OrderBy(x => x.EntityType),
+            "changetype" => desc
+                ? grouped.OrderByDescending(x => x.ChangeType)
+                : grouped.OrderBy(x => x.ChangeType),
             _ => desc
                 ? grouped.OrderByDescending(x => x.Timestamp)
                 : grouped.OrderBy(x => x.Timestamp),
