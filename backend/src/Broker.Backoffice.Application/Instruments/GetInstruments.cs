@@ -54,12 +54,15 @@ public sealed class GetInstrumentsQueryHandler(IAppDbContext db)
         }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(i =>
-                i.Symbol.Contains(request.Q) ||
-                i.Name.Contains(request.Q) ||
-                (i.ISIN != null && i.ISIN.Contains(request.Q)) ||
-                (i.CUSIP != null && i.CUSIP.Contains(request.Q)) ||
-                (i.ExternalId != null && i.ExternalId.Contains(request.Q)));
+                EF.Functions.Like(i.Symbol, qPattern) ||
+                EF.Functions.Like(i.Name, qPattern) ||
+                (i.ISIN != null && EF.Functions.Like(i.ISIN, qPattern)) ||
+                (i.CUSIP != null && EF.Functions.Like(i.CUSIP, qPattern)) ||
+                (i.ExternalId != null && EF.Functions.Like(i.ExternalId, qPattern)));
+        }
 
         if (request.Type is { Count: > 0 })
             query = query.Where(i => request.Type.Contains(i.Type));

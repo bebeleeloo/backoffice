@@ -60,11 +60,14 @@ public sealed class GetTradeOrdersQueryHandler(IAppDbContext db)
             query = query.Where(t => request.InstrumentId.Contains(t.InstrumentId));
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(t =>
-                t.Order!.OrderNumber.Contains(request.Q) ||
-                t.Order.Account!.Number.Contains(request.Q) ||
-                t.Instrument!.Symbol.Contains(request.Q) ||
-                (t.Order.ExternalId != null && t.Order.ExternalId.Contains(request.Q)));
+                EF.Functions.Like(t.Order!.OrderNumber, qPattern) ||
+                EF.Functions.Like(t.Order.Account!.Number, qPattern) ||
+                EF.Functions.Like(t.Instrument!.Symbol, qPattern) ||
+                (t.Order.ExternalId != null && EF.Functions.Like(t.Order.ExternalId, qPattern)));
+        }
 
         if (request.Status is { Count: > 0 })
             query = query.Where(t => request.Status.Contains(t.Order!.Status));

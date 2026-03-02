@@ -50,6 +50,14 @@ public sealed class UpdateAccountCommandHandler(
         if (await db.Accounts.AnyAsync(a => a.Number == request.Number && a.Id != request.Id, ct))
             throw new InvalidOperationException($"Account with number '{request.Number}' already exists");
 
+        if (request.ClearerId.HasValue && request.ClearerId != account.ClearerId
+            && !await db.Clearers.AnyAsync(c => c.Id == request.ClearerId.Value, ct))
+            throw new KeyNotFoundException($"Clearer {request.ClearerId} not found");
+
+        if (request.TradePlatformId.HasValue && request.TradePlatformId != account.TradePlatformId
+            && !await db.TradePlatforms.AnyAsync(t => t.Id == request.TradePlatformId.Value, ct))
+            throw new KeyNotFoundException($"TradePlatform {request.TradePlatformId} not found");
+
         var before = JsonSerializer.Serialize(new { account.Id, account.Number, account.Status });
         db.Accounts.Entry(account).Property(a => a.RowVersion).OriginalValue = request.RowVersion;
 

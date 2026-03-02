@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Application.Accounts;
 using Broker.Backoffice.Domain.Accounts;
@@ -27,6 +28,7 @@ public sealed class SetClientAccountsCommandValidator : AbstractValidator<SetCli
 
 public sealed class SetClientAccountsCommandHandler(
     IAppDbContext db,
+    IAuditContext audit,
     IDateTimeProvider clock) : IRequestHandler<SetClientAccountsCommand, IReadOnlyList<ClientAccountDto>>
 {
     public async Task<IReadOnlyList<ClientAccountDto>> Handle(SetClientAccountsCommand request, CancellationToken ct)
@@ -45,6 +47,7 @@ public sealed class SetClientAccountsCommandHandler(
         var existing = await db.AccountHolders
             .Where(h => h.ClientId == request.ClientId)
             .ToListAsync(ct);
+        var beforeAccountCount = existing.Count;
         db.AccountHolders.RemoveRange(existing);
 
         // Add new
@@ -62,6 +65,11 @@ public sealed class SetClientAccountsCommandHandler(
         }
 
         await db.SaveChangesAsync(ct);
+
+        audit.EntityType = "Client";
+        audit.EntityId = client.Id.ToString();
+        audit.BeforeJson = JsonSerializer.Serialize(new { AccountCount = beforeAccountCount });
+        audit.AfterJson = JsonSerializer.Serialize(new { AccountCount = request.Accounts.Count });
 
         return await db.AccountHolders
             .Where(h => h.ClientId == request.ClientId)

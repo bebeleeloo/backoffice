@@ -50,9 +50,12 @@ public sealed class GetAccountsQueryHandler(IAppDbContext db)
         }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(a =>
-                a.Number.Contains(request.Q) ||
-                (a.ExternalId != null && a.ExternalId.Contains(request.Q)));
+                EF.Functions.Like(a.Number, qPattern) ||
+                (a.ExternalId != null && EF.Functions.Like(a.ExternalId, qPattern)));
+        }
 
         if (request.Status is { Count: > 0 })
             query = query.Where(a => request.Status.Contains(a.Status));

@@ -62,6 +62,18 @@ public sealed class UpdateInstrumentCommandHandler(
         if (await db.Instruments.AnyAsync(i => i.Symbol == request.Symbol && i.Id != request.Id, ct))
             throw new InvalidOperationException($"Instrument with symbol '{request.Symbol}' already exists");
 
+        if (request.ExchangeId.HasValue && request.ExchangeId != instrument.ExchangeId
+            && !await db.Exchanges.AnyAsync(e => e.Id == request.ExchangeId.Value, ct))
+            throw new KeyNotFoundException($"Exchange {request.ExchangeId} not found");
+
+        if (request.CurrencyId.HasValue && request.CurrencyId != instrument.CurrencyId
+            && !await db.Currencies.AnyAsync(c => c.Id == request.CurrencyId.Value, ct))
+            throw new KeyNotFoundException($"Currency {request.CurrencyId} not found");
+
+        if (request.CountryId.HasValue && request.CountryId != instrument.CountryId
+            && !await db.Countries.AnyAsync(c => c.Id == request.CountryId.Value, ct))
+            throw new KeyNotFoundException($"Country {request.CountryId} not found");
+
         var before = JsonSerializer.Serialize(new { instrument.Id, instrument.Symbol, instrument.Name, instrument.Status });
         db.Instruments.Entry(instrument).Property(i => i.RowVersion).OriginalValue = request.RowVersion;
 

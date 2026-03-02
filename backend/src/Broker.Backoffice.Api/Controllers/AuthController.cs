@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Asp.Versioning;
+using Broker.Backoffice.Api.Filters;
 using Broker.Backoffice.Application.Auth;
 using Broker.Backoffice.Application.Users;
 using MediatR;
@@ -46,6 +47,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
     [HttpPost("change-password")]
     [Authorize]
     [EnableRateLimiting("sensitive")]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> ChangePassword(ChangePasswordBody body, CancellationToken ct)
     {
         if (!TryGetUserId(out var id)) return Unauthorized();
@@ -58,6 +60,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
     [HttpPut("profile")]
     [Authorize]
     [EnableRateLimiting("auth")]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<ActionResult<UserProfileResponse>> UpdateProfile(UpdateProfileBody body, CancellationToken ct)
     {
         if (!TryGetUserId(out var id)) return Unauthorized();
@@ -76,6 +79,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
     [HttpPut("photo")]
     [Authorize]
     [RequestSizeLimit(2 * 1024 * 1024)]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> UploadPhoto(IFormFile file, CancellationToken ct)
     {
         if (!TryGetUserId(out var id)) return Unauthorized();
@@ -87,6 +91,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 
     [HttpDelete("photo")]
     [Authorize]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> DeletePhoto(CancellationToken ct)
     {
         if (!TryGetUserId(out var id)) return Unauthorized();

@@ -69,6 +69,7 @@ public sealed class UsersController(ISender mediator) : ControllerBase
     [HttpPut("{id:guid}/photo")]
     [HasPermission(Permissions.UsersUpdate)]
     [RequestSizeLimit(2 * 1024 * 1024)]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> UploadPhoto(Guid id, IFormFile file, CancellationToken ct)
     {
         using var ms = new MemoryStream();
@@ -79,6 +80,7 @@ public sealed class UsersController(ISender mediator) : ControllerBase
 
     [HttpDelete("{id:guid}/photo")]
     [HasPermission(Permissions.UsersUpdate)]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> DeletePhoto(Guid id, CancellationToken ct)
     {
         await mediator.Send(new DeleteUserPhotoCommand(id), ct);

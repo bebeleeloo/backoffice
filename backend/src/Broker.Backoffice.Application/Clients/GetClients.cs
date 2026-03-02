@@ -87,13 +87,16 @@ public sealed class GetClientsQueryHandler(IAppDbContext db)
 
         // Global search (backward compat, not used in column filters)
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(c =>
-                c.Email.Contains(request.Q) ||
-                (c.FirstName != null && c.FirstName.Contains(request.Q)) ||
-                (c.LastName != null && c.LastName.Contains(request.Q)) ||
-                (c.CompanyName != null && c.CompanyName.Contains(request.Q)) ||
-                (c.Phone != null && c.Phone.Contains(request.Q)) ||
-                (c.ExternalId != null && c.ExternalId.Contains(request.Q)));
+                EF.Functions.Like(c.Email, qPattern) ||
+                (c.FirstName != null && EF.Functions.Like(c.FirstName, qPattern)) ||
+                (c.LastName != null && EF.Functions.Like(c.LastName, qPattern)) ||
+                (c.CompanyName != null && EF.Functions.Like(c.CompanyName, qPattern)) ||
+                (c.Phone != null && EF.Functions.Like(c.Phone, qPattern)) ||
+                (c.ExternalId != null && EF.Functions.Like(c.ExternalId, qPattern)));
+        }
 
         // Multi-value enum filters
         if (request.Status is { Count: > 0 })

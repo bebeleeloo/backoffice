@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Accounts;
 using FluentValidation;
@@ -26,6 +27,7 @@ public sealed class SetAccountHoldersCommandValidator : AbstractValidator<SetAcc
 
 public sealed class SetAccountHoldersCommandHandler(
     IAppDbContext db,
+    IAuditContext audit,
     IDateTimeProvider clock) : IRequestHandler<SetAccountHoldersCommand, AccountDto>
 {
     public async Task<AccountDto> Handle(SetAccountHoldersCommand request, CancellationToken ct)
@@ -42,6 +44,8 @@ public sealed class SetAccountHoldersCommandHandler(
         var existingCount = await db.Clients.CountAsync(c => clientIds.Contains(c.Id), ct);
         if (existingCount != clientIds.Count)
             throw new InvalidOperationException("One or more client IDs are invalid");
+
+        var beforeHolderCount = account.Holders.Count;
 
         // Replace semantics: remove all existing, add new
         account.Holders.Clear();
@@ -60,6 +64,11 @@ public sealed class SetAccountHoldersCommandHandler(
         }
 
         await db.SaveChangesAsync(ct);
+
+        audit.EntityType = "Account";
+        audit.EntityId = account.Id.ToString();
+        audit.BeforeJson = JsonSerializer.Serialize(new { HolderCount = beforeHolderCount });
+        audit.AfterJson = JsonSerializer.Serialize(new { HolderCount = request.Holders.Count });
 
         // Reload with client navigation
         var result = await db.Accounts

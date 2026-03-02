@@ -23,21 +23,33 @@ public sealed class GetRolesQueryHandler(IAppDbContext db)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(r =>
-                r.Name.Contains(request.Q) ||
-                (r.Description != null && r.Description.Contains(request.Q)));
+                EF.Functions.Like(r.Name, qPattern) ||
+                (r.Description != null && EF.Functions.Like(r.Description, qPattern)));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Name))
-            query = query.Where(r => r.Name.Contains(request.Name));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Name);
+            query = query.Where(r => EF.Functions.Like(r.Name, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Description))
-            query = query.Where(r => r.Description != null && r.Description.Contains(request.Description));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Description);
+            query = query.Where(r => r.Description != null && EF.Functions.Like(r.Description, pattern));
+        }
 
         if (request.IsSystem.HasValue)
             query = query.Where(r => r.IsSystem == request.IsSystem.Value);
 
         if (!string.IsNullOrWhiteSpace(request.Permission))
-            query = query.Where(r => r.RolePermissions.Any(rp => rp.Permission.Code.Contains(request.Permission)));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Permission);
+            query = query.Where(r => r.RolePermissions.Any(rp => EF.Functions.Like(rp.Permission.Code, pattern)));
+        }
 
         var projected = query.SortBy(request.Sort ?? "Name")
             .Select(r => new RoleDto(r.Id, r.Name, r.Description, r.IsSystem,

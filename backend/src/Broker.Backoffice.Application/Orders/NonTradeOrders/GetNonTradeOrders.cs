@@ -64,11 +64,14 @@ public sealed class GetNonTradeOrdersQueryHandler(IAppDbContext db)
         }
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(n =>
-                n.Order!.OrderNumber.Contains(request.Q) ||
-                n.Order.Account!.Number.Contains(request.Q) ||
-                (n.ReferenceNumber != null && n.ReferenceNumber.Contains(request.Q)) ||
-                (n.Order.ExternalId != null && n.Order.ExternalId.Contains(request.Q)));
+                EF.Functions.Like(n.Order!.OrderNumber, qPattern) ||
+                EF.Functions.Like(n.Order.Account!.Number, qPattern) ||
+                (n.ReferenceNumber != null && EF.Functions.Like(n.ReferenceNumber, qPattern)) ||
+                (n.Order.ExternalId != null && EF.Functions.Like(n.Order.ExternalId, qPattern)));
+        }
 
         if (request.Status is { Count: > 0 })
             query = query.Where(n => request.Status.Contains(n.Order!.Status));

@@ -55,6 +55,15 @@ public sealed class CreateInstrumentCommandHandler(
         if (await db.Instruments.AnyAsync(i => i.Symbol == request.Symbol, ct))
             throw new InvalidOperationException($"Instrument with symbol '{request.Symbol}' already exists");
 
+        if (request.ExchangeId.HasValue && !await db.Exchanges.AnyAsync(e => e.Id == request.ExchangeId.Value, ct))
+            throw new KeyNotFoundException($"Exchange {request.ExchangeId} not found");
+
+        if (request.CurrencyId.HasValue && !await db.Currencies.AnyAsync(c => c.Id == request.CurrencyId.Value, ct))
+            throw new KeyNotFoundException($"Currency {request.CurrencyId} not found");
+
+        if (request.CountryId.HasValue && !await db.Countries.AnyAsync(c => c.Id == request.CountryId.Value, ct))
+            throw new KeyNotFoundException($"Country {request.CountryId} not found");
+
         var instrument = new Instrument
         {
             Id = Guid.NewGuid(),

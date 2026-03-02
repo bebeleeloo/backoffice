@@ -32,10 +32,13 @@ public sealed class GetAllEntityChangesQueryHandler(IAppDbContext db)
         if (!string.IsNullOrWhiteSpace(request.EntityType))
             query = query.Where(e => e.EntityType == request.EntityType);
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(e =>
-                (e.UserName != null && e.UserName.Contains(request.Q)) ||
-                e.EntityType.Contains(request.Q) ||
-                (e.EntityDisplayName != null && e.EntityDisplayName.Contains(request.Q)));
+                (e.UserName != null && EF.Functions.Like(e.UserName, qPattern)) ||
+                EF.Functions.Like(e.EntityType, qPattern) ||
+                (e.EntityDisplayName != null && EF.Functions.Like(e.EntityDisplayName, qPattern)));
+        }
 
         // Filter by change type: only include operations that have this change type
         if (!string.IsNullOrWhiteSpace(request.ChangeType))

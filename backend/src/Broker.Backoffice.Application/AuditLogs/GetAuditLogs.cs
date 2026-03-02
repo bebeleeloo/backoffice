@@ -29,19 +29,34 @@ public sealed class GetAuditLogsQueryHandler(IAppDbContext db)
         if (request.From.HasValue) query = query.Where(a => a.CreatedAt >= request.From.Value);
         if (request.To.HasValue) query = query.Where(a => a.CreatedAt <= request.To.Value);
         if (request.UserId.HasValue) query = query.Where(a => a.UserId == request.UserId.Value);
-        if (!string.IsNullOrWhiteSpace(request.Action)) query = query.Where(a => a.Action.Contains(request.Action));
+        if (!string.IsNullOrWhiteSpace(request.Action))
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Action);
+            query = query.Where(a => EF.Functions.Like(a.Action, pattern));
+        }
         if (!string.IsNullOrWhiteSpace(request.EntityType)) query = query.Where(a => a.EntityType == request.EntityType);
         if (request.IsSuccess.HasValue) query = query.Where(a => a.IsSuccess == request.IsSuccess.Value);
-        if (!string.IsNullOrWhiteSpace(request.UserName)) query = query.Where(a => a.UserName != null && a.UserName.Contains(request.UserName));
+        if (!string.IsNullOrWhiteSpace(request.UserName))
+        {
+            var pattern = LikeHelper.ContainsPattern(request.UserName);
+            query = query.Where(a => a.UserName != null && EF.Functions.Like(a.UserName, pattern));
+        }
         if (!string.IsNullOrWhiteSpace(request.Method)) query = query.Where(a => a.Method == request.Method);
-        if (!string.IsNullOrWhiteSpace(request.Path)) query = query.Where(a => a.Path.Contains(request.Path));
+        if (!string.IsNullOrWhiteSpace(request.Path))
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Path);
+            query = query.Where(a => EF.Functions.Like(a.Path, pattern));
+        }
         if (request.StatusCode.HasValue) query = query.Where(a => a.StatusCode == request.StatusCode.Value);
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(a =>
-                (a.UserName != null && a.UserName.Contains(request.Q)) ||
-                a.Action.Contains(request.Q) ||
-                a.Path.Contains(request.Q));
+                (a.UserName != null && EF.Functions.Like(a.UserName, qPattern)) ||
+                EF.Functions.Like(a.Action, qPattern) ||
+                EF.Functions.Like(a.Path, qPattern));
+        }
 
         var projected = query.SortBy(request.Sort ?? "-CreatedAt")
             .Select(a => new AuditLogDto(

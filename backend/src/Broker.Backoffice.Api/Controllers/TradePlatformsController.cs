@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Broker.Backoffice.Api.Filters;
 using Broker.Backoffice.Application.TradePlatforms;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Infrastructure.Auth;
@@ -28,6 +29,7 @@ public sealed class TradePlatformsController(ISender mediator) : ControllerBase
 
     [HttpPost]
     [HasPermission(Permissions.SettingsManage)]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<ActionResult<TradePlatformDto>> Create(CreateTradePlatformCommand command, CancellationToken ct)
     {
         return Ok(await mediator.Send(command, ct));
@@ -35,6 +37,7 @@ public sealed class TradePlatformsController(ISender mediator) : ControllerBase
 
     [HttpPut("{id:guid}")]
     [HasPermission(Permissions.SettingsManage)]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<ActionResult<TradePlatformDto>> Update(Guid id, UpdateTradePlatformCommand command, CancellationToken ct)
     {
         if (id != command.Id) return BadRequest();
@@ -43,6 +46,7 @@ public sealed class TradePlatformsController(ISender mediator) : ControllerBase
 
     [HttpDelete("{id:guid}")]
     [HasPermission(Permissions.SettingsManage)]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await mediator.Send(new DeleteTradePlatformCommand(id), ct);

@@ -66,12 +66,15 @@ public sealed class GetTradeTransactionsQueryHandler(IAppDbContext db)
             query = query.Where(t => request.InstrumentId.Contains(t.InstrumentId));
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(t =>
-                t.Transaction!.TransactionNumber.Contains(request.Q) ||
-                (t.Transaction.Order != null && t.Transaction.Order.OrderNumber.Contains(request.Q)) ||
-                (t.Transaction.Order != null && t.Transaction.Order.Account != null && t.Transaction.Order.Account.Number.Contains(request.Q)) ||
-                t.Instrument!.Symbol.Contains(request.Q) ||
-                (t.Transaction.ExternalId != null && t.Transaction.ExternalId.Contains(request.Q)));
+                EF.Functions.Like(t.Transaction!.TransactionNumber, qPattern) ||
+                (t.Transaction.Order != null && EF.Functions.Like(t.Transaction.Order.OrderNumber, qPattern)) ||
+                (t.Transaction.Order != null && t.Transaction.Order.Account != null && EF.Functions.Like(t.Transaction.Order.Account.Number, qPattern)) ||
+                EF.Functions.Like(t.Instrument!.Symbol, qPattern) ||
+                (t.Transaction.ExternalId != null && EF.Functions.Like(t.Transaction.ExternalId, qPattern)));
+        }
 
         if (request.Status is { Count: > 0 })
             query = query.Where(t => request.Status.Contains(t.Transaction!.Status));

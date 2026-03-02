@@ -22,25 +22,40 @@ public sealed class GetUsersQueryHandler(IAppDbContext db)
         var query = db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var qPattern = LikeHelper.ContainsPattern(request.Q);
             query = query.Where(u =>
-                u.Username.Contains(request.Q) ||
-                u.Email.Contains(request.Q) ||
-                (u.FullName != null && u.FullName.Contains(request.Q)));
+                EF.Functions.Like(u.Username, qPattern) ||
+                EF.Functions.Like(u.Email, qPattern) ||
+                (u.FullName != null && EF.Functions.Like(u.FullName, qPattern)));
+        }
 
         if (request.IsActive.HasValue)
             query = query.Where(u => u.IsActive == request.IsActive.Value);
 
         if (!string.IsNullOrWhiteSpace(request.Username))
-            query = query.Where(u => u.Username.Contains(request.Username));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Username);
+            query = query.Where(u => EF.Functions.Like(u.Username, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Email))
-            query = query.Where(u => u.Email.Contains(request.Email));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Email);
+            query = query.Where(u => EF.Functions.Like(u.Email, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.FullName))
-            query = query.Where(u => u.FullName != null && u.FullName.Contains(request.FullName));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.FullName);
+            query = query.Where(u => u.FullName != null && EF.Functions.Like(u.FullName, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Role))
-            query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name.Contains(request.Role)));
+        {
+            var pattern = LikeHelper.ContainsPattern(request.Role);
+            query = query.Where(u => u.UserRoles.Any(ur => EF.Functions.Like(ur.Role.Name, pattern)));
+        }
 
         var projected = query.SortBy(request.Sort ?? "-CreatedAt")
             .Select(u => new UserDto(

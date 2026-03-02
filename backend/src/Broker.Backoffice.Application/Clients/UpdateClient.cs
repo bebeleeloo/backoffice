@@ -103,6 +103,14 @@ public sealed class UpdateClientCommandHandler(
         if (await db.Clients.AnyAsync(c => c.Email == request.Email && c.Id != request.Id, ct))
             throw new InvalidOperationException($"Client with email '{request.Email}' already exists");
 
+        if (request.ResidenceCountryId.HasValue && request.ResidenceCountryId != client.ResidenceCountryId
+            && !await db.Countries.AnyAsync(c => c.Id == request.ResidenceCountryId.Value, ct))
+            throw new KeyNotFoundException($"Country {request.ResidenceCountryId} not found");
+
+        if (request.CitizenshipCountryId.HasValue && request.CitizenshipCountryId != client.CitizenshipCountryId
+            && !await db.Countries.AnyAsync(c => c.Id == request.CitizenshipCountryId.Value, ct))
+            throw new KeyNotFoundException($"Country {request.CitizenshipCountryId} not found");
+
         var before = JsonSerializer.Serialize(new { client.Id, client.Email, client.ClientType, client.Status });
         db.Clients.Entry(client).Property(c => c.RowVersion).OriginalValue = request.RowVersion;
 
