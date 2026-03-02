@@ -29,6 +29,7 @@ import {
   useGridApiContext,
   useGridSelector,
   gridVisibleColumnDefinitionsSelector,
+  type GridColDef,
 } from "@mui/x-data-grid";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { type Dayjs } from "dayjs";
@@ -84,12 +85,11 @@ function HeaderFilterRow() {
   useEffect(() => {
     const unsub = apiRef.current.subscribeEvent(
       "columnResize",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (params: any) => {
+      (params: { colDef: GridColDef; width: number }) => {
         const row = rowRef.current;
         if (!row) return;
-        const field = params.colDef?.field as string | undefined;
-        const width = params.width as number | undefined;
+        const { width } = params;
+        const field = params.colDef?.field;
         if (!field || width == null) return;
 
         const cell = row.querySelector(`[data-field="${field}"]`) as HTMLElement | null;
@@ -346,10 +346,10 @@ const ClearableDateTextField = React.forwardRef<
           <>
             {hasValue && (
               <InputAdornment position="end" sx={{ mr: -0.5 }}>
-                <Tooltip title="Очистить дату">
+                <Tooltip title="Clear date">
                   <IconButton
                     size="small"
-                    aria-label="Очистить дату"
+                    aria-label="Clear date"
                     onClick={(e) => {
                       e.stopPropagation();
                       onClear();
@@ -448,10 +448,10 @@ export function DateRangePopover({
           input: {
             endAdornment: hasValue ? (
               <InputAdornment position="end">
-                <Tooltip title="Очистить диапазон дат">
+                <Tooltip title="Clear date range">
                   <IconButton
                     size="small"
-                    aria-label="Очистить диапазон дат"
+                    aria-label="Clear date range"
                     onClick={(e) => {
                       e.stopPropagation();
                       onFromChange("");

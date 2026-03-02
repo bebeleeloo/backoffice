@@ -38,6 +38,8 @@ public sealed class UpdateTradeOrderCommandValidator : AbstractValidator<UpdateT
         RuleFor(x => x.Price).GreaterThan(0).When(x => x.Price.HasValue);
         RuleFor(x => x.StopPrice).GreaterThan(0).When(x => x.StopPrice.HasValue);
         RuleFor(x => x.ExecutedQuantity).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.ExecutedQuantity).LessThanOrEqualTo(x => x.Quantity)
+            .WithMessage("Executed quantity cannot exceed ordered quantity");
         RuleFor(x => x.AveragePrice).GreaterThan(0).When(x => x.AveragePrice.HasValue);
         RuleFor(x => x.Commission).GreaterThanOrEqualTo(0).When(x => x.Commission.HasValue);
         RuleFor(x => x.Price).NotEmpty().WithMessage("Price is required for Limit/StopLimit orders")
@@ -56,7 +58,8 @@ public sealed class UpdateTradeOrderCommandHandler(
     IAppDbContext db,
     IDateTimeProvider clock,
     ICurrentUser currentUser,
-    IAuditContext audit) : IRequestHandler<UpdateTradeOrderCommand, TradeOrderDto>
+    IAuditContext audit,
+    ISender mediator) : IRequestHandler<UpdateTradeOrderCommand, TradeOrderDto>
 {
     public async Task<TradeOrderDto> Handle(UpdateTradeOrderCommand request, CancellationToken ct)
     {
@@ -98,8 +101,7 @@ public sealed class UpdateTradeOrderCommandHandler(
 
         await db.SaveChangesAsync(ct);
 
-        var result = await new GetTradeOrderByIdQueryHandler(db)
-            .Handle(new GetTradeOrderByIdQuery(order.Id), ct);
+        var result = await mediator.Send(new GetTradeOrderByIdQuery(order.Id), ct);
 
         audit.EntityType = "Order";
         audit.EntityId = order.Id.ToString();

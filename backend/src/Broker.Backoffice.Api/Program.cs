@@ -128,15 +128,17 @@ try
         options.Level = CompressionLevel.Fastest;
     });
 
-    // CORS — allow any origin so the app works when accessed by IP or domain name.
-    // The API is not exposed directly; nginx proxies /api/ requests.
+    // CORS — use configured origins when available, fall back to allow-any for dev
+    var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
     builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy =>
-            policy
-                .AllowAnyOrigin()
-                .AllowAnyHeader()
-                .AllowAnyMethod());
+        {
+            if (corsOrigins.Length > 0)
+                policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
+            else
+                policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        });
     });
 
     var app = builder.Build();

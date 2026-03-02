@@ -39,7 +39,8 @@ public sealed class CreateTradeTransactionCommandHandler(
     IAppDbContext db,
     IDateTimeProvider clock,
     ICurrentUser currentUser,
-    IAuditContext audit) : IRequestHandler<CreateTradeTransactionCommand, TradeTransactionDto>
+    IAuditContext audit,
+    ISender mediator) : IRequestHandler<CreateTradeTransactionCommand, TradeTransactionDto>
 {
     public async Task<TradeTransactionDto> Handle(CreateTradeTransactionCommand request, CancellationToken ct)
     {
@@ -91,8 +92,7 @@ public sealed class CreateTradeTransactionCommandHandler(
         db.TradeTransactions.Add(tradeTransaction);
         await db.SaveChangesAsync(ct);
 
-        var result = await new GetTradeTransactionByIdQueryHandler(db)
-            .Handle(new GetTradeTransactionByIdQuery(transactionId), ct);
+        var result = await mediator.Send(new GetTradeTransactionByIdQuery(transactionId), ct);
 
         audit.EntityType = "Transaction";
         audit.EntityId = transaction.Id.ToString();

@@ -37,7 +37,8 @@ public sealed class CreateNonTradeOrderCommandHandler(
     IAppDbContext db,
     IDateTimeProvider clock,
     ICurrentUser currentUser,
-    IAuditContext audit) : IRequestHandler<CreateNonTradeOrderCommand, NonTradeOrderDto>
+    IAuditContext audit,
+    ISender mediator) : IRequestHandler<CreateNonTradeOrderCommand, NonTradeOrderDto>
 {
     public async Task<NonTradeOrderDto> Handle(CreateNonTradeOrderCommand request, CancellationToken ct)
     {
@@ -80,8 +81,7 @@ public sealed class CreateNonTradeOrderCommandHandler(
         db.NonTradeOrders.Add(nonTradeOrder);
         await db.SaveChangesAsync(ct);
 
-        var result = await new GetNonTradeOrderByIdQueryHandler(db)
-            .Handle(new GetNonTradeOrderByIdQuery(orderId), ct);
+        var result = await mediator.Send(new GetNonTradeOrderByIdQuery(orderId), ct);
 
         audit.EntityType = "Order";
         audit.EntityId = order.Id.ToString();

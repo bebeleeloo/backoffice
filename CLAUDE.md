@@ -15,7 +15,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
 ├── docker-compose.yml
 ├── Dockerfile.api    # Multi-stage .NET build
-├── Dockerfile.web    # Multi-stage Node + nginx build
+├── Dockerfile.web    # Multi-stage Node + nginx build (non-root, port 8080)
 └── .env.example
 ```
 
@@ -49,7 +49,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - Docker Compose (3 services: mssql, api, web) with restart policies, resource limits, log rotation
 - SQL Server 2022
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
-- GitHub Actions CI (backend build + unit tests + integration tests, frontend tsc + eslint + vitest)
+- GitHub Actions CI (backend build + unit tests + integration tests, frontend tsc + eslint + vitest + build; NuGet/npm caching)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (MSSQL)
@@ -59,7 +59,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   nginx:80   │────▶│  API:8080    │────▶ SQL Server
+│   Frontend   │────▶│  nginx:8080  │────▶│  API:8080    │────▶ SQL Server
 │  (React SPA) │     │  /api/ proxy │     │  .NET 8      │     :1433
 └─────────────┘     └──────────────┘     └──────────────┘
      :3000                                    :5050
@@ -84,6 +84,16 @@ Frontend follows feature-based organization with shared components.
 **Cache control** (nginx):
 - `/assets/*` (Vite hashed files): `Cache-Control: public, immutable`, expires 1y
 - `/index.html` and `/`: `Cache-Control: no-cache` (SPA always gets fresh HTML)
+
+**CORS:**
+- Configured via `Cors:Origins` in appsettings / env vars (`Cors__Origins__0`, etc.)
+- When origins are configured, only those origins are allowed
+- Falls back to `AllowAnyOrigin` when no origins configured (dev convenience)
+- docker-compose sets `Cors__Origins__0: "http://localhost:3000"`
+
+**Container security:**
+- `Dockerfile.web` runs nginx as non-root `nginx` user on port 8080
+- docker-compose maps `3000:8080` for the web service
 
 ## 4. Backend Structure
 
@@ -496,7 +506,8 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 6. Modify entity
 7. Set audit context (BeforeJson/AfterJson)
 8. SaveChangesAsync (triggers change tracking)
-9. Return DTO
+9. Re-fetch via `mediator.Send(new GetXxxByIdQuery(...), ct)` — never instantiate handlers directly
+10. Return DTO
 
 ## 8. Permission Model
 
@@ -758,3 +769,5 @@ dotnet run
 - Change sidebar color tokens — use `SIDEBAR_COLORS` from `theme/index.ts`
 - Use `localStorage.clear()` on logout/401 — use targeted `removeItem` for auth tokens only
 - Use raw `$"%{value}%"` in LIKE patterns — use `LikeHelper.ContainsPattern()` to escape wildcards
+- Instantiate query handlers directly (`new XxxHandler(db).Handle(...)`) — use `mediator.Send()` instead
+- Use `AllowAnyOrigin()` in CORS without checking configured origins first

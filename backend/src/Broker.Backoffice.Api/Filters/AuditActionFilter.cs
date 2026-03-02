@@ -24,6 +24,9 @@ public sealed class AuditActionFilter(
 
         var result = await next();
 
+        // NOTE: Audit log is saved in a separate SaveChangesAsync call intentionally.
+        // If audit save fails, the business operation should NOT be rolled back.
+        // This is a non-critical trail — errors are logged and swallowed.
         try
         {
             var userId = GetUserId(context.HttpContext);
