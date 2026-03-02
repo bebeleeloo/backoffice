@@ -56,13 +56,18 @@ export const CustomColumnHeaders = React.forwardRef(
   function CustomColumnHeaders(props: object, ref: React.Ref<HTMLDivElement>) {
     const filterDefs = useContext(FilterCtx);
     const headerProps = props as React.ComponentProps<typeof GridColumnHeaders>;
+    const innerRef = useRef<HTMLDivElement>(null);
+
+    // Forward the ref to the GridColumnHeaders element so MUI internals
+    // (DOM queries, scroll sync, focus management) work correctly.
+    React.useImperativeHandle(ref, () => innerRef.current as HTMLDivElement);
 
     return (
-      <>
+      <div>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <GridColumnHeaders ref={ref as any} {...headerProps} />
+        <GridColumnHeaders ref={innerRef as any} {...headerProps} />
         {filterDefs.size > 0 && <HeaderFilterRow />}
-      </>
+      </div>
     );
   },
 );
