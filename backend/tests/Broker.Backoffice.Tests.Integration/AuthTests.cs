@@ -132,6 +132,73 @@ public class AuthTests(CustomWebApplicationFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task UploadPhoto_ShouldReturnNoContent()
+    {
+        await AuthenticateAsync();
+        var content = new MultipartFormDataContent();
+        var byteContent = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 });
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(byteContent, "file", "test.jpg");
+
+        var response = await _client.PutAsync("/api/v1/auth/photo", content);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task GetPhoto_AfterUpload_ShouldReturnImage()
+    {
+        await AuthenticateAsync();
+
+        // Upload
+        var content = new MultipartFormDataContent();
+        var byteContent = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 });
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(byteContent, "file", "test.jpg");
+        await _client.PutAsync("/api/v1/auth/photo", content);
+
+        // Get
+        var response = await _client.GetAsync("/api/v1/auth/photo");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("image/jpeg");
+    }
+
+    [Fact]
+    public async Task DeletePhoto_ShouldReturnNoContent()
+    {
+        await AuthenticateAsync();
+
+        // Upload first
+        var content = new MultipartFormDataContent();
+        var byteContent = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 });
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(byteContent, "file", "test.jpg");
+        await _client.PutAsync("/api/v1/auth/photo", content);
+
+        // Delete
+        var response = await _client.DeleteAsync("/api/v1/auth/photo");
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task GetPhoto_Unauthenticated_ShouldReturn401()
+    {
+        var response = await _client.GetAsync("/api/v1/auth/photo");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UploadPhoto_Unauthenticated_ShouldReturn401()
+    {
+        var content = new MultipartFormDataContent();
+        var byteContent = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 });
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(byteContent, "file", "test.jpg");
+
+        var response = await _client.PutAsync("/api/v1/auth/photo", content);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private async Task AuthenticateAsync()
     {
         var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
