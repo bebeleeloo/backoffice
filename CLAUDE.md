@@ -214,9 +214,11 @@ backend/src/
 - Endpoints: `GET/PUT/DELETE /users/{id}/photo` and `GET/PUT/DELETE /auth/photo`
 - GET photo is `[AllowAnonymous]` — required because `<img src>` cannot send JWT Authorization headers
 - PUT photo accepts `IFormFile` multipart upload, max 2 MB, validates MIME type (jpeg/png/gif/webp)
+- PUT photo controllers validate `IFormFile` null/empty before processing (returns 400 ProblemDetails)
 - Returns raw image bytes with `Content-Type` header (not base64 in JSON)
 - `Cache-Control: private, max-age=3600` on GET response
 - Photo/PhotoContentType excluded from audit change tracking (`EntityTrackingRegistry`)
+- Photo upload/delete handlers set `IAuditContext` EntityType + EntityId (no BeforeJson/AfterJson for binary data)
 - Demo data seeds portrait photos from randomuser.me for all users
 
 **Concurrency control:**
@@ -505,11 +507,14 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 3. Check FK references exist (`AnyAsync` for Account, Instrument, Currency etc. → `KeyNotFoundException`)
 4. Check cross-entity consistency (`throw new InvalidOperationException` if mismatch, e.g. trade transaction Side must match order Side)
 5. Check uniqueness (`throw new InvalidOperationException` if duplicate)
-6. Modify entity
-7. Set audit context (BeforeJson/AfterJson)
+6. Set audit context BeforeJson (for updates/deletes — capture state before modification)
+7. Modify entity
 8. SaveChangesAsync (triggers change tracking)
-9. Re-fetch via `mediator.Send(new GetXxxByIdQuery(...), ct)` — never instantiate handlers directly
-10. Return DTO
+9. Set audit context EntityType, EntityId, AfterJson (for creates/updates — capture state after save)
+10. Re-fetch via `mediator.Send(new GetXxxByIdQuery(...), ct)` — never instantiate handlers directly
+11. Return DTO
+
+Note: All mutation handlers (aggregates, reference data, photo, profile) must inject `IAuditContext` and set at minimum EntityType + EntityId. Reference data handlers set BeforeJson/AfterJson directly since they have no field-level change tracking.
 
 ## 8. Permission Model
 
@@ -545,6 +550,10 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 **Level 1: AuditLog (request-level)**
 - Captured by `AuditActionFilter` on mutating HTTP methods
 - Records: user, action, path, method, status code, before/after JSON, IP, user agent, correlation ID
+- All mutation handlers set `IAuditContext` (EntityType, EntityId, BeforeJson/AfterJson) so AuditLog rows identify the affected entity
+- Aggregate root handlers (Client, Account, etc.) and reference data handlers (Clearer, Currency, Exchange, TradePlatform) all set audit context
+- Photo upload/delete handlers set EntityType + EntityId only (no BeforeJson/AfterJson for binary data)
+- ChangePassword sets EntityType + EntityId only (password hash must not appear in logs)
 
 **Level 2: EntityChange (field-level)**
 - Captured in `AppDbContext.SaveChangesAsync()` override via EF Core ChangeTracker
@@ -552,6 +561,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Grouped by operationId for atomic operations
 - Deduplicates "delete + recreate" patterns for child entities (addresses, holders)
 - Tracked entities configured in `EntityTrackingRegistry` (Client, Account, Instrument, Order, Transaction, User, Role + children)
+- Reference data entities (Clearer, Currency, Exchange, TradePlatform) are NOT in EntityTrackingRegistry — they only get Level 1 AuditLog rows with BeforeJson/AfterJson
 - Excludes: RowVersion, timestamps, PasswordHash, navigation properties
 
 ## 10. Coding Conventions
@@ -760,6 +770,8 @@ dotnet run
 - Active-only endpoints use domain-specific permission (e.g., AccountsRead for clearers)
 - All/CRUD endpoints use SettingsManage permission
 - Frontend CRUD is in `pages/settings/` directory
+- All CRUD handlers inject `IAuditContext` and set EntityType/EntityId/BeforeJson/AfterJson (Create: AfterJson only; Update: Before + After; Delete: BeforeJson only)
+- Not tracked by `EntityTrackingRegistry` (no field-level EntityChange records) — audit is via request-level AuditLog with JSON snapshots
 
 ### Do not:
 - Add AutoMapper or any mapping library
