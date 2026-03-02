@@ -100,35 +100,24 @@ public sealed class GetNonTradeOrdersQueryHandler(IAppDbContext db)
 
         query = ApplySort(query, request.Sort ?? "-CreatedAt");
 
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(n => new NonTradeOrderListItemDto(
-                n.OrderId,
-                n.Order!.Account!.Number,
-                n.Order.OrderNumber,
-                n.Order.Status,
-                n.Order.OrderDate,
-                n.NonTradeType,
-                n.Amount,
-                n.Currency!.Code,
-                n.Instrument != null ? n.Instrument.Symbol : null,
-                n.Instrument != null ? n.Instrument.Name : null,
-                n.ReferenceNumber,
-                n.ProcessedAt,
-                n.Order.ExternalId,
-                n.Order.CreatedAt,
-                n.Order.RowVersion))
-            .ToListAsync(ct);
+        var projected = query.Select(n => new NonTradeOrderListItemDto(
+            n.OrderId,
+            n.Order!.Account!.Number,
+            n.Order.OrderNumber,
+            n.Order.Status,
+            n.Order.OrderDate,
+            n.NonTradeType,
+            n.Amount,
+            n.Currency!.Code,
+            n.Instrument != null ? n.Instrument.Symbol : null,
+            n.Instrument != null ? n.Instrument.Name : null,
+            n.ReferenceNumber,
+            n.ProcessedAt,
+            n.Order.ExternalId,
+            n.Order.CreatedAt,
+            n.Order.RowVersion));
 
-        return new PagedResult<NonTradeOrderListItemDto>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        };
+        return await projected.ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
 
     private static IQueryable<NonTradeOrder> ApplySort(IQueryable<NonTradeOrder> query, string sort)

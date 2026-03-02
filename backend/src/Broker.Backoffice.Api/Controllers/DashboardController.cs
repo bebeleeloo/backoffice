@@ -9,7 +9,7 @@ namespace Broker.Backoffice.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v1/dashboard")]
-[Authorize]
+[Authorize] // No [HasPermission] — dashboard is available to all authenticated users by design
 public sealed class DashboardController(ISender mediator) : ControllerBase
 {
     [HttpGet("stats")]

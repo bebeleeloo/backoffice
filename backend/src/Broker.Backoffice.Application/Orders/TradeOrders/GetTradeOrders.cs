@@ -120,39 +120,28 @@ public sealed class GetTradeOrdersQueryHandler(IAppDbContext db)
 
         query = ApplySort(query, request.Sort ?? "-CreatedAt");
 
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(t => new TradeOrderListItemDto(
-                t.OrderId,
-                t.Order!.Account!.Number,
-                t.Order.OrderNumber,
-                t.Order.Status,
-                t.Order.OrderDate,
-                t.Instrument!.Symbol,
-                t.Instrument.Name,
-                t.Side,
-                t.OrderType,
-                t.TimeInForce,
-                t.Quantity,
-                t.Price,
-                t.ExecutedQuantity,
-                t.AveragePrice,
-                t.Commission,
-                t.ExecutedAt,
-                t.Order.ExternalId,
-                t.Order.CreatedAt,
-                t.Order.RowVersion))
-            .ToListAsync(ct);
+        var projected = query.Select(t => new TradeOrderListItemDto(
+            t.OrderId,
+            t.Order!.Account!.Number,
+            t.Order.OrderNumber,
+            t.Order.Status,
+            t.Order.OrderDate,
+            t.Instrument!.Symbol,
+            t.Instrument.Name,
+            t.Side,
+            t.OrderType,
+            t.TimeInForce,
+            t.Quantity,
+            t.Price,
+            t.ExecutedQuantity,
+            t.AveragePrice,
+            t.Commission,
+            t.ExecutedAt,
+            t.Order.ExternalId,
+            t.Order.CreatedAt,
+            t.Order.RowVersion));
 
-        return new PagedResult<TradeOrderListItemDto>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        };
+        return await projected.ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
 
     private static IQueryable<TradeOrder> ApplySort(IQueryable<TradeOrder> query, string sort)

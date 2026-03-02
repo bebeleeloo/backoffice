@@ -109,35 +109,24 @@ public sealed class GetNonTradeTransactionsQueryHandler(IAppDbContext db)
 
         query = ApplySort(query, request.Sort ?? "-CreatedAt");
 
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(n => new NonTradeTransactionListItemDto(
-                n.TransactionId,
-                n.Transaction!.Order != null ? n.Transaction.Order.OrderNumber : null,
-                n.Transaction.Order != null && n.Transaction.Order.Account != null ? n.Transaction.Order.Account.Number : null,
-                n.Transaction.TransactionNumber,
-                n.Transaction.Status,
-                n.Transaction.TransactionDate,
-                n.Amount,
-                n.Currency!.Code,
-                n.Instrument != null ? n.Instrument.Symbol : null,
-                n.Instrument != null ? n.Instrument.Name : null,
-                n.ReferenceNumber,
-                n.ProcessedAt,
-                n.Transaction.ExternalId,
-                n.Transaction.CreatedAt,
-                n.Transaction.RowVersion))
-            .ToListAsync(ct);
+        var projected = query.Select(n => new NonTradeTransactionListItemDto(
+            n.TransactionId,
+            n.Transaction!.Order != null ? n.Transaction.Order.OrderNumber : null,
+            n.Transaction.Order != null && n.Transaction.Order.Account != null ? n.Transaction.Order.Account.Number : null,
+            n.Transaction.TransactionNumber,
+            n.Transaction.Status,
+            n.Transaction.TransactionDate,
+            n.Amount,
+            n.Currency!.Code,
+            n.Instrument != null ? n.Instrument.Symbol : null,
+            n.Instrument != null ? n.Instrument.Name : null,
+            n.ReferenceNumber,
+            n.ProcessedAt,
+            n.Transaction.ExternalId,
+            n.Transaction.CreatedAt,
+            n.Transaction.RowVersion));
 
-        return new PagedResult<NonTradeTransactionListItemDto>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        };
+        return await projected.ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
 
     private static IQueryable<NonTradeTransaction> ApplySort(IQueryable<NonTradeTransaction> query, string sort)

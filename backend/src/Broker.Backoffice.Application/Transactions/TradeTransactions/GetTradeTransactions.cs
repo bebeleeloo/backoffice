@@ -113,37 +113,26 @@ public sealed class GetTradeTransactionsQueryHandler(IAppDbContext db)
 
         query = ApplySort(query, request.Sort ?? "-CreatedAt");
 
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(t => new TradeTransactionListItemDto(
-                t.TransactionId,
-                t.Transaction!.Order != null ? t.Transaction.Order.OrderNumber : null,
-                t.Transaction.Order != null && t.Transaction.Order.Account != null ? t.Transaction.Order.Account.Number : null,
-                t.Transaction.TransactionNumber,
-                t.Transaction.Status,
-                t.Transaction.TransactionDate,
-                t.Instrument!.Symbol,
-                t.Instrument.Name,
-                t.Side,
-                t.Quantity,
-                t.Price,
-                t.Commission,
-                t.SettlementDate,
-                t.Venue,
-                t.Transaction.ExternalId,
-                t.Transaction.CreatedAt,
-                t.Transaction.RowVersion))
-            .ToListAsync(ct);
+        var projected = query.Select(t => new TradeTransactionListItemDto(
+            t.TransactionId,
+            t.Transaction!.Order != null ? t.Transaction.Order.OrderNumber : null,
+            t.Transaction.Order != null && t.Transaction.Order.Account != null ? t.Transaction.Order.Account.Number : null,
+            t.Transaction.TransactionNumber,
+            t.Transaction.Status,
+            t.Transaction.TransactionDate,
+            t.Instrument!.Symbol,
+            t.Instrument.Name,
+            t.Side,
+            t.Quantity,
+            t.Price,
+            t.Commission,
+            t.SettlementDate,
+            t.Venue,
+            t.Transaction.ExternalId,
+            t.Transaction.CreatedAt,
+            t.Transaction.RowVersion));
 
-        return new PagedResult<TradeTransactionListItemDto>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        };
+        return await projected.ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
 
     private static IQueryable<TradeTransaction> ApplySort(IQueryable<TradeTransaction> query, string sort)
