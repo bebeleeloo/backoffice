@@ -3,10 +3,8 @@ using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
 
-[Collection("Integration")]
-public class HealthCheckTests(CustomWebApplicationFactory factory)
+public class HealthCheckTests(CustomWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
 
     [Fact]
     public async Task LiveEndpoint_ShouldReturnOk()

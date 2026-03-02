@@ -3,10 +3,8 @@ using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
 
-[Collection("Integration")]
-public class SwaggerTests(CustomWebApplicationFactory factory)
+public class SwaggerTests(CustomWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
 
     [Fact]
     public async Task SwaggerEndpoint_ShouldReturnOk()

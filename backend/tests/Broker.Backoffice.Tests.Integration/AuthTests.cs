@@ -6,10 +6,8 @@ using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
 
-[Collection("Integration")]
-public class AuthTests(CustomWebApplicationFactory factory)
+public class AuthTests(CustomWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
 
     [Fact]
     public async Task Login_WithValidCredentials_ShouldReturnTokens()
@@ -199,12 +197,4 @@ public class AuthTests(CustomWebApplicationFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    private async Task AuthenticateAsync()
-    {
-        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
-            new { Username = "admin", Password = "Admin123!" });
-        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
-        _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
-    }
 }

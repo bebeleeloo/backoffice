@@ -1,26 +1,13 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Broker.Backoffice.Application.Auth;
 using Broker.Backoffice.Application.Clients;
 using Broker.Backoffice.Application.Common;
 using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
 
-[Collection("Integration")]
-public class ClientsTests(CustomWebApplicationFactory factory)
+public class ClientsTests(CustomWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
-
-    private async Task AuthenticateAsync()
-    {
-        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
-            new { Username = "admin", Password = "Admin123!" });
-        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
-        _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
-    }
 
     [Fact]
     public async Task ListClients_Authenticated_ShouldReturnPaged()

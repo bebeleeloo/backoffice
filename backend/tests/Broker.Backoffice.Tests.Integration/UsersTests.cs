@@ -1,26 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Broker.Backoffice.Application.Auth;
 using Broker.Backoffice.Application.Common;
 using Broker.Backoffice.Application.Users;
 using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
 
-[Collection("Integration")]
-public class UsersTests(CustomWebApplicationFactory factory)
+public class UsersTests(CustomWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
-
-    private async Task AuthenticateAsync()
-    {
-        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
-            new { Username = "admin", Password = "Admin123!" });
-        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
-        _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
-    }
 
     [Fact]
     public async Task ListUsers_Authenticated_ShouldReturnPaged()
@@ -217,7 +205,7 @@ public class UsersTests(CustomWebApplicationFactory factory)
         await _client.PutAsync($"/api/v1/users/{created!.Id}/photo", content);
 
         // Fetch without auth
-        var anonClient = factory.CreateClient();
+        var anonClient = _factory.CreateClient();
         var photoResp = await anonClient.GetAsync($"/api/v1/users/{created.Id}/photo");
         photoResp.StatusCode.Should().Be(HttpStatusCode.OK);
         photoResp.Content.Headers.ContentType!.MediaType.Should().NotBeNullOrEmpty();

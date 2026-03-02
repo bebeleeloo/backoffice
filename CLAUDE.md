@@ -613,16 +613,16 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Location: `backend/tests/Broker.Backoffice.Tests.Unit/`
 - Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Clients (Create/Update, SetAccounts), Accounts (Create/Update, SetHolders), Instruments (Create/Update), Orders (TradeOrder Create/Update, NonTradeOrder Create/Update), Transactions (TradeTransaction Create/Update, NonTradeTransaction Create/Update), Roles (Create/Update), Reference data (Clearer, Currency, Exchange, TradePlatform — Create/Update each)
 
-### Backend Integration Tests (122 tests, ~28s)
+### Backend Integration Tests (130 tests, ~28s)
 - Testcontainers (real MSSQL 2022 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
-- `[Collection("Integration")]` for shared fixture
+- `IntegrationTestBase` abstract base class with shared `AuthenticateAsync()` / `AuthenticateAsAsync()`
+- `[Collection("Integration")]` for shared fixture (on base class)
 - Real HTTP calls, real database, real migrations
-- Each test authenticates independently via `AuthenticateAsync()` helper
 - Rate limiting disabled via `UseSetting("RateLimiting:LoginPermitLimit", "10000")`
 - Requires `backend/global.json` pinning SDK to 8.0 (avoids .NET 10 SDK incompatibility)
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
-- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile, photo upload/get/delete + unauth), Clients (CRUD + Update + GetAccounts), Accounts (CRUD + Update), Users (CRUD + Update + Photo upload/get/delete/anonymous), Roles (CRUD + GetById + Update + SetPermissions), Instruments (CRUD + Update + DuplicateSymbol), TradeOrders (CRUD + Update + InvalidAccount), NonTradeOrders (CRUD + Update), TradeTransactions (CRUD + SideMismatch), NonTradeTransactions (CRUD + WithoutOrder), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName), Dashboard (stats), Audit (list + getById), EntityChanges (list + listAll), Permissions (list), Countries (list)
+- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile, photo upload/get/delete + unauth), Clients (CRUD + Update + GetAccounts), Accounts (CRUD + Update), Users (CRUD + Update + Photo upload/get/delete/anonymous), Roles (CRUD + GetById + Update + SetPermissions), Instruments (CRUD + Update + DuplicateSymbol), TradeOrders (CRUD + Update + InvalidAccount), NonTradeOrders (CRUD + Update), TradeTransactions (CRUD + SideMismatch), NonTradeTransactions (CRUD + WithoutOrder), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName), Dashboard (stats), Audit (list + getById), EntityChanges (list + listAll), Permissions (list), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion)
 
 ### Integration test patterns
 - All update tests must include `Id` in the request body (controllers check `id != command.Id`)
