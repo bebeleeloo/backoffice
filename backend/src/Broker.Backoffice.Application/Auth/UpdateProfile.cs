@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using FluentValidation;
 using MediatR;
@@ -16,7 +17,7 @@ public sealed class UpdateProfileCommandValidator : AbstractValidator<UpdateProf
     }
 }
 
-public sealed class UpdateProfileCommandHandler(IAppDbContext db)
+public sealed class UpdateProfileCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<UpdateProfileCommand, UserProfileResponse>
 {
     public async Task<UserProfileResponse> Handle(UpdateProfileCommand request, CancellationToken ct)
@@ -32,9 +33,15 @@ public sealed class UpdateProfileCommandHandler(IAppDbContext db)
         if (await db.Users.AnyAsync(u => u.Email == request.Email && u.Id != request.UserId, ct))
             throw new InvalidOperationException("Email is already in use");
 
+        audit.EntityType = "User";
+        audit.EntityId = user.Id.ToString();
+        audit.BeforeJson = JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName });
+
         user.FullName = request.FullName;
         user.Email = request.Email;
         await db.SaveChangesAsync(ct);
+
+        audit.AfterJson = JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName });
 
         var permissions = LoginCommandHandler.GetEffectivePermissions(user);
         return new UserProfileResponse(

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Instruments;
 using FluentValidation;
@@ -17,7 +18,7 @@ public sealed class CreateExchangeCommandValidator : AbstractValidator<CreateExc
     }
 }
 
-public sealed class CreateExchangeCommandHandler(IAppDbContext db)
+public sealed class CreateExchangeCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<CreateExchangeCommand, ExchangeDto>
 {
     public async Task<ExchangeDto> Handle(CreateExchangeCommand request, CancellationToken ct)
@@ -28,6 +29,11 @@ public sealed class CreateExchangeCommandHandler(IAppDbContext db)
         var entity = new Exchange { Id = Guid.NewGuid(), Code = request.Code, Name = request.Name, CountryId = request.CountryId, IsActive = true };
         db.Exchanges.Add(entity);
         await db.SaveChangesAsync(ct);
+
+        audit.EntityType = "Exchange";
+        audit.EntityId = entity.Id.ToString();
+        audit.AfterJson = JsonSerializer.Serialize(new { entity.Id, entity.Code, entity.Name, entity.CountryId, entity.IsActive });
+
         return new ExchangeDto(entity.Id, entity.Code, entity.Name, entity.CountryId, entity.IsActive);
     }
 }

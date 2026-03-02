@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using FluentValidation;
 using MediatR;
@@ -17,7 +18,7 @@ public sealed class UpdateCurrencyCommandValidator : AbstractValidator<UpdateCur
     }
 }
 
-public sealed class UpdateCurrencyCommandHandler(IAppDbContext db)
+public sealed class UpdateCurrencyCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<UpdateCurrencyCommand, CurrencyDto>
 {
     public async Task<CurrencyDto> Handle(UpdateCurrencyCommand request, CancellationToken ct)
@@ -28,11 +29,18 @@ public sealed class UpdateCurrencyCommandHandler(IAppDbContext db)
         if (await db.Currencies.AnyAsync(c => c.Code == request.Code && c.Id != request.Id, ct))
             throw new InvalidOperationException($"Currency '{request.Code}' already exists");
 
+        audit.EntityType = "Currency";
+        audit.EntityId = entity.Id.ToString();
+        audit.BeforeJson = JsonSerializer.Serialize(new { entity.Id, entity.Code, entity.Name, entity.Symbol, entity.IsActive });
+
         entity.Code = request.Code;
         entity.Name = request.Name;
         entity.Symbol = request.Symbol;
         entity.IsActive = request.IsActive;
         await db.SaveChangesAsync(ct);
+
+        audit.AfterJson = JsonSerializer.Serialize(new { entity.Id, entity.Code, entity.Name, entity.Symbol, entity.IsActive });
+
         return new CurrencyDto(entity.Id, entity.Code, entity.Name, entity.Symbol, entity.IsActive);
     }
 }

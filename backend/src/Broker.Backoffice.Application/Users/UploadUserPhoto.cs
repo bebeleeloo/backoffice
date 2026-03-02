@@ -21,13 +21,16 @@ public sealed class UploadUserPhotoCommandValidator : AbstractValidator<UploadUs
     }
 }
 
-internal sealed class UploadUserPhotoCommandHandler(IAppDbContext db)
+internal sealed class UploadUserPhotoCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<UploadUserPhotoCommand>
 {
     public async Task Handle(UploadUserPhotoCommand request, CancellationToken ct)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct)
             ?? throw new KeyNotFoundException($"User {request.UserId} not found");
+
+        audit.EntityType = "User";
+        audit.EntityId = user.Id.ToString();
 
         user.Photo = request.Photo;
         user.PhotoContentType = request.ContentType;

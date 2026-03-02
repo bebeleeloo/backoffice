@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using FluentValidation;
 using MediatR;
@@ -16,7 +17,7 @@ public sealed class UpdateTradePlatformCommandValidator : AbstractValidator<Upda
     }
 }
 
-public sealed class UpdateTradePlatformCommandHandler(IAppDbContext db)
+public sealed class UpdateTradePlatformCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<UpdateTradePlatformCommand, TradePlatformDto>
 {
     public async Task<TradePlatformDto> Handle(UpdateTradePlatformCommand request, CancellationToken ct)
@@ -27,10 +28,17 @@ public sealed class UpdateTradePlatformCommandHandler(IAppDbContext db)
         if (await db.TradePlatforms.AnyAsync(t => t.Name == request.Name && t.Id != request.Id, ct))
             throw new InvalidOperationException($"Trade platform '{request.Name}' already exists");
 
+        audit.EntityType = "TradePlatform";
+        audit.EntityId = entity.Id.ToString();
+        audit.BeforeJson = JsonSerializer.Serialize(new { entity.Id, entity.Name, entity.Description, entity.IsActive });
+
         entity.Name = request.Name;
         entity.Description = request.Description;
         entity.IsActive = request.IsActive;
         await db.SaveChangesAsync(ct);
+
+        audit.AfterJson = JsonSerializer.Serialize(new { entity.Id, entity.Name, entity.Description, entity.IsActive });
+
         return new TradePlatformDto(entity.Id, entity.Name, entity.Description, entity.IsActive);
     }
 }

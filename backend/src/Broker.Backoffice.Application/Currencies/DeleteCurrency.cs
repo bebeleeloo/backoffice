@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -6,13 +7,17 @@ namespace Broker.Backoffice.Application.Currencies;
 
 public sealed record DeleteCurrencyCommand(Guid Id) : IRequest;
 
-public sealed class DeleteCurrencyCommandHandler(IAppDbContext db)
+public sealed class DeleteCurrencyCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<DeleteCurrencyCommand>
 {
     public async Task Handle(DeleteCurrencyCommand request, CancellationToken ct)
     {
         var entity = await db.Currencies.FirstOrDefaultAsync(c => c.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Currency {request.Id} not found");
+
+        audit.EntityType = "Currency";
+        audit.EntityId = entity.Id.ToString();
+        audit.BeforeJson = JsonSerializer.Serialize(new { entity.Id, entity.Code, entity.Name, entity.Symbol, entity.IsActive });
 
         db.Currencies.Remove(entity);
 

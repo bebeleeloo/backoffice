@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Accounts;
 using FluentValidation;
@@ -17,7 +18,7 @@ public sealed class CreateTradePlatformCommandValidator : AbstractValidator<Crea
     }
 }
 
-public sealed class CreateTradePlatformCommandHandler(IAppDbContext db)
+public sealed class CreateTradePlatformCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<CreateTradePlatformCommand, TradePlatformDto>
 {
     public async Task<TradePlatformDto> Handle(CreateTradePlatformCommand request, CancellationToken ct)
@@ -28,6 +29,11 @@ public sealed class CreateTradePlatformCommandHandler(IAppDbContext db)
         var entity = new TradePlatform { Id = Guid.NewGuid(), Name = request.Name, Description = request.Description, IsActive = true };
         db.TradePlatforms.Add(entity);
         await db.SaveChangesAsync(ct);
+
+        audit.EntityType = "TradePlatform";
+        audit.EntityId = entity.Id.ToString();
+        audit.AfterJson = JsonSerializer.Serialize(new { entity.Id, entity.Name, entity.Description, entity.IsActive });
+
         return new TradePlatformDto(entity.Id, entity.Name, entity.Description, entity.IsActive);
     }
 }

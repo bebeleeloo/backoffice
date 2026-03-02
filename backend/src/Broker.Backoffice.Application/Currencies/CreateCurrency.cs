@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Instruments;
 using FluentValidation;
@@ -18,7 +19,7 @@ public sealed class CreateCurrencyCommandValidator : AbstractValidator<CreateCur
     }
 }
 
-public sealed class CreateCurrencyCommandHandler(IAppDbContext db)
+public sealed class CreateCurrencyCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<CreateCurrencyCommand, CurrencyDto>
 {
     public async Task<CurrencyDto> Handle(CreateCurrencyCommand request, CancellationToken ct)
@@ -29,6 +30,11 @@ public sealed class CreateCurrencyCommandHandler(IAppDbContext db)
         var entity = new Currency { Id = Guid.NewGuid(), Code = request.Code, Name = request.Name, Symbol = request.Symbol, IsActive = true };
         db.Currencies.Add(entity);
         await db.SaveChangesAsync(ct);
+
+        audit.EntityType = "Currency";
+        audit.EntityId = entity.Id.ToString();
+        audit.AfterJson = JsonSerializer.Serialize(new { entity.Id, entity.Code, entity.Name, entity.Symbol, entity.IsActive });
+
         return new CurrencyDto(entity.Id, entity.Code, entity.Name, entity.Symbol, entity.IsActive);
     }
 }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using Broker.Backoffice.Domain.Accounts;
 using FluentValidation;
@@ -17,7 +18,7 @@ public sealed class CreateClearerCommandValidator : AbstractValidator<CreateClea
     }
 }
 
-public sealed class CreateClearerCommandHandler(IAppDbContext db)
+public sealed class CreateClearerCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<CreateClearerCommand, ClearerDto>
 {
     public async Task<ClearerDto> Handle(CreateClearerCommand request, CancellationToken ct)
@@ -28,6 +29,11 @@ public sealed class CreateClearerCommandHandler(IAppDbContext db)
         var entity = new Clearer { Id = Guid.NewGuid(), Name = request.Name, Description = request.Description, IsActive = true };
         db.Clearers.Add(entity);
         await db.SaveChangesAsync(ct);
+
+        audit.EntityType = "Clearer";
+        audit.EntityId = entity.Id.ToString();
+        audit.AfterJson = JsonSerializer.Serialize(new { entity.Id, entity.Name, entity.Description, entity.IsActive });
+
         return new ClearerDto(entity.Id, entity.Name, entity.Description, entity.IsActive);
     }
 }

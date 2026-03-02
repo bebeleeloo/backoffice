@@ -72,6 +72,8 @@ public sealed class UsersController(ISender mediator) : ControllerBase
     [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> UploadPhoto(Guid id, IFormFile file, CancellationToken ct)
     {
+        if (file == null || file.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "File is required", Status = 400 });
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
         await mediator.Send(new UploadUserPhotoCommand(id, ms.ToArray(), file.ContentType), ct);

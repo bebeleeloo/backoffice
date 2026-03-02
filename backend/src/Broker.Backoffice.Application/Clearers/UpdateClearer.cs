@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Broker.Backoffice.Application.Abstractions;
 using FluentValidation;
 using MediatR;
@@ -16,7 +17,7 @@ public sealed class UpdateClearerCommandValidator : AbstractValidator<UpdateClea
     }
 }
 
-public sealed class UpdateClearerCommandHandler(IAppDbContext db)
+public sealed class UpdateClearerCommandHandler(IAppDbContext db, IAuditContext audit)
     : IRequestHandler<UpdateClearerCommand, ClearerDto>
 {
     public async Task<ClearerDto> Handle(UpdateClearerCommand request, CancellationToken ct)
@@ -27,10 +28,17 @@ public sealed class UpdateClearerCommandHandler(IAppDbContext db)
         if (await db.Clearers.AnyAsync(c => c.Name == request.Name && c.Id != request.Id, ct))
             throw new InvalidOperationException($"Clearer '{request.Name}' already exists");
 
+        audit.EntityType = "Clearer";
+        audit.EntityId = entity.Id.ToString();
+        audit.BeforeJson = JsonSerializer.Serialize(new { entity.Id, entity.Name, entity.Description, entity.IsActive });
+
         entity.Name = request.Name;
         entity.Description = request.Description;
         entity.IsActive = request.IsActive;
         await db.SaveChangesAsync(ct);
+
+        audit.AfterJson = JsonSerializer.Serialize(new { entity.Id, entity.Name, entity.Description, entity.IsActive });
+
         return new ClearerDto(entity.Id, entity.Name, entity.Description, entity.IsActive);
     }
 }
