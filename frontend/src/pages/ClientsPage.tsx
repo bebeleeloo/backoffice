@@ -6,6 +6,7 @@ import {
   type GridColDef,
   type GridPaginationModel,
   type GridSortModel,
+  type GridSortDirection,
 } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -185,6 +186,11 @@ export function ClientsPage() {
     const s = model[0];
     setParam({ sort: s ? `${s.field} ${s.sort}` : undefined, page: "1" });
   };
+  const sortModel: GridSortModel = useMemo(() => {
+    if (!params.sort) return [];
+    const [field, dir] = params.sort.split(" ");
+    return [{ field, sort: dir as GridSortDirection }];
+  }, [params.sort]);
   const handleDelete = async (id: string) => {
     const ok = await confirm({ title: "Delete Client", message: "Are you sure you want to delete this client?" });
     if (!ok) return;
@@ -412,6 +418,7 @@ export function ClientsPage() {
           sortingMode="server"
           paginationModel={{ page: params.page - 1, pageSize: params.pageSize }}
           onPaginationModelChange={handlePagination}
+          sortModel={sortModel}
           onSortModelChange={handleSort}
           pageSizeOptions={[10, 25, 50]}
           initialState={{ columns: { columnVisibilityModel } }}

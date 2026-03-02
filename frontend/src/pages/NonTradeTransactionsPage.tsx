@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
 import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
-import { type GridColDef, type GridPaginationModel, type GridSortModel } from "@mui/x-data-grid";
+import { type GridColDef, type GridPaginationModel, type GridSortModel, type GridSortDirection } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -153,6 +153,11 @@ export function NonTradeTransactionsPage() {
     const s = model[0];
     setParam({ sort: s ? `${s.field} ${s.sort}` : undefined, page: "1" });
   };
+  const sortModel: GridSortModel = useMemo(() => {
+    if (!params.sort) return [];
+    const [field, dir] = params.sort.split(" ");
+    return [{ field, sort: dir as GridSortDirection }];
+  }, [params.sort]);
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({ title: "Delete Non-Trade Transaction", message: "Are you sure you want to delete this non-trade transaction?" });
@@ -377,6 +382,7 @@ export function NonTradeTransactionsPage() {
           sortingMode="server"
           paginationModel={{ page: params.page - 1, pageSize: params.pageSize }}
           onPaginationModelChange={handlePagination}
+          sortModel={sortModel}
           onSortModelChange={handleSort}
           pageSizeOptions={[10, 25, 50]}
           filterDefs={filterDefs}
