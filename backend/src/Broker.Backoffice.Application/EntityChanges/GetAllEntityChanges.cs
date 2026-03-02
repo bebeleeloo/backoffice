@@ -63,11 +63,22 @@ public sealed class GetAllEntityChangesQueryHandler(IAppDbContext db)
                 UserName = g.Max(e => e.UserName),
             });
 
-        // Apply sorting
-        var desc = string.IsNullOrWhiteSpace(request.Sort) || request.Sort.StartsWith('-');
-        var sortField = string.IsNullOrWhiteSpace(request.Sort)
-            ? "Timestamp"
-            : (request.Sort.StartsWith('-') ? request.Sort[1..] : request.Sort);
+        // Apply sorting — supports "field asc"/"field desc" and legacy "-field" formats
+        string sortField;
+        bool desc;
+        if (string.IsNullOrWhiteSpace(request.Sort))
+        {
+            sortField = "Timestamp";
+            desc = true;
+        }
+        else
+        {
+            var parts = request.Sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            sortField = parts[0].TrimStart('-');
+            desc = parts.Length == 2
+                ? parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+                : request.Sort.StartsWith('-');
+        }
 
         var ordered = sortField.ToLowerInvariant() switch
         {

@@ -131,9 +131,12 @@ public sealed class GetNonTradeTransactionsQueryHandler(IAppDbContext db)
 
     private static IQueryable<NonTradeTransaction> ApplySort(IQueryable<NonTradeTransaction> query, string sort)
     {
-        var desc = sort.StartsWith('-');
-        var prop = (desc ? sort[1..] : sort).ToLowerInvariant();
-        return prop switch
+        var parts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var field = parts[0].TrimStart('-');
+        var desc = parts.Length == 2
+            ? parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+            : sort.StartsWith('-');
+        return field.ToLowerInvariant() switch
         {
             "transactionnumber" => desc ? query.OrderByDescending(n => n.Transaction!.TransactionNumber) : query.OrderBy(n => n.Transaction!.TransactionNumber),
             "ordernumber" => desc ? query.OrderByDescending(n => n.Transaction!.Order != null ? n.Transaction.Order.OrderNumber : null) : query.OrderBy(n => n.Transaction!.Order != null ? n.Transaction.Order.OrderNumber : null),
@@ -142,6 +145,7 @@ public sealed class GetNonTradeTransactionsQueryHandler(IAppDbContext db)
             "accountnumber" => desc ? query.OrderByDescending(n => n.Transaction!.Order != null ? n.Transaction.Order.Account!.Number : null) : query.OrderBy(n => n.Transaction!.Order != null ? n.Transaction.Order.Account!.Number : null),
             "amount" => desc ? query.OrderByDescending(n => n.Amount) : query.OrderBy(n => n.Amount),
             "currencycode" => desc ? query.OrderByDescending(n => n.Currency!.Code) : query.OrderBy(n => n.Currency!.Code),
+            "instrumentsymbol" => desc ? query.OrderByDescending(n => n.Instrument != null ? n.Instrument.Symbol : null) : query.OrderBy(n => n.Instrument != null ? n.Instrument.Symbol : null),
             "referencenumber" => desc ? query.OrderByDescending(n => n.ReferenceNumber) : query.OrderBy(n => n.ReferenceNumber),
             "processedat" => desc ? query.OrderByDescending(n => n.ProcessedAt) : query.OrderBy(n => n.ProcessedAt),
             "externalid" => desc ? query.OrderByDescending(n => n.Transaction!.ExternalId) : query.OrderBy(n => n.Transaction!.ExternalId),

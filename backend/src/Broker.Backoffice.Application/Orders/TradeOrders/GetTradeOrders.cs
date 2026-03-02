@@ -146,9 +146,12 @@ public sealed class GetTradeOrdersQueryHandler(IAppDbContext db)
 
     private static IQueryable<TradeOrder> ApplySort(IQueryable<TradeOrder> query, string sort)
     {
-        var desc = sort.StartsWith('-');
-        var prop = (desc ? sort[1..] : sort).ToLowerInvariant();
-        return prop switch
+        var parts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var field = parts[0].TrimStart('-');
+        var desc = parts.Length == 2
+            ? parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+            : sort.StartsWith('-');
+        return field.ToLowerInvariant() switch
         {
             "ordernumber" => desc ? query.OrderByDescending(t => t.Order!.OrderNumber) : query.OrderBy(t => t.Order!.OrderNumber),
             "orderdate" => desc ? query.OrderByDescending(t => t.Order!.OrderDate) : query.OrderBy(t => t.Order!.OrderDate),

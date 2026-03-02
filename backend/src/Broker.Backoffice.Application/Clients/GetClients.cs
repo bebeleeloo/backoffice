@@ -128,7 +128,32 @@ public sealed class GetClientsQueryHandler(IAppDbContext db)
         if (request.CreatedTo.HasValue)
             query = query.Where(c => c.CreatedAt < request.CreatedTo.Value.AddDays(1));
 
-        var projected = query.SortBy(request.Sort ?? "-CreatedAt")
+        // DisplayName is a computed field (FirstName+LastName or CompanyName),
+        // so handle sorting for it before projection.
+        var sort = request.Sort ?? "-CreatedAt";
+        var sortParts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var sortField = sortParts[0].TrimStart('-');
+        var isDisplayNameSort = sortField.Equals("displayName", StringComparison.OrdinalIgnoreCase);
+
+        if (isDisplayNameSort)
+        {
+            var descending = sortParts.Length == 2
+                ? sortParts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+                : sort.StartsWith('-');
+            query = descending
+                ? query.OrderByDescending(c => c.ClientType == Domain.Clients.ClientType.Corporate
+                    ? c.CompanyName ?? ""
+                    : ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim())
+                : query.OrderBy(c => c.ClientType == Domain.Clients.ClientType.Corporate
+                    ? c.CompanyName ?? ""
+                    : ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim());
+        }
+        else
+        {
+            query = query.SortBy(sort);
+        }
+
+        var projected = query
             .Select(c => new ClientListItemDto(
                 c.Id,
                 c.ClientType,

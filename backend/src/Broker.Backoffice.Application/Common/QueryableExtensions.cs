@@ -29,8 +29,22 @@ public static class QueryableExtensions
     {
         if (string.IsNullOrWhiteSpace(sort)) return query;
 
-        var desc = sort.StartsWith('-');
-        var prop = desc ? sort[1..] : sort;
+        bool desc;
+        string prop;
+
+        // Support "field asc" / "field desc" format (from frontend URL params)
+        var parts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 2)
+        {
+            prop = parts[0];
+            desc = parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase);
+        }
+        else
+        {
+            // Legacy format: "-field" for descending, "field" for ascending
+            desc = sort.StartsWith('-');
+            prop = desc ? sort[1..] : sort;
+        }
 
         var param = Expression.Parameter(typeof(T), "x");
         var member = typeof(T).GetProperty(prop,

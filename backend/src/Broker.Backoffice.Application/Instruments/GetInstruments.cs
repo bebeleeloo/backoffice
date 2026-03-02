@@ -75,7 +75,7 @@ public sealed class GetInstrumentsQueryHandler(IAppDbContext db)
         if (request.IsMarginEligible.HasValue)
             query = query.Where(i => i.IsMarginEligible == request.IsMarginEligible.Value);
 
-        var projected = query.SortBy(request.Sort ?? "Symbol")
+        var projected = ApplySort(query, request.Sort ?? "Symbol")
             .Select(i => new InstrumentListItemDto(
                 i.Id,
                 i.Symbol,
@@ -98,5 +98,28 @@ public sealed class GetInstrumentsQueryHandler(IAppDbContext db)
                 i.RowVersion));
 
         return await projected.ToPagedResultAsync(request.Page, request.PageSize, ct);
+    }
+
+    private static IQueryable<Instrument> ApplySort(IQueryable<Instrument> query, string sort)
+    {
+        var parts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var field = parts[0].TrimStart('-');
+        var desc = parts.Length == 2
+            ? parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+            : sort.StartsWith('-');
+
+        return field.ToLowerInvariant() switch
+        {
+            "exchangecode" => desc
+                ? query.OrderByDescending(i => i.Exchange != null ? i.Exchange.Code : null)
+                : query.OrderBy(i => i.Exchange != null ? i.Exchange.Code : null),
+            "currencycode" => desc
+                ? query.OrderByDescending(i => i.Currency != null ? i.Currency.Code : null)
+                : query.OrderBy(i => i.Currency != null ? i.Currency.Code : null),
+            "countryname" => desc
+                ? query.OrderByDescending(i => i.Country != null ? i.Country.Name : null)
+                : query.OrderBy(i => i.Country != null ? i.Country.Name : null),
+            _ => query.SortBy(sort),
+        };
     }
 }
