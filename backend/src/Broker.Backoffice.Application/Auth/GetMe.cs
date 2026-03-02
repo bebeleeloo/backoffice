@@ -25,6 +25,7 @@ public sealed class GetMeQueryHandler(IAppDbContext db) : IRequestHandler<GetMeQ
             user.Username,
             user.Email,
             user.FullName,
+            user.Photo != null,
             user.UserRoles.Select(ur => ur.Role.Name).ToList(),
             permissions,
             user.DataScopes.Select(ds => new DataScopeDto(ds.ScopeType, ds.ScopeValue)).ToList());

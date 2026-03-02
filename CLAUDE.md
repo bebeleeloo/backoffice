@@ -114,7 +114,7 @@ backend/src/
 │   ├── Transactions/
 │   │   ├── TradeTransactions/    # CRUD commands/queries + DTOs for trade transactions
 │   │   └── NonTradeTransactions/ # CRUD commands/queries + DTOs for non-trade transactions
-│   ├── Users/               # CRUD commands/queries + DTOs
+│   ├── Users/               # CRUD commands/queries + DTOs + Photo upload/delete/get
 │   ├── Roles/               # CRUD commands/queries + DTOs + SetRolePermissions
 │   ├── Clearers/            # CRUD + GetAll / GetActive
 │   ├── Currencies/          # CRUD + GetAll / GetActive
@@ -133,7 +133,7 @@ backend/src/
 │   │   ├── ChangeTracking/           # EntityTrackingRegistry, ChangeTrackingContext
 │   │   ├── Migrations/              # EF Core code-first migrations
 │   │   ├── SeedData.cs              # Countries, ref data, admin user, permissions
-│   │   └── SeedDemoData.cs          # Demo users, clients, accounts, instruments, orders, transactions
+│   │   └── SeedDemoData.cs          # Demo users (with portrait photos), clients, accounts, instruments, orders, transactions
 │   ├── Services/                     # JwtTokenService, CurrentUser, DateTimeProvider
 │   ├── Auth/                         # HasPermissionAttribute, PermissionPolicyProvider
 │   ├── Middleware/                    # ExceptionHandling, CorrelationId
@@ -198,6 +198,16 @@ backend/src/
 - Returns 429 Too Many Requests when exceeded
 - Integration tests override limit to 10000 via `UseSetting`
 
+**User photos:**
+- Stored as binary in DB (Photo byte[], PhotoContentType nvarchar(50))
+- Endpoints: `GET/PUT/DELETE /users/{id}/photo` and `GET/PUT/DELETE /auth/photo`
+- GET photo is `[AllowAnonymous]` — required because `<img src>` cannot send JWT Authorization headers
+- PUT photo accepts `IFormFile` multipart upload, max 2 MB, validates MIME type (jpeg/png/gif/webp)
+- Returns raw image bytes with `Content-Type` header (not base64 in JSON)
+- `Cache-Control: private, max-age=3600` on GET response
+- Photo/PhotoContentType excluded from audit change tracking (`EntityTrackingRegistry`)
+- Demo data seeds portrait photos from randomuser.me for all users
+
 **Concurrency control:**
 - `RowVersion` byte[] on AuditableEntity
 - Passed from client, set as OriginalValue before SaveChanges
@@ -220,6 +230,7 @@ frontend/
     │   ├── AuthContext.tsx      # Auth state provider (user, permissions, login/logout)
     │   └── usePermission.ts    # useHasPermission() hook
     ├── components/
+    │   ├── UserAvatar.tsx        # Reusable avatar (photo from API or initials fallback)
     │   ├── Breadcrumbs.tsx      # MUI breadcrumb navigation for detail pages
     │   ├── DetailField.tsx      # Reusable label+value field for detail pages
     │   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
@@ -372,14 +383,22 @@ frontend/
 - Collapse toggle: ChevronLeft/ChevronRight button below logo
 - Menu items: rounded (borderRadius 1.5), left teal border on active, hover highlight
 - Sub-menus (Orders, Transactions): collapse in expanded mode, navigate to first child in collapsed mode
-- User section: avatar with initial + name + logout; in collapsed mode only avatar with tooltip
+- User section: `UserAvatar` component (photo or initial) + name + logout; in collapsed mode only avatar with tooltip
 - Mobile: floating hamburger button (fixed, top-left), temporary drawer always expanded
 - ErrorBoundary wraps `<Outlet />` — page crashes don't break sidebar
+
+**User avatars:**
+- `UserAvatar` component (`components/UserAvatar.tsx`): reusable MUI `<Avatar>` wrapper
+- Props: `userId`, `name`, `hasPhoto`, `size?`, `sx?`
+- When `hasPhoto`: renders `<Avatar src="/api/v1/users/{id}/photo">` (anonymous endpoint, no auth needed)
+- Fallback: first letter of name (MUI Avatar default behavior when src fails)
+- Used in: sidebar (36px), users list DataGrid (32px), edit user dialog (64px), profile settings (96px)
+- Photo upload/delete available in: profile settings (own photo via `/auth/photo`), edit user dialog (via `/users/{id}/photo`)
 
 **Login page:**
 - Split-screen: dark gradient left panel (45%, hidden on mobile) + form right panel (55%)
 - Left panel: logo, "Broker Backoffice" title, "Internal Management System" subtitle, decorative circles
-- Right panel: "Welcome back" heading, username/password fields, gradient Sign In button
+- Right panel: "Welcome back" heading, username/password fields, gradient Sign In button (InputLabelProps shrink=true on TextFields)
 - Mobile: only form panel with compact logo header
 
 **State management:**
@@ -425,6 +444,7 @@ frontend/
 
 **User** (AuditableEntity) — System user
 - Owns: UserRole[], UserPermissionOverride[], UserRefreshToken[], DataScope[]
+- Photo: binary storage (Photo byte[], PhotoContentType string) — stored in DB, served as raw image bytes
 
 **Role** (AuditableEntity) — Authorization role
 - Owns: RolePermission[]
@@ -582,7 +602,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Location: `backend/tests/Broker.Backoffice.Tests.Unit/`
 - Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Clients (Create/Update, SetAccounts), Accounts (Create/Update, SetHolders), Instruments (Create/Update), Orders (TradeOrder Create/Update, NonTradeOrder Create/Update), Transactions (TradeTransaction Create/Update, NonTradeTransaction Create/Update), Roles (Create/Update), Reference data (Clearer, Currency, Exchange, TradePlatform — Create/Update each)
 
-### Backend Integration Tests (113 tests, ~27s)
+### Backend Integration Tests (117 tests, ~28s)
 - Testcontainers (real MSSQL 2022 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
 - `[Collection("Integration")]` for shared fixture
@@ -591,7 +611,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 - Rate limiting disabled via `UseSetting("RateLimiting:LoginPermitLimit", "10000")`
 - Requires `backend/global.json` pinning SDK to 8.0 (avoids .NET 10 SDK incompatibility)
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
-- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile), Clients (CRUD + Update + GetAccounts), Accounts (CRUD + Update), Users (CRUD + Update), Roles (CRUD + GetById + Update + SetPermissions), Instruments (CRUD + Update + DuplicateSymbol), TradeOrders (CRUD + Update + InvalidAccount), NonTradeOrders (CRUD + Update), TradeTransactions (CRUD + SideMismatch), NonTradeTransactions (CRUD + WithoutOrder), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName), Dashboard (stats), Audit (list + getById), EntityChanges (list + listAll), Permissions (list), Countries (list)
+- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile), Clients (CRUD + Update + GetAccounts), Accounts (CRUD + Update), Users (CRUD + Update + Photo upload/get/delete/anonymous), Roles (CRUD + GetById + Update + SetPermissions), Instruments (CRUD + Update + DuplicateSymbol), TradeOrders (CRUD + Update + InvalidAccount), NonTradeOrders (CRUD + Update), TradeTransactions (CRUD + SideMismatch), NonTradeTransactions (CRUD + WithoutOrder), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName), Dashboard (stats), Audit (list + getById), EntityChanges (list + listAll), Permissions (list), Countries (list)
 
 ### Integration test patterns
 - All update tests must include `Id` in the request body (controllers check `id != command.Id`)

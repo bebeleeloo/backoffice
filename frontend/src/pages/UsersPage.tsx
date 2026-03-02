@@ -9,6 +9,7 @@ import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useUsers, useDeleteUser } from "../api/hooks";
 import type { UserDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
+import { UserAvatar } from "../components/UserAvatar";
 import { CreateUserDialog, EditUserDialog } from "./UserDialogs";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useConfirm } from "../hooks/useConfirm";
@@ -110,6 +111,12 @@ export function UsersPage() {
   };
 
   const columns: GridColDef<UserDto>[] = [
+    {
+      field: "avatar", headerName: "", width: 60, sortable: false, filterable: false,
+      renderCell: ({ row }) => (
+        <UserAvatar userId={row.id} name={row.fullName || row.username} hasPhoto={row.hasPhoto} size={32} />
+      ),
+    },
     { field: "username", headerName: "Username", flex: 1, minWidth: 120 },
     { field: "email", headerName: "Email", flex: 1, minWidth: 180 },
     { field: "fullName", headerName: "Full Name", flex: 1, minWidth: 150 },

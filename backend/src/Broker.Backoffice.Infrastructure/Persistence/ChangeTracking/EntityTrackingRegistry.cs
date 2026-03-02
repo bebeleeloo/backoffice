@@ -80,7 +80,7 @@ public static class EntityTrackingRegistry
             EntityTypeName = "User",
             ClrType = typeof(User),
             IsRoot = true,
-            ExcludedProperties = [..AuditableExcluded, "PasswordHash"]
+            ExcludedProperties = [..AuditableExcluded, "PasswordHash", "Photo", "PhotoContentType"]
         },
         [typeof(UserRole)] = new TrackedEntityConfig
         {

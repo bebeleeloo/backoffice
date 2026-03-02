@@ -6,6 +6,7 @@ public sealed record UserDto(
     string Email,
     string? FullName,
     bool IsActive,
+    bool HasPhoto,
     IReadOnlyList<string> Roles,
     DateTime CreatedAt,
     byte[] RowVersion);

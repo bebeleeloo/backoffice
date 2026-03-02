@@ -9,6 +9,8 @@ public sealed class User : AuditableEntity
     public string PasswordHash { get; set; } = string.Empty;
     public string? FullName { get; set; }
     public bool IsActive { get; set; } = true;
+    public byte[]? Photo { get; set; }
+    public string? PhotoContentType { get; set; }
 
     public ICollection<UserRole> UserRoles { get; set; } = [];
     public ICollection<UserPermissionOverride> PermissionOverrides { get; set; } = [];

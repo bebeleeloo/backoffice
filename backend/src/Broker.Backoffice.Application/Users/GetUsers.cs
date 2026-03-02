@@ -45,6 +45,7 @@ public sealed class GetUsersQueryHandler(IAppDbContext db)
         var projected = query.SortBy(request.Sort ?? "-CreatedAt")
             .Select(u => new UserDto(
                 u.Id, u.Username, u.Email, u.FullName, u.IsActive,
+                u.Photo != null,
                 u.UserRoles.Select(ur => ur.Role.Name).ToList(),
                 u.CreatedAt, u.RowVersion));
 

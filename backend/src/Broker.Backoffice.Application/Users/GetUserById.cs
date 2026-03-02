@@ -16,6 +16,7 @@ public sealed class GetUserByIdQueryHandler(IAppDbContext db) : IRequestHandler<
             ?? throw new KeyNotFoundException($"User {request.Id} not found");
 
         return new UserDto(user.Id, user.Username, user.Email, user.FullName, user.IsActive,
+            user.Photo != null,
             user.UserRoles.Select(ur => ur.Role.Name).ToList(), user.CreatedAt, user.RowVersion);
     }
 }

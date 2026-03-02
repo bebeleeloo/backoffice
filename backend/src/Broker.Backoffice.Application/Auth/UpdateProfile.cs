@@ -39,6 +39,7 @@ public sealed class UpdateProfileCommandHandler(IAppDbContext db)
         var permissions = LoginCommandHandler.GetEffectivePermissions(user);
         return new UserProfileResponse(
             user.Id, user.Username, user.Email, user.FullName,
+            user.Photo != null,
             user.UserRoles.Select(ur => ur.Role.Name).ToList(),
             permissions,
             user.DataScopes.Select(ds => new DataScopeDto(ds.ScopeType, ds.ScopeValue)).ToList());

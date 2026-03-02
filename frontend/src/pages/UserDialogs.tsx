@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+  Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   FormControlLabel, Switch, Autocomplete, Chip,
 } from "@mui/material";
-import { useCreateUser, useUpdateUser, useRoles } from "../api/hooks";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { useCreateUser, useUpdateUser, useRoles, useUploadUserPhoto, useDeleteUserPhoto } from "../api/hooks";
+import { UserAvatar } from "../components/UserAvatar";
 import { validateEmail, validateRequired, type FieldErrors } from "../utils/validateFields";
 import type { UserDto } from "../api/types";
 
@@ -70,6 +73,9 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateUser();
   const roles = useRoles({ page: 1, pageSize: 100 });
+  const uploadPhoto = useUploadUserPhoto();
+  const deletePhoto = useDeleteUserPhoto();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [prevUser, setPrevUser] = useState(user);
   const [prevRolesData, setPrevRolesData] = useState(roles.data);
@@ -83,6 +89,18 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
     });
     setErrors({});
   }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    try { await uploadPhoto.mutateAsync({ id: user.id, file }); } catch { /* MutationCache */ }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handlePhotoDelete = async () => {
+    if (!user) return;
+    try { await deletePhoto.mutateAsync(user.id); } catch { /* MutationCache */ }
+  };
 
   const updateField = (field: string, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -107,6 +125,43 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit User: {user?.username}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <UserAvatar
+            userId={user?.id ?? ""}
+            name={user?.fullName || user?.username || "U"}
+            hasPhoto={user?.hasPhoto ?? false}
+            size={64}
+          />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<PhotoCameraIcon />}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadPhoto.isPending}
+            >
+              Change Photo
+            </Button>
+            {user?.hasPhoto && (
+              <Button
+                size="small"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handlePhotoDelete}
+                disabled={deletePhoto.isPending}
+              >
+                Remove
+              </Button>
+            )}
+          </Box>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            hidden
+            onChange={handlePhotoUpload}
+          />
+        </Box>
         <TextField label="Email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required error={!!errors.email} helperText={errors.email} />
         <TextField label="Full Name" value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} />
         <FormControlLabel control={<Switch checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />} label="Active" />

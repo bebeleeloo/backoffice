@@ -15,6 +15,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.HasIndex(e => e.Email).IsUnique();
         b.Property(e => e.PasswordHash).IsRequired();
         b.Property(e => e.FullName).HasMaxLength(200);
+        b.Property(e => e.PhotoContentType).HasMaxLength(50);
         b.Property(e => e.RowVersion).IsRowVersion();
         b.Property(e => e.CreatedBy).HasMaxLength(100);
         b.Property(e => e.UpdatedBy).HasMaxLength(100);

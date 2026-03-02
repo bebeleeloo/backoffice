@@ -65,6 +65,7 @@ public sealed class CreateUserCommandHandler(
         audit.AfterJson = Truncate(JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName, user.IsActive }));
 
         return new UserDto(user.Id, user.Username, user.Email, user.FullName, user.IsActive,
+            user.Photo != null,
             user.UserRoles.Select(ur => ur.Role?.Name ?? "").ToList(), user.CreatedAt, user.RowVersion);
     }
 

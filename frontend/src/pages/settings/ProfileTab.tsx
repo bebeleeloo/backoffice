@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Box, Button, Card, CardContent, Chip, TextField, Typography,
 } from "@mui/material";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { enqueueSnackbar } from "notistack";
 import { useAuth } from "../../auth/useAuth";
-import { useChangePassword, useUpdateProfile } from "../../api/hooks";
+import { useChangePassword, useUpdateProfile, useUploadMyPhoto, useDeleteMyPhoto } from "../../api/hooks";
+import { UserAvatar } from "../../components/UserAvatar";
 import { validateEmail, type FieldErrors } from "../../utils/validateFields";
 
 export function ProfileTab() {
@@ -20,6 +23,30 @@ export function ProfileTab() {
 
   const updateProfile = useUpdateProfile();
   const changePassword = useChangePassword();
+  const uploadPhoto = useUploadMyPhoto();
+  const deletePhoto = useDeleteMyPhoto();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      enqueueSnackbar("Photo must be 2 MB or less", { variant: "error" });
+      return;
+    }
+    try {
+      await uploadPhoto.mutateAsync(file);
+      await refreshProfile();
+    } catch { /* handled by MutationCache */ }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handlePhotoDelete = async () => {
+    try {
+      await deletePhoto.mutateAsync();
+      await refreshProfile();
+    } catch { /* handled by MutationCache */ }
+  };
 
   const handleProfileSave = async () => {
     const errs: FieldErrors = { email: validateEmail(email) };
@@ -47,6 +74,47 @@ export function ProfileTab() {
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
       {/* Left column */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Photo */}
+        <Card variant="outlined">
+          <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
+            <UserAvatar
+              userId={user?.id ?? ""}
+              name={user?.fullName || user?.username || "U"}
+              hasPhoto={user?.hasPhoto ?? false}
+              size={96}
+            />
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<PhotoCameraIcon />}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadPhoto.isPending}
+              >
+                Change Photo
+              </Button>
+              {user?.hasPhoto && (
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={handlePhotoDelete}
+                  disabled={deletePhoto.isPending}
+                >
+                  Remove
+                </Button>
+              )}
+            </Box>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              hidden
+              onChange={handlePhotoUpload}
+            />
+          </CardContent>
+        </Card>
+
         {/* Profile Info */}
         <Card variant="outlined">
           <CardContent>

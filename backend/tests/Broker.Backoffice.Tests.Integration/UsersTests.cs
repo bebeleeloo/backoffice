@@ -146,4 +146,110 @@ public class UsersTests(CustomWebApplicationFactory factory)
         var getResp = await _client.GetAsync($"/api/v1/users/{created.Id}");
         getResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task UploadPhoto_ShouldSetHasPhoto()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"photo_{Guid.NewGuid():N}",
+            Email = $"photo_{Guid.NewGuid():N}@test.com",
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
+        created!.HasPhoto.Should().BeFalse();
+
+        // Upload photo
+        var content = new MultipartFormDataContent();
+        var imageBytes = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 }; // minimal JPEG header
+        var byteContent = new ByteArrayContent(imageBytes);
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(byteContent, "file", "test.jpg");
+        var uploadResp = await _client.PutAsync($"/api/v1/users/{created.Id}/photo", content);
+        uploadResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify hasPhoto
+        var getResp = await _client.GetAsync($"/api/v1/users/{created.Id}");
+        var user = await getResp.Content.ReadFromJsonAsync<UserDto>();
+        user!.HasPhoto.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetPhoto_NoPhoto_ShouldReturn404()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"nophoto_{Guid.NewGuid():N}",
+            Email = $"nophoto_{Guid.NewGuid():N}@test.com",
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
+
+        var photoResp = await _client.GetAsync($"/api/v1/users/{created!.Id}/photo");
+        photoResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetPhoto_Anonymous_ShouldWork()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"anonphoto_{Guid.NewGuid():N}",
+            Email = $"anonphoto_{Guid.NewGuid():N}@test.com",
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
+
+        // Upload photo
+        var content = new MultipartFormDataContent();
+        var byteContent = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 });
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(byteContent, "file", "test.jpg");
+        await _client.PutAsync($"/api/v1/users/{created!.Id}/photo", content);
+
+        // Fetch without auth
+        var anonClient = factory.CreateClient();
+        var photoResp = await anonClient.GetAsync($"/api/v1/users/{created.Id}/photo");
+        photoResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        photoResp.Content.Headers.ContentType!.MediaType.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task DeletePhoto_ShouldRemovePhoto()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"delphoto_{Guid.NewGuid():N}",
+            Email = $"delphoto_{Guid.NewGuid():N}@test.com",
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
+
+        // Upload
+        var content = new MultipartFormDataContent();
+        var byteContent = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 });
+        byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(byteContent, "file", "test.jpg");
+        await _client.PutAsync($"/api/v1/users/{created!.Id}/photo", content);
+
+        // Delete
+        var delResp = await _client.DeleteAsync($"/api/v1/users/{created.Id}/photo");
+        delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify gone
+        var photoResp = await _client.GetAsync($"/api/v1/users/{created.Id}/photo");
+        photoResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

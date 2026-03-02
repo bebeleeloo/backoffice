@@ -103,8 +103,8 @@ export function LoginPage() {
           </Typography>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Box component="form" onSubmit={handleSubmit}>
-            <TextField fullWidth label="Username" value={username} onChange={(e) => setUsername(e.target.value)} margin="normal" autoFocus />
-            <TextField fullWidth label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} margin="normal" />
+            <TextField fullWidth label="Username" value={username} onChange={(e) => setUsername(e.target.value)} margin="normal" autoFocus InputLabelProps={{ shrink: true }} />
+            <TextField fullWidth label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} margin="normal" InputLabelProps={{ shrink: true }} />
             <Button
               fullWidth type="submit" variant="contained" size="large"
               sx={{ mt: 3, py: 1.5, fontSize: "1rem", fontWeight: 600 }}

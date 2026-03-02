@@ -10,6 +10,7 @@ public sealed record UserProfileResponse(
     string Username,
     string Email,
     string? FullName,
+    bool HasPhoto,
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> Permissions,
     IReadOnlyList<DataScopeDto> Scopes);

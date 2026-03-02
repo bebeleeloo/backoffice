@@ -5,6 +5,7 @@ using Broker.Backoffice.Application.Users;
 using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Infrastructure.Auth;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Broker.Backoffice.Api.Controllers;
@@ -53,6 +54,34 @@ public sealed class UsersController(ISender mediator) : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await mediator.Send(new DeleteUserCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/photo")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPhoto(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetUserPhotoQuery(id), ct);
+        Response.Headers.CacheControl = "private, max-age=3600";
+        return File(result.Photo, result.ContentType);
+    }
+
+    [HttpPut("{id:guid}/photo")]
+    [HasPermission(Permissions.UsersUpdate)]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public async Task<IActionResult> UploadPhoto(Guid id, IFormFile file, CancellationToken ct)
+    {
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms, ct);
+        await mediator.Send(new UploadUserPhotoCommand(id, ms.ToArray(), file.ContentType), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/photo")]
+    [HasPermission(Permissions.UsersUpdate)]
+    public async Task<IActionResult> DeletePhoto(Guid id, CancellationToken ct)
+    {
+        await mediator.Send(new DeleteUserPhotoCommand(id), ct);
         return NoContent();
     }
 }

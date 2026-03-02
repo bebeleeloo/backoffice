@@ -9,6 +9,7 @@ export interface UserProfile {
   username: string;
   email: string;
   fullName: string | null;
+  hasPhoto: boolean;
   roles: string[];
   permissions: string[];
   scopes: { scopeType: string; scopeValue: string }[];
@@ -28,6 +29,7 @@ export interface UserDto {
   email: string;
   fullName: string | null;
   isActive: boolean;
+  hasPhoto: boolean;
   roles: string[];
   createdAt: string;
   rowVersion: string;

@@ -27,6 +27,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useAuth } from "../auth/useAuth";
 import { useHasPermission } from "../auth/usePermission";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { UserAvatar } from "../components/UserAvatar";
 import { SIDEBAR_COLORS } from "../theme";
 
 const DRAWER_WIDTH_EXPANDED = 260;
@@ -241,21 +242,14 @@ export function MainLayout() {
         flexShrink: 0,
       }}>
         <Tooltip title={isCollapsed ? `${user?.fullName || user?.username}` : ""} placement="right" arrow>
-          <Box sx={{
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            bgcolor: SIDEBAR_COLORS.bgActiveAlpha,
-            border: `2px solid ${SIDEBAR_COLORS.activeIndicator}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: SIDEBAR_COLORS.textActive,
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            flexShrink: 0,
-          }}>
-            {(user?.fullName || user?.username || "U").charAt(0).toUpperCase()}
+          <Box sx={{ flexShrink: 0 }}>
+            <UserAvatar
+              userId={user?.id ?? ""}
+              name={user?.fullName || user?.username || "U"}
+              hasPhoto={user?.hasPhoto ?? false}
+              size={36}
+              sx={{ border: `2px solid ${SIDEBAR_COLORS.activeIndicator}` }}
+            />
           </Box>
         </Tooltip>
         {!isCollapsed && (

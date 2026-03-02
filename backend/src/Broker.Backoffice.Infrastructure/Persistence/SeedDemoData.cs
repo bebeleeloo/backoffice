@@ -150,10 +150,65 @@ public static class SeedDemoData
         }
         if (created > 0) await db.SaveChangesAsync();
 
+        // Download and assign portrait photos to all users without photos
+        await SeedUserPhotosAsync(db, logger);
+
         if (created > 0)
             logger.LogInformation("Demo seed: created {Count} users with roles (Manager/Viewer/Operator)", created);
 
         return created;
+    }
+
+    // Portrait URLs mapped by username (randomuser.me stable portraits)
+    private static readonly Dictionary<string, string> UserPhotoUrls = new()
+    {
+        ["admin"]     = "https://randomuser.me/api/portraits/men/32.jpg",
+        ["jdoe"]      = "https://randomuser.me/api/portraits/men/75.jpg",
+        ["asmith"]    = "https://randomuser.me/api/portraits/women/44.jpg",
+        ["bwilson"]   = "https://randomuser.me/api/portraits/men/22.jpg",
+        ["cjohnson"]  = "https://randomuser.me/api/portraits/women/68.jpg",
+        ["dlee"]      = "https://randomuser.me/api/portraits/men/45.jpg",
+        ["ebrown"]    = "https://randomuser.me/api/portraits/women/26.jpg",
+        ["fgarcia"]   = "https://randomuser.me/api/portraits/men/67.jpg",
+        ["gmartinez"] = "https://randomuser.me/api/portraits/women/52.jpg",
+        ["hchen"]     = "https://randomuser.me/api/portraits/men/91.jpg",
+        ["itaylor"]   = "https://randomuser.me/api/portraits/women/89.jpg",
+    };
+
+    private static async Task SeedUserPhotosAsync(AppDbContext db, ILogger logger)
+    {
+        // Find users without real portrait photos (null or tiny placeholder PNGs < 1KB)
+        var usersWithoutPhotos = await db.Users
+            .Where(u => u.Photo == null || u.Photo.Length < 1024)
+            .ToListAsync();
+
+        if (usersWithoutPhotos.Count == 0) return;
+
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        var updated = 0;
+
+        foreach (var user in usersWithoutPhotos)
+        {
+            if (!UserPhotoUrls.TryGetValue(user.Username, out var url)) continue;
+
+            try
+            {
+                var photo = await http.GetByteArrayAsync(url);
+                user.Photo = photo;
+                user.PhotoContentType = "image/jpeg";
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to download photo for user {Username}", user.Username);
+            }
+        }
+
+        if (updated > 0)
+        {
+            await db.SaveChangesAsync();
+            logger.LogInformation("Demo seed: downloaded {Count} user portrait photos", updated);
+        }
     }
 
     // ── Clients ──────────────────────────────────────────────────────

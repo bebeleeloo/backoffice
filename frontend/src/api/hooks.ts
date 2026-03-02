@@ -498,6 +498,51 @@ export const useUpdateProfile = () => {
   });
 };
 
+// Photo
+export const useUploadMyPhoto = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return apiClient.put("/auth/photo", form);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+    meta: { successMessage: "Photo updated" },
+  });
+};
+
+export const useDeleteMyPhoto = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.delete("/auth/photo"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+    meta: { successMessage: "Photo removed" },
+  });
+};
+
+export const useUploadUserPhoto = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => {
+      const form = new FormData();
+      form.append("file", file);
+      return apiClient.put(`/users/${id}/photo`, form);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    meta: { successMessage: "Photo updated" },
+  });
+};
+
+export const useDeleteUserPhoto = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/users/${id}/photo`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    meta: { successMessage: "Photo removed" },
+  });
+};
+
 // Reference Data — Clearers
 export const useAllClearers = () =>
   useQuery({
