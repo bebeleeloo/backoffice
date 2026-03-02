@@ -34,6 +34,9 @@ public sealed class CreateUserCommandHandler(
         if (await db.Users.AnyAsync(u => u.Username == request.Username, ct))
             throw new InvalidOperationException($"Username '{request.Username}' is already taken");
 
+        if (await db.Users.AnyAsync(u => u.Email == request.Email, ct))
+            throw new InvalidOperationException($"Email '{request.Email}' is already in use");
+
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -62,13 +65,10 @@ public sealed class CreateUserCommandHandler(
 
         audit.EntityType = "User";
         audit.EntityId = user.Id.ToString();
-        audit.AfterJson = Truncate(JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName, user.IsActive }));
+        audit.AfterJson = JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName, user.IsActive });
 
         return new UserDto(user.Id, user.Username, user.Email, user.FullName, user.IsActive,
             user.Photo != null,
             user.UserRoles.Select(ur => ur.Role?.Name ?? "").ToList(), user.CreatedAt, user.RowVersion);
     }
-
-    private static string Truncate(string json, int max = 16384) =>
-        json.Length <= max ? json : json[..max];
 }

@@ -389,7 +389,7 @@ export function TradeTransactionsPage() {
         <>
           {hasActiveFilters && (
             <Tooltip title="Clear all filters">
-              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+              <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
           )}
           <ExportButton fetchData={fetchAllTradeTransactions} columns={exportColumns} filename="trade-transactions" />

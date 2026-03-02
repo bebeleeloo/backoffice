@@ -20,7 +20,8 @@ public sealed class ChangePasswordCommandValidator : AbstractValidator<ChangePas
 
 public sealed class ChangePasswordCommandHandler(
     IAppDbContext db,
-    PasswordHasher<User> hasher) : IRequestHandler<ChangePasswordCommand>
+    PasswordHasher<User> hasher,
+    IAuditContext audit) : IRequestHandler<ChangePasswordCommand>
 {
     public async Task Handle(ChangePasswordCommand request, CancellationToken ct)
     {
@@ -33,5 +34,8 @@ public sealed class ChangePasswordCommandHandler(
 
         user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
         await db.SaveChangesAsync(ct);
+
+        audit.EntityType = "User";
+        audit.EntityId = user.Id.ToString();
     }
 }

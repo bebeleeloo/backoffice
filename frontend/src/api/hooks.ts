@@ -137,7 +137,7 @@ export const useSetRolePermissions = () => {
     mutationFn: ({ roleId, permissionIds }: { roleId: string; permissionIds: string[] }) =>
       apiClient.put<RoleDto>(`/roles/${roleId}/permissions`, permissionIds).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roles"] }),
-    meta: {},
+    meta: { successMessage: "Permissions updated" },
   });
 };
 
@@ -147,6 +147,7 @@ export const usePermissions = () =>
     queryKey: ["permissions"],
     queryFn: () =>
       apiClient.get<PermissionDto[]>("/permissions").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
   });
 
 // Audit
@@ -548,6 +549,7 @@ export const useAllClearers = () =>
   useQuery({
     queryKey: ["clearers", "all"],
     queryFn: () => apiClient.get<ClearerDto[]>("/clearers/all").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
   });
 
 export const useCreateClearer = () => {
@@ -584,6 +586,7 @@ export const useAllTradePlatforms = () =>
   useQuery({
     queryKey: ["trade-platforms", "all"],
     queryFn: () => apiClient.get<TradePlatformDto[]>("/trade-platforms/all").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
   });
 
 export const useCreateTradePlatform = () => {
@@ -620,6 +623,7 @@ export const useAllExchanges = () =>
   useQuery({
     queryKey: ["exchanges", "all"],
     queryFn: () => apiClient.get<ExchangeDto[]>("/exchanges/all").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
   });
 
 export const useCreateExchange = () => {
@@ -656,6 +660,7 @@ export const useAllCurrencies = () =>
   useQuery({
     queryKey: ["currencies", "all"],
     queryFn: () => apiClient.get<CurrencyDto[]>("/currencies/all").then((r) => r.data),
+    staleTime: 10 * 60 * 1000,
   });
 
 export const useCreateCurrency = () => {

@@ -91,7 +91,7 @@ public class NonTradeOrdersTests(CustomWebApplicationFactory factory) : Integrat
             AccountId = accountId,
             OrderDate = DateTime.UtcNow.ToString("O"),
             NonTradeType = "Withdrawal",
-            Amount = -500.00m,
+            Amount = 500.00m,
             CurrencyId = currencyId,
         });
         var order = await createResp.Content.ReadFromJsonAsync<NonTradeOrderDto>();

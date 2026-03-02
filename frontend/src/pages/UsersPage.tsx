@@ -220,7 +220,7 @@ export function UsersPage() {
         <>
           {hasActiveFilters && (
             <Tooltip title="Clear all filters">
-              <IconButton size="small" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
+              <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
           )}
           <ExportButton fetchData={fetchAllUsers} columns={exportColumns} filename="users" />

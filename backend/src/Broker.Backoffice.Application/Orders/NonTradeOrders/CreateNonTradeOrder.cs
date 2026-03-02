@@ -25,7 +25,7 @@ public sealed class CreateNonTradeOrderCommandValidator : AbstractValidator<Crea
     {
         RuleFor(x => x.AccountId).NotEmpty();
         RuleFor(x => x.CurrencyId).NotEmpty();
-        RuleFor(x => x.Amount).NotEqual(0);
+        RuleFor(x => x.Amount).GreaterThan(0);
         RuleFor(x => x.ReferenceNumber).MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.Comment).MaximumLength(500);

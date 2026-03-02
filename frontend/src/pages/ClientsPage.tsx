@@ -377,7 +377,7 @@ export function ClientsPage() {
         <>
           {hasActiveFilters && (
             <Tooltip title="Clear all filters">
-              <IconButton size="small" onClick={clearAllFilters} data-testid="clear-all-filters">
+              <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters} data-testid="clear-all-filters">
                 <FilterListOffIcon />
               </IconButton>
             </Tooltip>

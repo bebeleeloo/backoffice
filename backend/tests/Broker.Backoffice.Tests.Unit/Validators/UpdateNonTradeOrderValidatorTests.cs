@@ -60,10 +60,10 @@ public class UpdateNonTradeOrderValidatorTests
     }
 
     [Fact]
-    public void Amount_Negative_ShouldPass()
+    public void Amount_Negative_ShouldFail()
     {
         var result = _validator.TestValidate(ValidCommand() with { Amount = -500.00m });
-        result.ShouldNotHaveValidationErrorFor(x => x.Amount);
+        result.ShouldHaveValidationErrorFor(x => x.Amount);
     }
 
     [Fact]

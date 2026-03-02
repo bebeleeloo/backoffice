@@ -128,7 +128,7 @@ try
         options.Level = CompressionLevel.Fastest;
     });
 
-    // CORS — use configured origins when available, fall back to allow-any for dev
+    // CORS — use configured origins; allow-any only in Development
     var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
     builder.Services.AddCors(options =>
     {
@@ -136,8 +136,10 @@ try
         {
             if (corsOrigins.Length > 0)
                 policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
-            else
+            else if (builder.Environment.IsDevelopment())
                 policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            else
+                throw new InvalidOperationException("Cors:Origins must be configured in non-Development environments");
         });
     });
 
