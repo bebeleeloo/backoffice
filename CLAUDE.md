@@ -180,7 +180,8 @@ backend/src/
 - `PagedQuery` clamps values: Page min 1, PageSize 1–10000 (protects against OOM)
 - Return `PagedResult<T>` with Items, TotalCount, Page, PageSize, TotalPages
 - `QueryableExtensions.ToPagedResultAsync()` handles Skip/Take/Count
-- `QueryableExtensions.SortBy()` handles dynamic sorting via expression trees
+- `QueryableExtensions.SortBy()` handles dynamic sorting via expression trees; supports `"field asc"`/`"field desc"` and legacy `-field` formats
+- For computed/navigation property fields (e.g. DisplayName, ClearerName, ExchangeCode), query handlers use private `ApplySort()` methods with explicit switch cases instead of generic `SortBy()`
 
 **Filtering conventions:**
 - Text: `EF.Functions.Like(field, LikeHelper.ContainsPattern(value))` — escapes `%`, `_`, `[` wildcards via `LikeHelper` in `Application/Common/LikeHelper.cs`
@@ -249,8 +250,8 @@ frontend/
     │   ├── ConfirmDialog.tsx    # MUI confirmation dialog for delete actions
     │   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
     │   ├── grid/
-    │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row + empty state overlay
-    │   │   ├── GridFilterRow.tsx      # Filter row rendering (native scroll sync, theme-aware)
+    │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row + empty state overlay + controlled sortModel
+    │   │   ├── GridFilterRow.tsx      # Filter row rendering (native scroll sync, theme-aware), CustomColumnHeaders slot wrapper
     │   │   ├── InlineTextFilter.tsx   # Debounced text input (300ms)
     │   │   ├── CompactMultiSelect.tsx # Checkbox multi-select dropdown
     │   │   ├── CompactCountrySelect.tsx
@@ -308,10 +309,11 @@ frontend/
 2. React Query hook for paginated data
 3. `columns: GridColDef[]` with typed row
 4. `filterDefs: Map<string, () => ReactNode>` mapping field → filter component
-5. `exportColumns: ExcelColumn<T>[]` for Excel export
-6. `fetchAll: () => Promise<T[]>` fetches with pageSize=10000 for export
-7. Permission-gated action buttons via `useHasPermission()`
-8. `PageContainer` wrapper with variant="list" for compact theme
+5. `sortModel: GridSortModel` derived from URL `sort` param via `useMemo`, passed to `FilteredDataGrid`
+6. `exportColumns: ExcelColumn<T>[]` for Excel export
+7. `fetchAll: () => Promise<T[]>` fetches with pageSize=10000 for export
+8. Permission-gated action buttons via `useHasPermission()`
+9. `PageContainer` wrapper with variant="list" for compact theme
 
 **Detail page pattern:**
 - `PageContainer` with `breadcrumbs` prop for navigation (e.g., Clients > John Doe)
@@ -719,9 +721,11 @@ dotnet run
 - Use `[ServiceFilter(typeof(AuditActionFilter))]` on POST/PUT/DELETE
 
 ### When adding a frontend page:
-- Follow existing page pattern: readParams → useQuery → columns → filterDefs → exportColumns
+- Follow existing page pattern: readParams → useQuery → columns → filterDefs → sortModel → exportColumns
 - Use `PageContainer` with variant="list" for grids
-- Use `FilteredDataGrid` with filterDefs Map
+- Use `FilteredDataGrid` with filterDefs Map, pass `sortModel` and `onSortModelChange`
+- Derive `sortModel` from URL `sort` param: `useMemo(() => { if (!params.sort) return []; const [field, dir] = params.sort.split(" "); return [{ field, sort: dir as GridSortDirection }]; }, [params.sort])`
+- Import `GridSortDirection` from `@mui/x-data-grid`
 - Filters go in URL search params, not local state
 - Add export support: ExcelColumn[] + fetchAll function + ExportButton
 - Gate actions with `useHasPermission()`
@@ -741,6 +745,15 @@ dotnet run
 - Add `meta: { successMessage: "..." }` to new mutation hooks
 - Wrap dialog `handleSubmit` with `try/catch` around `mutateAsync`
 - Use `LikeHelper.ContainsPattern()` for all `EF.Functions.Like()` calls (escapes SQL LIKE wildcards)
+
+### Sorting conventions:
+- Frontend sends sort as `"field asc"` or `"field desc"` via URL `?sort=field asc`
+- `SortBy()` in `QueryableExtensions` parses both `"field asc/desc"` and legacy `-field` formats; uses reflection with `BindingFlags.IgnoreCase` to find entity properties
+- `SortBy()` operates on the **entity** IQueryable (before `.Select()` projection), so it can only sort by properties that exist on the domain entity
+- For DTO fields that don't exist on the entity (computed fields, navigation properties), use a private `ApplySort()` method in the query handler with explicit switch cases
+- Handlers with `ApplySort()`: GetClients (displayName, country fields), GetAccounts (clearerName, tradePlatformName), GetInstruments (exchangeCode, currencyCode, countryName), GetTradeOrders, GetNonTradeOrders, GetTradeTransactions, GetNonTradeTransactions, GetAllEntityChanges
+- `ApplySort()` must parse `"field asc/desc"` format: `var parts = sort.Split(' ', 2, ...); var field = parts[0]; var desc = parts[1] == "desc"`
+- Every sortable DataGrid column `field` must be handled in either `SortBy()` (entity property) or `ApplySort()` switch — unhandled fields silently return unsorted data
 
 ### Reference data (Clearers, TradePlatforms, Exchanges, Currencies):
 - Two query endpoints: `GET /entity` (active only, for dropdowns) and `GET /entity/all` (for settings CRUD)
@@ -771,3 +784,5 @@ dotnet run
 - Use raw `$"%{value}%"` in LIKE patterns — use `LikeHelper.ContainsPattern()` to escape wildcards
 - Instantiate query handlers directly (`new XxxHandler(db).Handle(...)`) — use `mediator.Send()` instead
 - Use `AllowAnyOrigin()` in CORS without checking configured origins first
+- Add sortable DataGrid columns whose `field` names don't match entity properties without adding them to `ApplySort()` — sorting will silently fail
+- Use the old `-field` sort format in new code — use `"field asc"`/`"field desc"` format
