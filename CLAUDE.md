@@ -625,7 +625,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Location: `backend/tests/Broker.Backoffice.Tests.Unit/`
 - Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Clients (Create/Update, SetAccounts), Accounts (Create/Update, SetHolders), Instruments (Create/Update), Orders (TradeOrder Create/Update, NonTradeOrder Create/Update), Transactions (TradeTransaction Create/Update, NonTradeTransaction Create/Update), Roles (Create/Update), Reference data (Clearer, Currency, Exchange, TradePlatform — Create/Update each)
 
-### Backend Integration Tests (165 tests, ~15s)
+### Backend Integration Tests (192 tests, ~15s)
 - Testcontainers (real MSSQL 2022 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
 - `IntegrationTestBase` abstract base class with shared `AuthenticateAsync()` / `AuthenticateAsAsync()`
@@ -634,7 +634,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Rate limiting disabled via `UseSetting("RateLimiting:LoginPermitLimit", "10000")`
 - Requires `backend/global.json` pinning SDK to 8.0 (avoids .NET 10 SDK incompatibility)
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
-- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile, photo upload/get/delete + unauth + no-file 400 + duplicate email 409), Clients (CRUD + Update + GetAccounts + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + DuplicateNumber on create/update + RouteBodyIdMismatch), Users (CRUD + Update + DuplicateUsername + DuplicateEmail on create/update + RouteBodyIdMismatch + Photo upload/get/delete/anonymous), Roles (CRUD + GetById + Update + SetPermissions + DuplicateName + RouteBodyIdMismatch), Instruments (CRUD + Update + DuplicateSymbol on create/update + RouteBodyIdMismatch), TradeOrders (CRUD + Update + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + InvalidCurrencyId + InvalidAccountId + RouteBodyIdMismatch), TradeTransactions (CRUD + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName + DuplicateOnUpdate), Dashboard (stats), Audit (list + getById), EntityChanges (list + listAll), Permissions (list), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion on Account/Instrument/Role/Client/TradeOrder/User)
+- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile, photo upload/get/delete + unauth + no-file 400 + duplicate email 409), Clients (CRUD + Update + GetAccounts + SetClientAccounts + InvalidAccountId + Filters + DateFilter + SortByDisplayName + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + SetAccountHolders + InvalidClientId + Filters + SortByClearerName + DuplicateNumber on create/update + RouteBodyIdMismatch), Users (CRUD + Update + Filters + DuplicateUsername + DuplicateEmail on create/update + RouteBodyIdMismatch + Photo upload/get/delete/anonymous), Roles (CRUD + GetById + Update + Filters + SetPermissions + DuplicateName + RouteBodyIdMismatch), Instruments (CRUD + Update + Filters + DuplicateSymbol on create/update + RouteBodyIdMismatch), TradeOrders (CRUD + Update + Filters + SortByInstrumentSymbol + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + Filters + InvalidCurrencyId + InvalidAccountId + RouteBodyIdMismatch), TradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName + DuplicateOnUpdate), Dashboard (stats), Audit (list + getById + Filters), EntityChanges (list + listAll + Filters), Permissions (list), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion on Account/Instrument/Role/Client/TradeOrder/User/TradeTransaction/NonTradeTransaction)
 
 ### Integration test patterns
 - All update tests must include `Id` in the request body (controllers check `id != command.Id`)
@@ -643,15 +643,18 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Currency `Code` column is 3 chars max (ISO 4217); test codes must be ≤ 3 chars
 - Prerequisites helper methods (e.g., `CreatePrerequisitesAsync()`) create Account + Instrument/Currency for Order/Transaction tests
 
-### Frontend Tests (76 tests, ~4s)
+### Frontend Tests (119 tests, ~6s)
 - Vitest with jsdom environment
 - React Testing Library + user-event
 - MSW for network-level API mocking
 - Test factories with @faker-js/faker
 - `renderWithProviders()` wraps with QueryClient, Theme, Auth, Router
-- Test scope: `src/{hooks,auth,lib,utils}/**/*.test.{ts,tsx}`
+- Test scope: `src/{hooks,auth,lib,utils,test}/**/*.test.{ts,tsx}`
 - Location: `frontend/src/test/` (page/component tests), inline `*.test.ts` next to source (utility/hook tests)
 - Utility/hook tests: `validateFields.test.ts`, `extractErrorMessage.test.ts`, `useConfirm.test.ts`, `usePermission.test.tsx`
+- Page smoke tests: all 9 list pages (Clients, Accounts, Instruments, Users, Roles, TradeOrders, NonTradeOrders, TradeTransactions, NonTradeTransactions) — title, search bar, create button permission gating, export button
+- Component tests: `ConfirmDialog`, `ErrorBoundary`, `UserAvatar`, `PageContainer`
+- Coverage excludes `src/test/**` and `src/types/**` (test infra/type augmentations)
 
 ### Scripts
 - `scripts/test.sh [unit|integration|all]` — backend tests in Docker
