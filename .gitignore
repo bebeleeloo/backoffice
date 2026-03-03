@@ -14,6 +14,7 @@ tsconfig.tsbuildinfo
 
 # Test
 test-results/
+coverage/
 
 # Environment
 .env
