@@ -50,4 +50,26 @@ public class AuditAndEntityChangesTests(CustomWebApplicationFactory factory) : I
         result.Should().NotBeNull();
         result!.Page.Should().Be(1);
     }
+
+    [Fact]
+    public async Task ListAudit_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+        var response = await _client.GetAsync(
+            "/api/v1/audit?page=1&pageSize=10&isSuccess=true&method=POST&q=admin");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<AuditLogDto>>();
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ListAllEntityChanges_WithFilters_ShouldReturn200()
+    {
+        await AuthenticateAsync();
+        var response = await _client.GetAsync(
+            "/api/v1/entity-changes/all?page=1&pageSize=10&entityType=Client&changeType=Create");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<GlobalOperationDto>>();
+        result.Should().NotBeNull();
+    }
 }

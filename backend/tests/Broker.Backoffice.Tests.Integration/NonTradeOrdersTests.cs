@@ -200,4 +200,28 @@ public class NonTradeOrdersTests(CustomWebApplicationFactory factory) : Integrat
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task ListNonTradeOrders_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+        var (accountId, currencyId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-orders", new
+        {
+            AccountId = accountId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            NonTradeType = "Deposit",
+            Amount = 1000.00m,
+            CurrencyId = currencyId,
+        });
+        var order = await createResp.Content.ReadFromJsonAsync<NonTradeOrderDto>();
+
+        var response = await _client.GetAsync(
+            $"/api/v1/non-trade-orders?page=1&pageSize=10&status=New&nonTradeType=Deposit&q={order!.OrderNumber}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<NonTradeOrderListItemDto>>();
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeEmpty();
+    }
 }

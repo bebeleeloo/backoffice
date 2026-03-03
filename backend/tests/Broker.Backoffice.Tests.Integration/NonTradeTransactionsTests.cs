@@ -209,4 +209,131 @@ public class NonTradeTransactionsTests(CustomWebApplicationFactory factory) : In
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task UpdateNonTradeTransaction_ShouldReturnUpdated()
+    {
+        await AuthenticateAsync();
+        var (orderId, currencyId) = await CreateNonTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-transactions", new
+        {
+            OrderId = orderId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Amount = 1000.00m,
+            CurrencyId = currencyId,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<NonTradeTransactionDto>();
+
+        var updateResp = await _client.PutAsJsonAsync($"/api/v1/non-trade-transactions/{created!.Id}", new
+        {
+            Id = created.Id,
+            OrderId = orderId,
+            TransactionDate = created.TransactionDate.ToString("O"),
+            Status = "Settled",
+            Amount = 2000.00m,
+            CurrencyId = currencyId,
+            Description = "Updated description",
+            Comment = "Updated",
+            RowVersion = created.RowVersion,
+        });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<NonTradeTransactionDto>();
+        updated!.Amount.Should().Be(2000.00m);
+        updated.Comment.Should().Be("Updated");
+    }
+
+    [Fact]
+    public async Task UpdateNonTradeTransaction_StaleRowVersion_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var (orderId, currencyId) = await CreateNonTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-transactions", new
+        {
+            OrderId = orderId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Amount = 1000.00m,
+            CurrencyId = currencyId,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<NonTradeTransactionDto>();
+        var staleRowVersion = created!.RowVersion;
+
+        // First update succeeds
+        await _client.PutAsJsonAsync($"/api/v1/non-trade-transactions/{created.Id}", new
+        {
+            Id = created.Id,
+            OrderId = orderId,
+            TransactionDate = created.TransactionDate.ToString("O"),
+            Status = "Settled",
+            Amount = 2000.00m,
+            CurrencyId = currencyId,
+            RowVersion = staleRowVersion,
+        });
+
+        // Second update with stale RowVersion — should fail
+        var response = await _client.PutAsJsonAsync($"/api/v1/non-trade-transactions/{created.Id}", new
+        {
+            Id = created.Id,
+            OrderId = orderId,
+            TransactionDate = created.TransactionDate.ToString("O"),
+            Status = "Settled",
+            Amount = 3000.00m,
+            CurrencyId = currencyId,
+            RowVersion = staleRowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task GetNonTradeTransactionsByOrder_ShouldReturnList()
+    {
+        await AuthenticateAsync();
+        var (orderId, currencyId) = await CreateNonTradeOrderAsync();
+
+        // Create a transaction for this order
+        await _client.PostAsJsonAsync("/api/v1/non-trade-transactions", new
+        {
+            OrderId = orderId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Amount = 1000.00m,
+            CurrencyId = currencyId,
+        });
+
+        var response = await _client.GetAsync($"/api/v1/non-trade-transactions/by-order/{orderId}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var transactions = await response.Content.ReadFromJsonAsync<List<NonTradeTransactionListItemDto>>();
+        transactions.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetNonTradeTransactionsByOrder_InvalidOrder_ShouldReturn404()
+    {
+        await AuthenticateAsync();
+        var response = await _client.GetAsync($"/api/v1/non-trade-transactions/by-order/{Guid.NewGuid()}");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ListNonTradeTransactions_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+        var (orderId, currencyId) = await CreateNonTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-transactions", new
+        {
+            OrderId = orderId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Amount = 5000.00m,
+            CurrencyId = currencyId,
+        });
+        var tx = await createResp.Content.ReadFromJsonAsync<NonTradeTransactionDto>();
+
+        var response = await _client.GetAsync(
+            $"/api/v1/non-trade-transactions?page=1&pageSize=10&status=Pending&q={tx!.TransactionNumber}&amountMin=1&amountMax=10000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<NonTradeTransactionListItemDto>>();
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeEmpty();
+    }
 }

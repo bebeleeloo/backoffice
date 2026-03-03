@@ -199,4 +199,29 @@ public class InstrumentsTests(CustomWebApplicationFactory factory) : Integration
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task ListInstruments_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+
+        var symbol = $"FI-{Guid.NewGuid():N}"[..10];
+        await _client.PostAsJsonAsync("/api/v1/instruments", new
+        {
+            Symbol = symbol,
+            Name = "Filter Instrument",
+            Type = "Stock",
+            AssetClass = "Equities",
+            Status = "Active",
+            LotSize = 100,
+            IsMarginEligible = true,
+        });
+
+        var response = await _client.GetAsync(
+            $"/api/v1/instruments?page=1&pageSize=10&type=Stock&status=Active&isMarginEligible=true&q={symbol[..6]}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<InstrumentListItemDto>>();
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeEmpty();
+    }
 }

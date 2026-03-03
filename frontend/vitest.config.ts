@@ -13,6 +13,9 @@ export default mergeConfig(
       restoreMocks: true,
       mockReset: true,
       clearMocks: true,
+      coverage: {
+        exclude: ["src/test/**", "src/types/**"],
+      },
     },
   }),
 );

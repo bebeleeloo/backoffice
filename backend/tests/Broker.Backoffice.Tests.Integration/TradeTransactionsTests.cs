@@ -251,4 +251,146 @@ public class TradeTransactionsTests(CustomWebApplicationFactory factory) : Integ
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task UpdateTradeTransaction_ShouldReturnUpdated()
+    {
+        await AuthenticateAsync();
+        var (orderId, instrumentId) = await CreateTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
+
+        var updateResp = await _client.PutAsJsonAsync($"/api/v1/trade-transactions/{created!.Id}", new
+        {
+            Id = created.Id,
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = created.TransactionDate.ToString("O"),
+            Status = "Settled",
+            Side = "Buy",
+            Quantity = 200,
+            Price = 55.00m,
+            Commission = 9.99m,
+            Comment = "Updated",
+            RowVersion = created.RowVersion,
+        });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
+        updated!.Quantity.Should().Be(200);
+        updated.Price.Should().Be(55.00m);
+        updated.Comment.Should().Be("Updated");
+    }
+
+    [Fact]
+    public async Task UpdateTradeTransaction_StaleRowVersion_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var (orderId, instrumentId) = await CreateTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
+        var staleRowVersion = created!.RowVersion;
+
+        // First update succeeds
+        await _client.PutAsJsonAsync($"/api/v1/trade-transactions/{created.Id}", new
+        {
+            Id = created.Id,
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = created.TransactionDate.ToString("O"),
+            Status = "Settled",
+            Side = "Buy",
+            Quantity = 200,
+            Price = 55.00m,
+            RowVersion = staleRowVersion,
+        });
+
+        // Second update with stale RowVersion — should fail
+        var response = await _client.PutAsJsonAsync($"/api/v1/trade-transactions/{created.Id}", new
+        {
+            Id = created.Id,
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = created.TransactionDate.ToString("O"),
+            Status = "Settled",
+            Side = "Buy",
+            Quantity = 300,
+            Price = 60.00m,
+            RowVersion = staleRowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task GetTradeTransactionsByOrder_ShouldReturnList()
+    {
+        await AuthenticateAsync();
+        var (orderId, instrumentId) = await CreateTradeOrderAsync();
+
+        // Create a transaction for this order
+        await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+
+        var response = await _client.GetAsync($"/api/v1/trade-transactions/by-order/{orderId}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var transactions = await response.Content.ReadFromJsonAsync<List<TradeTransactionListItemDto>>();
+        transactions.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetTradeTransactionsByOrder_InvalidOrder_ShouldReturn404()
+    {
+        await AuthenticateAsync();
+        var response = await _client.GetAsync($"/api/v1/trade-transactions/by-order/{Guid.NewGuid()}");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ListTradeTransactions_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+        var (orderId, instrumentId) = await CreateTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        var tx = await createResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
+
+        var response = await _client.GetAsync(
+            $"/api/v1/trade-transactions?page=1&pageSize=10&status=Pending&side=Buy&q={tx!.TransactionNumber}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<TradeTransactionListItemDto>>();
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeEmpty();
+    }
 }

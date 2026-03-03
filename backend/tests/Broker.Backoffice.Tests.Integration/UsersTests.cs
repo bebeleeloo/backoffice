@@ -331,4 +331,16 @@ public class UsersTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task ListUsers_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+        var response = await _client.GetAsync(
+            "/api/v1/users?page=1&pageSize=10&isActive=true&q=admin");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<UserDto>>();
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeEmpty();
+    }
 }

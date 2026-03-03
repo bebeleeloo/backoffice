@@ -421,6 +421,145 @@ public class ClientsTests(CustomWebApplicationFactory factory) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    [Fact]
+    public async Task ListClients_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        // Create a client to ensure at least one result
+        await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"flt_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "FilterTest",
+            LastName = "Client",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+
+        var response = await _client.GetAsync(
+            "/api/v1/clients?page=1&pageSize=10&status=Active&clientType=Individual&pepStatus=false&q=FilterTest");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<ClientListItemDto>>();
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ListClients_WithDateFilter_ShouldReturn200()
+    {
+        await AuthenticateAsync();
+        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var response = await _client.GetAsync(
+            $"/api/v1/clients?page=1&pageSize=10&createdFrom={today}&createdTo={today}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ListClients_SortByDisplayName_ShouldReturn200()
+    {
+        await AuthenticateAsync();
+        var response = await _client.GetAsync(
+            "/api/v1/clients?page=1&pageSize=10&sort=displayName asc");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<ClientListItemDto>>();
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SetClientAccounts_ShouldReturnLinked()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        // Create client
+        var clientResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"setacc_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "SetAcc",
+            LastName = "Test",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+        var client = await clientResp.Content.ReadFromJsonAsync<ClientDto>();
+
+        // Create two accounts
+        var acc1Resp = await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = $"SA1-{Guid.NewGuid():N}"[..20],
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+        });
+        var acc1 = await acc1Resp.Content.ReadFromJsonAsync<AccountListItem>();
+        var acc2Resp = await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = $"SA2-{Guid.NewGuid():N}"[..20],
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+        });
+        var acc2 = await acc2Resp.Content.ReadFromJsonAsync<AccountListItem>();
+
+        // Set accounts
+        var response = await _client.PutAsJsonAsync($"/api/v1/clients/{client!.Id}/accounts",
+            new[]
+            {
+                new { AccountId = acc1!.Id, Role = "Owner", IsPrimary = true },
+                new { AccountId = acc2!.Id, Role = "Beneficiary", IsPrimary = false },
+            });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task SetClientAccounts_InvalidAccountId_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        var clientResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"invsa_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "InvSA",
+            LastName = "Test",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+        var client = await clientResp.Content.ReadFromJsonAsync<ClientDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/clients/{client!.Id}/accounts",
+            new[] { new { AccountId = Guid.NewGuid(), Role = "Owner", IsPrimary = true } });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
     // Lightweight DTOs for deserialization
     private record CountryListItem(Guid Id, string Iso2, string Name);
     private record AccountListItem(Guid Id, string Number);

@@ -285,4 +285,42 @@ public class TradeOrdersTests(CustomWebApplicationFactory factory) : Integration
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task ListTradeOrders_WithFilters_ShouldReturnFiltered()
+    {
+        await AuthenticateAsync();
+        var (accountId, instrumentId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-orders", new
+        {
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "Day",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        var order = await createResp.Content.ReadFromJsonAsync<TradeOrderDto>();
+
+        var response = await _client.GetAsync(
+            $"/api/v1/trade-orders?page=1&pageSize=10&status=New&side=Buy&orderType=Market&q={order!.OrderNumber}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<TradeOrderListItemDto>>();
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ListTradeOrders_SortByInstrumentSymbol_ShouldReturn200()
+    {
+        await AuthenticateAsync();
+        var response = await _client.GetAsync(
+            "/api/v1/trade-orders?page=1&pageSize=10&sort=instrumentSymbol asc");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<TradeOrderListItemDto>>();
+        result.Should().NotBeNull();
+    }
 }
