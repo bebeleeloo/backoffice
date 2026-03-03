@@ -95,4 +95,25 @@ public class ExchangesTests(CustomWebApplicationFactory factory) : IntegrationTe
         var delResp = await _client.DeleteAsync($"/api/v1/exchanges/{created!.Id}");
         delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    [Fact]
+    public async Task Update_DuplicateCode_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var code1 = $"AX{Guid.NewGuid():N}"[..8];
+        var code2 = $"BX{Guid.NewGuid():N}"[..8];
+
+        await _client.PostAsJsonAsync("/api/v1/exchanges", new { Code = code1, Name = "First" });
+        var create2Resp = await _client.PostAsJsonAsync("/api/v1/exchanges", new { Code = code2, Name = "Second" });
+        var exchange2 = await create2Resp.Content.ReadFromJsonAsync<ExchangeDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/exchanges/{exchange2!.Id}", new
+        {
+            Id = exchange2.Id,
+            Code = code1, // duplicate
+            Name = "Second",
+            IsActive = true,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

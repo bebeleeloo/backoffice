@@ -90,4 +90,24 @@ public class ClearersTests(CustomWebApplicationFactory factory) : IntegrationTes
         var delResp = await _client.DeleteAsync($"/api/v1/clearers/{created!.Id}");
         delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    [Fact]
+    public async Task Update_DuplicateName_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var name1 = $"Clr1-{Guid.NewGuid():N}"[..20];
+        var name2 = $"Clr2-{Guid.NewGuid():N}"[..20];
+
+        await _client.PostAsJsonAsync("/api/v1/clearers", new { Name = name1 });
+        var create2Resp = await _client.PostAsJsonAsync("/api/v1/clearers", new { Name = name2 });
+        var clearer2 = await create2Resp.Content.ReadFromJsonAsync<ClearerDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/clearers/{clearer2!.Id}", new
+        {
+            Id = clearer2.Id,
+            Name = name1, // duplicate
+            IsActive = true,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

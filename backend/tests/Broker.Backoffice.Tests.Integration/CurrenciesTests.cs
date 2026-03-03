@@ -97,4 +97,25 @@ public class CurrenciesTests(CustomWebApplicationFactory factory) : IntegrationT
         var delResp = await _client.DeleteAsync($"/api/v1/currencies/{created!.Id}");
         delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    [Fact]
+    public async Task Update_DuplicateCode_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var code1 = $"A{Guid.NewGuid():N}"[..3];
+        var code2 = $"B{Guid.NewGuid():N}"[..3];
+
+        await _client.PostAsJsonAsync("/api/v1/currencies", new { Code = code1, Name = "First" });
+        var create2Resp = await _client.PostAsJsonAsync("/api/v1/currencies", new { Code = code2, Name = "Second" });
+        var currency2 = await create2Resp.Content.ReadFromJsonAsync<CurrencyDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/currencies/{currency2!.Id}", new
+        {
+            Id = currency2.Id,
+            Code = code1, // duplicate
+            Name = "Second",
+            IsActive = true,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

@@ -133,4 +133,70 @@ public class InstrumentsTests(CustomWebApplicationFactory factory) : Integration
         updated.IsMarginEligible.Should().BeTrue();
         updated.Description.Should().Be("Updated description");
     }
+
+    [Fact]
+    public async Task UpdateInstrument_DuplicateSymbol_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var symbol1 = $"DS1-{Guid.NewGuid():N}"[..10];
+        var symbol2 = $"DS2-{Guid.NewGuid():N}"[..10];
+
+        await _client.PostAsJsonAsync("/api/v1/instruments", new
+        {
+            Symbol = symbol1, Name = "First", Type = "Stock",
+            AssetClass = "Equities", Status = "Active", LotSize = 1, IsMarginEligible = false,
+        });
+        var create2Resp = await _client.PostAsJsonAsync("/api/v1/instruments", new
+        {
+            Symbol = symbol2, Name = "Second", Type = "Stock",
+            AssetClass = "Equities", Status = "Active", LotSize = 1, IsMarginEligible = false,
+        });
+        var instrument2 = await create2Resp.Content.ReadFromJsonAsync<InstrumentDto>();
+
+        // Try to update instrument2's symbol to match instrument1's
+        var response = await _client.PutAsJsonAsync($"/api/v1/instruments/{instrument2!.Id}", new
+        {
+            Id = instrument2.Id,
+            Symbol = symbol1, // duplicate
+            Name = "Second",
+            Type = "Stock",
+            AssetClass = "Equities",
+            Status = "Active",
+            LotSize = 1,
+            IsMarginEligible = false,
+            RowVersion = instrument2.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task UpdateInstrument_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/instruments", new
+        {
+            Symbol = $"MIS-{Guid.NewGuid():N}"[..10],
+            Name = "Mismatch Test",
+            Type = "Stock",
+            AssetClass = "Equities",
+            Status = "Active",
+            LotSize = 1,
+            IsMarginEligible = false,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<InstrumentDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/instruments/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            Symbol = created.Symbol,
+            Name = "Mismatch Test",
+            Type = "Stock",
+            AssetClass = "Equities",
+            Status = "Active",
+            LotSize = 1,
+            IsMarginEligible = false,
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

@@ -184,4 +184,71 @@ public class TradeTransactionsTests(CustomWebApplicationFactory factory) : Integ
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task CreateTradeTransaction_InvalidInstrumentId_ShouldReturn404()
+    {
+        await AuthenticateAsync();
+        var (orderId, _) = await CreateTradeOrderAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = Guid.NewGuid(), // non-existent instrument
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateTradeTransaction_InvalidOrderId_ShouldReturn404()
+    {
+        await AuthenticateAsync();
+        var (_, instrumentId) = await CreateTradeOrderAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = Guid.NewGuid(), // non-existent order
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateTradeTransaction_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var (orderId, instrumentId) = await CreateTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/trade-transactions/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            InstrumentId = instrumentId,
+            TransactionDate = created.TransactionDate.ToString("O"),
+            Status = "Completed",
+            Side = "Buy",
+            Quantity = 100,
+            Price = 50.00m,
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

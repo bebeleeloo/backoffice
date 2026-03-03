@@ -103,6 +103,34 @@ public class RolesTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         updated!.Permissions.Should().NotBeEmpty();
     }
 
+    [Fact]
+    public async Task CreateRole_DuplicateName_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var name = $"duprole_{Guid.NewGuid():N}";
+        await _client.PostAsJsonAsync("/api/v1/roles", new { Name = name, Description = "first" });
+        var response = await _client.PostAsJsonAsync("/api/v1/roles", new { Name = name, Description = "second" });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task UpdateRole_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/roles",
+            new { Name = $"mis_{Guid.NewGuid():N}", Description = "test" });
+        var created = await createResp.Content.ReadFromJsonAsync<RoleDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/roles/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            Name = created.Name,
+            Description = "updated",
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     // Lightweight DTO for permissions list
     private record PermissionIdDto(Guid Id, string Code, string Name, string? Description, string Group);
 }

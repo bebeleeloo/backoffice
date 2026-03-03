@@ -186,4 +186,103 @@ public class TradeOrdersTests(CustomWebApplicationFactory factory) : Integration
         updated!.Quantity.Should().Be(200);
         updated.Comment.Should().Be("Updated");
     }
+
+    [Fact]
+    public async Task CreateTradeOrder_LimitWithoutPrice_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var (accountId, instrumentId) = await CreatePrerequisitesAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/v1/trade-orders", new
+        {
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            OrderType = "Limit",
+            TimeInForce = "Day",
+            Quantity = 100,
+            // Price intentionally omitted — required for Limit orders
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateTradeOrder_StopWithoutStopPrice_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var (accountId, instrumentId) = await CreatePrerequisitesAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/v1/trade-orders", new
+        {
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            OrderType = "Stop",
+            TimeInForce = "Day",
+            Quantity = 100,
+            Price = 50.00m,
+            // StopPrice intentionally omitted — required for Stop orders
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateTradeOrder_GTDWithoutExpiration_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var (accountId, instrumentId) = await CreatePrerequisitesAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/v1/trade-orders", new
+        {
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "GTD",
+            Quantity = 100,
+            Price = 50.00m,
+            // ExpirationDate intentionally omitted — required for GTD
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateTradeOrder_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var (accountId, instrumentId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-orders", new
+        {
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "Day",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<TradeOrderDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/trade-orders/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = created.OrderDate.ToString("O"),
+            Status = "InProgress",
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "Day",
+            Quantity = 100,
+            Price = 50.00m,
+            ExecutedQuantity = 0,
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

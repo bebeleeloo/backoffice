@@ -197,4 +197,36 @@ public class AuthTests(CustomWebApplicationFactory factory) : IntegrationTestBas
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task UploadPhoto_NoFile_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        // Send empty multipart form without a file
+        var content = new MultipartFormDataContent();
+        var response = await _client.PutAsync("/api/v1/auth/photo", content);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_DuplicateEmail_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+
+        // Create a user with a known email
+        var otherEmail = $"other_{Guid.NewGuid():N}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"other_{Guid.NewGuid():N}",
+            Email = otherEmail,
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+
+        // Try to update admin profile to use that email
+        var response = await _client.PutAsJsonAsync("/api/v1/auth/profile",
+            new { FullName = "Admin", Email = otherEmail });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
 }

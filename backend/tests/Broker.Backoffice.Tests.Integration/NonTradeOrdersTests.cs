@@ -136,4 +136,68 @@ public class NonTradeOrdersTests(CustomWebApplicationFactory factory) : Integrat
         updated!.Amount.Should().Be(2000.00m);
         updated.Comment.Should().Be("Updated");
     }
+
+    [Fact]
+    public async Task CreateNonTradeOrder_InvalidCurrencyId_ShouldReturn404()
+    {
+        await AuthenticateAsync();
+        var (accountId, _) = await CreatePrerequisitesAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/v1/non-trade-orders", new
+        {
+            AccountId = accountId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            NonTradeType = "Deposit",
+            Amount = 1000.00m,
+            CurrencyId = Guid.NewGuid(), // non-existent currency
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateNonTradeOrder_InvalidAccountId_ShouldReturn404()
+    {
+        await AuthenticateAsync();
+        var (_, currencyId) = await CreatePrerequisitesAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/v1/non-trade-orders", new
+        {
+            AccountId = Guid.NewGuid(), // non-existent account
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            NonTradeType = "Deposit",
+            Amount = 1000.00m,
+            CurrencyId = currencyId,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateNonTradeOrder_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var (accountId, currencyId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-orders", new
+        {
+            AccountId = accountId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            NonTradeType = "Deposit",
+            Amount = 1000.00m,
+            CurrencyId = currencyId,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<NonTradeOrderDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/non-trade-orders/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            AccountId = accountId,
+            OrderDate = created.OrderDate.ToString("O"),
+            Status = "InProgress",
+            NonTradeType = "Deposit",
+            Amount = 2000.00m,
+            CurrencyId = currencyId,
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

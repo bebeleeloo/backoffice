@@ -240,4 +240,95 @@ public class UsersTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         var photoResp = await _client.GetAsync($"/api/v1/users/{created.Id}/photo");
         photoResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task CreateUser_DuplicateEmail_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var email = $"dupemail_{Guid.NewGuid():N}@test.com";
+
+        await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"user1_{Guid.NewGuid():N}",
+            Email = email,
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+
+        var response = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"user2_{Guid.NewGuid():N}",
+            Email = email, // duplicate email
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task UpdateUser_DuplicateEmail_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var email1 = $"ue1_{Guid.NewGuid():N}@test.com";
+        var email2 = $"ue2_{Guid.NewGuid():N}@test.com";
+
+        await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"ue1_{Guid.NewGuid():N}",
+            Email = email1,
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+
+        var create2Resp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"ue2_{Guid.NewGuid():N}",
+            Email = email2,
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var user2 = await create2Resp.Content.ReadFromJsonAsync<UserDto>();
+
+        // Try to update user2's email to match user1's
+        var response = await _client.PutAsJsonAsync($"/api/v1/users/{user2!.Id}", new
+        {
+            Id = user2.Id,
+            Email = email1, // duplicate
+            FullName = "Test",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>(),
+            RowVersion = user2.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task UpdateUser_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = $"mis_{Guid.NewGuid():N}",
+            Email = $"mis_{Guid.NewGuid():N}@test.com",
+            Password = "Test123!",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/users/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            Email = created.Email,
+            FullName = "Mismatch",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>(),
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

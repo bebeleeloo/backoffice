@@ -161,4 +161,68 @@ public class AccountsTests(CustomWebApplicationFactory factory) : IntegrationTes
         updated.OptionLevel.Should().Be(OptionLevel.Level1);
         updated.Comment.Should().Be("Updated");
     }
+
+    [Fact]
+    public async Task UpdateAccount_DuplicateNumber_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var number1 = $"DN1-{Guid.NewGuid():N}"[..20];
+        var number2 = $"DN2-{Guid.NewGuid():N}"[..20];
+
+        // Create two accounts with different numbers
+        await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = number1, Status = "Active", AccountType = "Individual",
+            MarginType = "Cash", OptionLevel = "Level0", Tariff = "Basic",
+        });
+        var create2Resp = await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = number2, Status = "Active", AccountType = "Individual",
+            MarginType = "Cash", OptionLevel = "Level0", Tariff = "Basic",
+        });
+        var account2 = await create2Resp.Content.ReadFromJsonAsync<AccountDto>();
+
+        // Try to update account2's number to match account1's number
+        var response = await _client.PutAsJsonAsync($"/api/v1/accounts/{account2!.Id}", new
+        {
+            Id = account2.Id,
+            Number = number1, // duplicate
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+            RowVersion = account2.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task UpdateAccount_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var createResp = await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = $"MIS-{Guid.NewGuid():N}"[..20],
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<AccountDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/accounts/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            Number = created.Number,
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

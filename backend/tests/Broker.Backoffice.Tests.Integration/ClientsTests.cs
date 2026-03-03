@@ -227,6 +227,201 @@ public class ClientsTests(CustomWebApplicationFactory factory) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    // Lightweight DTO for countries endpoint
+    [Fact]
+    public async Task CreateClient_DuplicateEmail_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+        var email = $"dup_{Guid.NewGuid():N}@test.com";
+
+        await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = email,
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "First",
+            LastName = "Client",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+
+        var response = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = email, // duplicate
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Second",
+            LastName = "Client",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "2 St", City = "City", CountryId = countryId }
+            }
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task DeleteClient_LinkedToAccount_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        // Create client
+        var clientResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"linked_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Linked",
+            LastName = "Client",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+        var client = await clientResp.Content.ReadFromJsonAsync<ClientDto>();
+
+        // Create account
+        var accountResp = await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = $"LNK-{Guid.NewGuid():N}"[..20],
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+        });
+        var account = await accountResp.Content.ReadFromJsonAsync<AccountListItem>();
+
+        // Link client to account via SetHolders
+        var holdersResp = await _client.PutAsJsonAsync($"/api/v1/accounts/{account!.Id}/holders",
+            new[] { new { ClientId = client!.Id, Role = "Owner", IsPrimary = true } });
+        holdersResp.EnsureSuccessStatusCode();
+
+        // Try to delete linked client — should fail
+        var response = await _client.DeleteAsync($"/api/v1/clients/{client.Id}");
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task UpdateClient_RouteBodyIdMismatch_ShouldReturn400()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"mismatch_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Test",
+            LastName = "Mismatch",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<ClientDto>();
+
+        var response = await _client.PutAsJsonAsync($"/api/v1/clients/{created!.Id}", new
+        {
+            Id = Guid.NewGuid(), // different from route ID
+            ClientType = "Individual",
+            Status = "Active",
+            Email = created.Email,
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Updated",
+            LastName = "Mismatch",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            },
+            RowVersion = created.RowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateClient_StaleRowVersion_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"conc_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Conc",
+            LastName = "Test",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<ClientDto>();
+        var staleRowVersion = created!.RowVersion;
+
+        // First update succeeds — changes RowVersion
+        await _client.PutAsJsonAsync($"/api/v1/clients/{created.Id}", new
+        {
+            Id = created.Id,
+            ClientType = "Individual",
+            Status = "Active",
+            Email = created.Email,
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Updated",
+            LastName = "Test",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            },
+            RowVersion = staleRowVersion,
+        });
+
+        // Second update with stale RowVersion — should fail
+        var response = await _client.PutAsJsonAsync($"/api/v1/clients/{created.Id}", new
+        {
+            Id = created.Id,
+            ClientType = "Individual",
+            Status = "Active",
+            Email = created.Email,
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "Should Fail",
+            LastName = "Test",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            },
+            RowVersion = staleRowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    // Lightweight DTOs for deserialization
     private record CountryListItem(Guid Id, string Iso2, string Name);
+    private record AccountListItem(Guid Id, string Number);
 }
