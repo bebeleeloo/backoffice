@@ -51,7 +51,7 @@ flowchart TB
 
 | Контейнер | Внешний порт | Внутренний порт | Протокол |
 |-----------|-------------|-----------------|----------|
-| broker-web | 3000 | 80 | HTTP (Nginx) |
+| broker-web | 3000 | 8080 | HTTP (Nginx, non-root) |
 | broker-api | 5050 | 8080 | HTTP (Kestrel) |
 | broker-mssql | 1433 | 1433 | TDS (SQL) |
 
@@ -61,14 +61,14 @@ flowchart TB
 |-----------|----------|----------|
 | mssql | `sqlcmd SELECT 1` | 10s, 5 retries, start 30s |
 | api | TCP check на порт 8080 | 10s, 5 retries, start 20s |
-| web | `wget http://127.0.0.1:80/` | 10s, 3 retries, start 5s |
+| web | `wget http://127.0.0.1:8080/` | 10s, 3 retries, start 5s |
 
 ## C4 Level 3 -- Компоненты Backend
 
 ```mermaid
 flowchart TB
     subgraph API["API Layer"]
-        controllers["Controllers<br/>Auth, Users, Roles,<br/>Clients, Audit,<br/>Countries, Permissions"]
+        controllers["Controllers<br/>Auth, Users, Roles, Clients,<br/>Accounts, Instruments,<br/>TradeOrders, NonTradeOrders,<br/>TradeTransactions, NonTradeTransactions,<br/>Clearers, Currencies, Exchanges,<br/>TradePlatforms, Dashboard,<br/>Audit, EntityChanges,<br/>Countries, Permissions"]
         middleware["Middleware<br/>CorrelationId,<br/>ExceptionHandling,<br/>AuditFilter"]
     end
 
@@ -80,7 +80,7 @@ flowchart TB
     end
 
     subgraph Domain["Domain Layer"]
-        entities["Entities<br/>User, Role, Permission,<br/>Client, AuditLog, Country"]
+        entities["Entities<br/>User, Role, Permission,<br/>Client, Account, Instrument,<br/>Order, Transaction,<br/>AuditLog, EntityChange, Country,<br/>Clearer, Currency, Exchange,<br/>TradePlatform"]
         enums["Enums<br/>ClientType, KycStatus,<br/>RiskLevel, Gender, ..."]
     end
 
@@ -118,16 +118,21 @@ flowchart TB
     subgraph Pages["Страницы"]
         login["LoginPage"]
         dashboard["DashboardPage"]
+        clients["ClientsPage"]
+        accounts["AccountsPage"]
+        instruments["InstrumentsPage"]
+        tradeOrders["TradeOrdersPage"]
+        nonTradeOrders["NonTradeOrdersPage"]
+        tradeTx["TradeTransactionsPage"]
+        nonTradeTx["NonTradeTransactionsPage"]
         users["UsersPage"]
         roles["RolesPage"]
-        clients["ClientsPage"]
-        clientDetail["ClientDetailsPage"]
         audit["AuditPage"]
         settings["SettingsPage"]
     end
 
     subgraph Shared["Переиспользуемые"]
-        layout["MainLayout<br/>Sidebar + AppBar"]
+        layout["MainLayout<br/>Sidebar + Content"]
         pageContainer["PageContainer"]
         grid["FilteredDataGrid<br/>+ InlineFilters"]
         dialogs["Диалоги<br/>Create/Edit/Permissions"]
@@ -142,10 +147,9 @@ flowchart TB
     main --> router
     router --> login
     router --> layout
-    layout --> dashboard & users & roles & clients & audit & settings
-    clients --> clientDetail
-    users & roles & clients & audit --> grid
-    users & roles & clients --> dialogs
+    layout --> dashboard & clients & accounts & instruments & tradeOrders & nonTradeOrders & tradeTx & nonTradeTx & users & roles & audit & settings
+    clients & accounts & instruments & tradeOrders & nonTradeOrders & tradeTx & nonTradeTx & users & roles & audit --> grid
+    clients & accounts & instruments & users & roles --> dialogs
     grid --> hooks
     hooks --> apiClient
     layout --> authCtx

@@ -251,7 +251,7 @@ if (open && !populated && fullData) {
 
 ### DashboardPage
 
-Дашборд с 4 счётчиками (Clients, Accounts, Instruments, Users) и 4 графиками (Recharts):
+Дашборд с 4 счётчиками (Clients, Accounts, Orders, Users) и 4 графиками (Recharts):
 - 3 PieChart: распределение клиентов по типу, счетов по статусу, инструментов по классу активов
 - 1 BarChart: инструменты по типу
 
@@ -274,9 +274,13 @@ if (open && !populated && fullData) {
 
 ## Тема
 
-Два варианта MUI theme:
-- **Основная тема** -- `#1565c0` primary, `#7b1fa2` secondary, Inter/Roboto шрифт
+Fintech-стиль с Teal/Emerald палитрой. Поддержка Light/Dark/System (настраивается в Settings > Appearance).
+
+- **Основная тема** -- `#0D9488` (teal-600) primary, `#059669` (emerald-600) secondary, градиентные кнопки, закруглённые карточки (12px)
 - **List theme** (для страниц со списками) -- компактные размеры: маленькие кнопки, чипы, строки таблицы 44px
+- **Sidebar** -- тёмный (`#0F172A`) в обоих режимах, сворачиваемый (260px ↔ 72px)
+- `createAppTheme(mode)` / `createAppListTheme(base)` -- фабричные функции в `theme/index.ts`
+- Предпочтение хранится в `localStorage` ключ `"themeMode"`: `"light"` | `"dark"` | `"system"`
 
 ## Управление состоянием
 

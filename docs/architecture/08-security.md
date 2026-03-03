@@ -94,6 +94,14 @@ flowchart LR
 | Instruments | `instruments.create` | Создание инструментов |
 | Instruments | `instruments.update` | Редактирование инструментов |
 | Instruments | `instruments.delete` | Удаление инструментов |
+| Orders | `orders.read` | Просмотр поручений |
+| Orders | `orders.create` | Создание поручений |
+| Orders | `orders.update` | Редактирование поручений |
+| Orders | `orders.delete` | Удаление поручений |
+| Transactions | `transactions.read` | Просмотр транзакций |
+| Transactions | `transactions.create` | Создание транзакций |
+| Transactions | `transactions.update` | Редактирование транзакций |
+| Transactions | `transactions.delete` | Удаление транзакций |
 | Settings | `settings.manage` | Управление справочниками (Clearers, Trade Platforms, Exchanges, Currencies) |
 
 ### Механизм авторизации (Backend)
@@ -123,12 +131,20 @@ const canDelete = useHasPermission("users.delete");
 - Нельзя изменить (UpdateRoleCommand проверяет)
 - Нельзя удалить (DeleteRoleCommand проверяет)
 
+## Меры защиты
+
+| Мера | Описание |
+|------|----------|
+| Rate limiting | ASP.NET Core built-in: `login` (5 req/мин), `auth` (20 req/мин), `sensitive` (5 req/5 мин) — на эндпоинтах AuthController |
+| CSP заголовки | Настроены в nginx.conf: `default-src 'self'`, `style-src 'self' 'unsafe-inline'` (MUI), `img-src 'self' data: blob:`, `frame-ancestors 'none'` |
+| Security headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy`, `server_tokens off` |
+| HSTS | `Strict-Transport-Security: max-age=63072000; includeSubDomains` |
+| Контейнер web | Nginx работает как non-root пользователь на порту 8080 |
+
 ## Известные ограничения
 
 | Ограничение | Описание | Рекомендация |
 |-------------|----------|--------------|
 | localStorage для токенов | XSS-уязвимость: скрипт может украсть токены | Рассмотреть httpOnly cookies |
-| Нет rate limiting | Эндпоинт логина не защищён от brute force | Добавить rate limiter (AspNetCoreRateLimit) |
 | Нет HTTPS в Docker | Compose работает по HTTP | Для production: TLS termination на reverse proxy |
-| Нет CSP заголовков | Content Security Policy не настроен | Добавить CSP в nginx.conf |
-| CORS настройка | Разрешены только localhost:5173 и localhost:3000 | Обновить для production |
+| CORS настройка | Разрешены только localhost origins | Обновить для production |

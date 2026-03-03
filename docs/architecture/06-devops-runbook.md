@@ -44,7 +44,7 @@ open http://localhost:3000
 |--------|-------|------|-----------|
 | mssql | mcr.microsoft.com/mssql/server:2022-latest | 1433 | - |
 | api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | mssql (healthy) |
-| web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 80 | api (healthy) |
+| web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 8080 | api (healthy) |
 
 ### Dockerfile.api
 
@@ -118,19 +118,13 @@ npm run dev
 
 ## CI/CD
 
-> **Не обнаружено.** В репозитории нет `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile` или аналогов.
+**GitHub Actions** (`.github/workflows/ci.yml`) — 3 параллельных job на каждый push/PR в main:
 
-### Рекомендуемый минимальный пайплайн
-
-```yaml
-# Пример для GitHub Actions
-stages:
-  - lint (eslint, dotnet format)
-  - test:unit (npm test, dotnet test --filter Unit)
-  - build (docker compose build)
-  - test:integration (docker compose up + smoke.sh)
-  - deploy (push images, deploy)
-```
+| Job | Шаги | Время |
+|-----|------|-------|
+| `backend` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 326 unit-тестов | ~30с |
+| `backend-integration` | checkout → .NET 8 SDK → NuGet cache → 192 интеграционных теста (Testcontainers MSSQL) | ~1.5 мин |
+| `frontend` | checkout → Node 22 → npm ci → npm audit → tsc → eslint → 119 vitest-тестов → production build | ~1 мин |
 
 ## Troubleshooting
 
@@ -145,7 +139,7 @@ lsof -i :1433  # mssql
 
 ### Node версия
 
-Файл `frontend/.nvmrc` указывает Node 20. При использовании nvm:
+Файл `frontend/.nvmrc` указывает Node 20 (для Docker-сборки). CI использует Node 22. При использовании nvm:
 ```bash
 cd frontend && nvm use
 ```

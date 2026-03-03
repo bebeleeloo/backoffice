@@ -1,6 +1,6 @@
-# ADR-0003: Стратегия тестирования -- unit-only default suite
+# ADR-0003: Стратегия тестирования -- smoke-тесты вместо полного рендеринга
 
-**Статус:** Принято
+**Статус:** Принято (обновлено 2026-03-03)
 **Дата:** 2026-02-20
 
 ## Контекст
@@ -9,10 +9,11 @@ Frontend-тесты, включающие рендеринг полных стр
 
 ## Решение
 
-1. **Default suite (`npm test`) включает только лёгкие unit-тесты:** hooks, auth-хуки, утилитарные функции
-2. **Include pattern:** `src/{hooks,auth,lib,utils}/**/*.test.{ts,tsx}`
-3. **Тяжёлые page/integration тесты удалены** из репозитория
-4. **setupTests.ts упрощён:** только jest-dom + cleanup + минимальные polyfills (без MSW, без DataGrid моков)
+1. **Default suite (`npm test`) включает unit-тесты и лёгкие smoke-тесты страниц**
+2. **Include pattern:** `src/{hooks,auth,lib,utils,test}/**/*.test.{ts,tsx}`
+3. **Тяжёлые page-тесты с полным рендерингом DataGrid удалены** — заменены smoke-тестами, которые проверяют структуру страницы (заголовок, кнопки, permission gating) без рендеринга DataGrid с данными
+4. **setupTests.ts:** jest-dom + cleanup + минимальные polyfills (matchMedia, scrollTo, confirm, crypto.randomUUID)
+5. **Тестовая инфраструктура активно используется:** MSW handlers, factories, renderWithProviders
 
 ## Альтернативы рассмотренные и отклонённые
 
@@ -25,6 +26,7 @@ Frontend-тесты, включающие рендеринг полных стр
 
 ## Последствия
 
-- `npm test` выполняется < 1 секунды, 8 тестов
-- Page-level тесты не покрыты -- рекомендуется E2E (Playwright) для критических путей
-- Тестовая инфраструктура (MSW handlers, factories, renderWithProviders) сохранена для будущего использования
+- `npm test` выполняется за ~6 секунд, 119 тестов (12 файлов)
+- Все 9 list-страниц покрыты smoke-тестами (title, search bar, create button permission, export)
+- Компоненты (ConfirmDialog, ErrorBoundary, UserAvatar, PageContainer) покрыты unit-тестами
+- Для E2E критических путей рекомендуется Playwright

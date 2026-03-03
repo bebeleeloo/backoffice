@@ -47,7 +47,7 @@ new-back/
       api/                     # Axios client + React Query hooks
       auth/                    # AuthContext, useAuth, usePermission, RequireAuth
       pages/                   # Страницы (Dashboard, Login, Users, Roles, Clients, Accounts, TradeOrders, NonTradeOrders, Audit, Settings)
-      layouts/                 # MainLayout (sidebar + AppBar)
+      layouts/                 # MainLayout (sidebar + content area)
       components/              # Переиспользуемые компоненты (PageContainer, grid/*, dialogs)
       theme/                   # MUI theme + compact list variant
       test/                    # Утилиты тестирования (factories, MSW handlers, renderWithProviders)
@@ -81,11 +81,11 @@ new-back/
 | Даты | MUI X Date Pickers + DayJS | 7.18 |
 | Роутинг | React Router | 6.26 |
 | Серверное состояние | TanStack React Query | 5.56 |
-| Графики | Recharts | 2.x |
+| Графики | Recharts | 3.x |
 | HTTP клиент | Axios | 1.7 |
 | Тесты | Vitest + React Testing Library | 2.0 / 16.0 |
 | Моки API | MSW | 2.0 |
-| Тестовые данные | Faker.js | 9.0 |
+| Тестовые данные | Faker.js | 10.x |
 
 ### Инфраструктура
 
@@ -93,8 +93,8 @@ new-back/
 |-----------|------------|
 | Контейнеризация | Docker / Docker Compose |
 | Web-сервер (prod) | Nginx Alpine |
-| Node (сборка) | 20 Alpine |
-| CI/CD | Не обнаружено (нет .github/workflows, .gitlab-ci.yml) |
+| Node (сборка) | 20 Alpine (Docker), 22 (CI) |
+| CI/CD | GitHub Actions (3 параллельных job: backend unit, backend integration, frontend) |
 
 ## Архитектурный стиль
 

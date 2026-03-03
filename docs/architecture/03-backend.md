@@ -34,6 +34,9 @@ Response
 | GET | `/auth/me` | Bearer | Текущий профиль (user, roles, permissions, scopes) |
 | PUT | `/auth/profile` | Bearer | Обновление профиля (fullName, email) -> UserProfileResponse |
 | POST | `/auth/change-password` | Bearer | Смена пароля (currentPassword, newPassword) -> 204 |
+| GET | `/auth/photo` | Нет (anonymous) | Фото текущего пользователя (raw image bytes) |
+| PUT | `/auth/photo` | Bearer | Загрузка фото (multipart, max 2 MB, jpeg/png/gif/webp) |
+| DELETE | `/auth/photo` | Bearer | Удаление фото |
 
 ### Пользователи (UsersController)
 
@@ -44,6 +47,9 @@ Response
 | POST | `/users` | users.create | Да |
 | PUT | `/users/{id}` | users.update | Да |
 | DELETE | `/users/{id}` | users.delete | Да |
+| GET | `/users/{id}/photo` | Нет (anonymous) | Фото пользователя (raw image bytes) |
+| PUT | `/users/{id}/photo` | users.update | Загрузка фото (multipart, max 2 MB) |
+| DELETE | `/users/{id}/photo` | users.update | Удаление фото |
 
 **Фильтры GET /users:** Page, PageSize, Sort, Q (глобальный поиск), IsActive, Username, Email, FullName, Role.
 
