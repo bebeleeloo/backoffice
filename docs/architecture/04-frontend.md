@@ -7,12 +7,13 @@ SPA на React 18 + TypeScript. Вся логика работы с данным
 ### Иерархия провайдеров (main.tsx)
 
 ```
-QueryClientProvider (retry: 1, refetchOnWindowFocus: false)
-  ThemeProvider (MUI theme)
-    CssBaseline
-      LocalizationProvider (DayJS)
-        AuthProvider (контекст аутентификации)
-          RouterProvider (React Router v6)
+React.StrictMode
+  QueryClientProvider (retry: 1, refetchOnWindowFocus: false, MutationCache: toast уведомления)
+    AppThemeProvider (MUI theme + CssBaseline, light/dark/system)
+      SnackbarProvider (notistack, maxSnack: 3, bottom-right, 4s)
+        LocalizationProvider (DayJS)
+          AuthProvider (контекст аутентификации)
+            RouterProvider (React Router v6)
 ```
 
 ## Маршрутизация
@@ -252,19 +253,22 @@ if (open && !populated && fullData) {
 ### DashboardPage
 
 Дашборд с 4 счётчиками (Clients, Accounts, Orders, Users) и 4 графиками (Recharts):
-- 3 PieChart: распределение клиентов по типу, счетов по статусу, инструментов по классу активов
-- 1 BarChart: инструменты по типу
+- 3 PieChart: клиенты по статусу, счета по статусу, ордера по статусу
+- 1 BarChart: ордера по категориям (Trade / Non-Trade)
 
 Счётчики кликабельны — навигация на соответствующую страницу.
 
 ### SettingsPage
 
-Два таба:
+Три таба:
 
 **Profile** (доступен всем авторизованным):
 - Profile Info (read-only): username, роли (Chips)
 - Edit Profile: редактирование fullName и email
 - Change Password: текущий пароль + новый + подтверждение
+
+**Appearance** (доступен всем авторизованным):
+- ToggleButtonGroup: Light / Dark / System
 
 **Reference Data** (доступен с permission `settings.manage`):
 - 4 секции-аккордеона: Clearers, Trade Platforms, Exchanges, Currencies
