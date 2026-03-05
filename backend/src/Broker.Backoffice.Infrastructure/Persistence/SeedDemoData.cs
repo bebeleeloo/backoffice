@@ -1,11 +1,9 @@
 using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
-using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
 using Broker.Backoffice.Domain.Orders;
 using Broker.Backoffice.Domain.Transactions;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,11 +16,8 @@ public static class SeedDemoData
 
     public static async Task SeedAsync(AppDbContext db, IConfiguration config, ILogger logger)
     {
-        var password = config["DEFAULT_DEMO_PASSWORD"] ?? config["ADMIN_PASSWORD"] ?? "Admin123!";
-
         await using var tx = await db.Database.BeginTransactionAsync();
 
-        var usersCreated = await SeedUsersAsync(db, password, logger);
         var clientsCreated = await SeedClientsAsync(db, logger);
         var accountsCreated = await SeedAccountsAsync(db, logger);
         var instrumentsCreated = await SeedInstrumentsAsync(db, logger);
@@ -31,184 +26,11 @@ public static class SeedDemoData
 
         await tx.CommitAsync();
 
-        if (usersCreated + clientsCreated + accountsCreated + instrumentsCreated + ordersCreated + transactionsCreated > 0)
-            logger.LogInformation("Demo seed complete: {Users} users, {Clients} clients, {Accounts} accounts, {Instruments} instruments, {Orders} orders, {Transactions} transactions created",
-                usersCreated, clientsCreated, accountsCreated, instrumentsCreated, ordersCreated, transactionsCreated);
+        if (clientsCreated + accountsCreated + instrumentsCreated + ordersCreated + transactionsCreated > 0)
+            logger.LogInformation("Demo seed complete: {Clients} clients, {Accounts} accounts, {Instruments} instruments, {Orders} orders, {Transactions} transactions created",
+                clientsCreated, accountsCreated, instrumentsCreated, ordersCreated, transactionsCreated);
         else
             logger.LogInformation("Demo seed: all data already present, 0 created");
-    }
-
-    // ── Users ────────────────────────────────────────────────────────
-
-    private static readonly (string Username, string Email, string FullName, string RoleName)[] DemoUsers =
-    [
-        ("jdoe",       "john.doe@broker.local",       "John Doe",           "Manager"),
-        ("asmith",     "alice.smith@broker.local",     "Alice Smith",        "Manager"),
-        ("bwilson",    "bob.wilson@broker.local",      "Bob Wilson",         "Manager"),
-        ("cjohnson",   "carol.johnson@broker.local",   "Carol Johnson",      "Viewer"),
-        ("dlee",       "david.lee@broker.local",       "David Lee",          "Viewer"),
-        ("ebrown",     "eva.brown@broker.local",       "Eva Brown",          "Viewer"),
-        ("fgarcia",    "frank.garcia@broker.local",    "Frank Garcia",       "Operator"),
-        ("gmartinez",  "grace.martinez@broker.local",  "Grace Martinez",     "Operator"),
-        ("hchen",      "henry.chen@broker.local",      "Henry Chen",         "Operator"),
-        ("itaylor",    "iris.taylor@broker.local",     "Iris Taylor",        "Operator"),
-    ];
-
-    private static readonly Dictionary<string, (string Desc, string[] Perms)> RoleDefinitions = new()
-    {
-        ["Manager"] = ("Manage clients, accounts, instruments, orders, and view everything", new[]
-        {
-            Permissions.UsersRead, Permissions.RolesRead, Permissions.PermissionsRead,
-            Permissions.AuditRead,
-            Permissions.ClientsRead, Permissions.ClientsCreate, Permissions.ClientsUpdate, Permissions.ClientsDelete,
-            Permissions.AccountsRead, Permissions.AccountsCreate, Permissions.AccountsUpdate, Permissions.AccountsDelete,
-            Permissions.InstrumentsRead, Permissions.InstrumentsCreate, Permissions.InstrumentsUpdate, Permissions.InstrumentsDelete,
-            Permissions.OrdersRead, Permissions.OrdersCreate, Permissions.OrdersUpdate, Permissions.OrdersDelete,
-        }),
-        ["Viewer"] = ("Read-only access", new[]
-        {
-            Permissions.UsersRead, Permissions.RolesRead, Permissions.PermissionsRead,
-            Permissions.AuditRead, Permissions.ClientsRead, Permissions.AccountsRead, Permissions.InstrumentsRead,
-            Permissions.OrdersRead,
-        }),
-        ["Operator"] = ("Client, account, instrument, and order operations", new[]
-        {
-            Permissions.ClientsRead, Permissions.ClientsCreate, Permissions.ClientsUpdate,
-            Permissions.AccountsRead, Permissions.AccountsCreate, Permissions.AccountsUpdate,
-            Permissions.InstrumentsRead, Permissions.InstrumentsCreate, Permissions.InstrumentsUpdate,
-            Permissions.OrdersRead, Permissions.OrdersCreate, Permissions.OrdersUpdate,
-        }),
-    };
-
-    private static async Task<int> SeedUsersAsync(AppDbContext db, string password, ILogger logger)
-    {
-        var existingUsernames = (await db.Users.Select(u => u.Username).ToListAsync()).ToHashSet();
-        var allPermissions = await db.Permissions.ToDictionaryAsync(p => p.Code);
-
-        // Ensure roles exist
-        var roles = await db.Roles.ToDictionaryAsync(r => r.Name);
-        foreach (var (roleName, (desc, permCodes)) in RoleDefinitions)
-        {
-            if (!roles.ContainsKey(roleName))
-            {
-                var role = new Role
-                {
-                    Id = Guid.NewGuid(), Name = roleName,
-                    Description = desc, IsSystem = false, CreatedAt = DateTime.UtcNow,
-                };
-                db.Roles.Add(role);
-                roles[roleName] = role;
-            }
-        }
-        await db.SaveChangesAsync();
-
-        // Ensure role permissions
-        foreach (var (roleName, (_, permCodes)) in RoleDefinitions)
-        {
-            var role = roles[roleName];
-            var existingPermIds = (await db.RolePermissions
-                .Where(rp => rp.RoleId == role.Id)
-                .Select(rp => rp.PermissionId)
-                .ToListAsync()).ToHashSet();
-
-            foreach (var code in permCodes)
-            {
-                if (allPermissions.TryGetValue(code, out var perm) && !existingPermIds.Contains(perm.Id))
-                {
-                    db.RolePermissions.Add(new RolePermission
-                    {
-                        Id = Guid.NewGuid(), RoleId = role.Id, PermissionId = perm.Id,
-                        CreatedAt = DateTime.UtcNow,
-                    });
-                }
-            }
-        }
-        await db.SaveChangesAsync();
-
-        // Create users (single batch)
-        var hasher = new PasswordHasher<User>();
-        var created = 0;
-        foreach (var (username, email, fullName, roleName) in DemoUsers)
-        {
-            if (existingUsernames.Contains(username)) continue;
-
-            var user = new User
-            {
-                Id = Guid.NewGuid(), Username = username,
-                Email = email, FullName = fullName,
-                IsActive = true, CreatedAt = DateTime.UtcNow,
-            };
-            user.PasswordHash = hasher.HashPassword(user, password);
-            db.Users.Add(user);
-
-            db.UserRoles.Add(new UserRole
-            {
-                Id = Guid.NewGuid(), UserId = user.Id, RoleId = roles[roleName].Id,
-                CreatedAt = DateTime.UtcNow,
-            });
-            created++;
-        }
-        if (created > 0) await db.SaveChangesAsync();
-
-        // Download and assign portrait photos to all users without photos
-        await SeedUserPhotosAsync(db, logger);
-
-        if (created > 0)
-            logger.LogInformation("Demo seed: created {Count} users with roles (Manager/Viewer/Operator)", created);
-
-        return created;
-    }
-
-    // Portrait URLs mapped by username (randomuser.me stable portraits)
-    private static readonly Dictionary<string, string> UserPhotoUrls = new()
-    {
-        ["admin"]     = "https://randomuser.me/api/portraits/men/32.jpg",
-        ["jdoe"]      = "https://randomuser.me/api/portraits/men/75.jpg",
-        ["asmith"]    = "https://randomuser.me/api/portraits/women/44.jpg",
-        ["bwilson"]   = "https://randomuser.me/api/portraits/men/22.jpg",
-        ["cjohnson"]  = "https://randomuser.me/api/portraits/women/68.jpg",
-        ["dlee"]      = "https://randomuser.me/api/portraits/men/45.jpg",
-        ["ebrown"]    = "https://randomuser.me/api/portraits/women/26.jpg",
-        ["fgarcia"]   = "https://randomuser.me/api/portraits/men/67.jpg",
-        ["gmartinez"] = "https://randomuser.me/api/portraits/women/52.jpg",
-        ["hchen"]     = "https://randomuser.me/api/portraits/men/91.jpg",
-        ["itaylor"]   = "https://randomuser.me/api/portraits/women/89.jpg",
-    };
-
-    private static async Task SeedUserPhotosAsync(AppDbContext db, ILogger logger)
-    {
-        // Find users without real portrait photos (null or tiny placeholder PNGs < 1KB)
-        var usersWithoutPhotos = await db.Users
-            .Where(u => u.Photo == null || u.Photo.Length < 1024)
-            .ToListAsync();
-
-        if (usersWithoutPhotos.Count == 0) return;
-
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-        var updated = 0;
-
-        foreach (var user in usersWithoutPhotos)
-        {
-            if (!UserPhotoUrls.TryGetValue(user.Username, out var url)) continue;
-
-            try
-            {
-                var photo = await http.GetByteArrayAsync(url);
-                user.Photo = photo;
-                user.PhotoContentType = "image/jpeg";
-                updated++;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to download photo for user {Username}", user.Username);
-            }
-        }
-
-        if (updated > 0)
-        {
-            await db.SaveChangesAsync();
-            logger.LogInformation("Demo seed: downloaded {Count} user portrait photos", updated);
-        }
     }
 
     // ── Clients ──────────────────────────────────────────────────────

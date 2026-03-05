@@ -26,7 +26,7 @@ Frontend-тесты, включающие рендеринг полных стр
 
 ## Последствия
 
-- `npm test` выполняется за ~6 секунд, 119 тестов (12 файлов)
+- `npm test` выполняется за ~6 секунд, 119 frontend-тестов (12 файлов)
 - Все 9 list-страниц покрыты smoke-тестами (title, search bar, create button permission, export)
 - Компоненты (ConfirmDialog, ErrorBoundary, UserAvatar, PageContainer) покрыты unit-тестами
 - Для E2E критических путей рекомендуется Playwright

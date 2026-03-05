@@ -1,0 +1,19 @@
+using Broker.Auth.Application.Abstractions;
+using Microsoft.AspNetCore.Http;
+
+namespace Broker.Auth.Infrastructure.Services;
+
+public sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : ICurrentUser
+{
+    public string? UserId =>
+        httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
+
+    public string? UserName =>
+        httpContextAccessor.HttpContext?.User?.Identity?.Name;
+
+    public string? FullName =>
+        httpContextAccessor.HttpContext?.User?.FindFirst("full_name")?.Value;
+
+    public bool IsAuthenticated =>
+        httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
+}

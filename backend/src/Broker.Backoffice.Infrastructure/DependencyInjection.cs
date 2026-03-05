@@ -1,13 +1,11 @@
 using System.Text;
 using Broker.Backoffice.Application.Abstractions;
-using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Infrastructure.Auth;
 using Broker.Backoffice.Infrastructure.Persistence;
 using Broker.Backoffice.Infrastructure.Persistence.ChangeTracking;
 using Broker.Backoffice.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,9 +33,14 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditContext, AuditContext>();
         services.AddScoped<IChangeTrackingContext, ChangeTrackingContext>();
-        services.AddSingleton<IJwtTokenService, JwtTokenService>();
-        services.AddSingleton<PasswordHasher<User>>();
         services.AddHttpContextAccessor();
+
+        // Auth Service client
+        var authServiceUrl = configuration["AuthService:BaseUrl"] ?? "http://auth:8082";
+        services.AddHttpClient<IAuthServiceClient, AuthServiceClient>(client =>
+        {
+            client.BaseAddress = new Uri(authServiceUrl);
+        });
 
         // JWT Authentication
         var jwtSecret = configuration["Jwt:Secret"]

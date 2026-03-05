@@ -37,6 +37,37 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
       - run: dotnet test backend/tests/Broker.Backoffice.Tests.Integration/ --verbosity normal
 
+  auth-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('auth-service/**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - run: dotnet build auth-service/src/Broker.Auth.Api/
+      - name: Check for vulnerable NuGet packages
+        run: dotnet list auth-service/src/Broker.Auth.Api/ package --vulnerable --include-transitive
+      - run: dotnet test auth-service/tests/Broker.Auth.Tests.Unit/
+
+  auth-service-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('auth-service/**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - run: dotnet test auth-service/tests/Broker.Auth.Tests.Integration/ --verbosity normal
+
   frontend:
     runs-on: ubuntu-latest
     steps:

@@ -4,6 +4,10 @@
 
 **Microsoft SQL Server 2022** (Docker-образ `mcr.microsoft.com/mssql/server:2022-latest`).
 
+Оба сервиса (монолит и auth-service) используют один экземпляр SQL Server, но разные схемы:
+- **`dbo.*`** -- монолит (клиенты, счета, инструменты, ордера, транзакции, аудит, справочники)
+- **`auth.*`** -- auth-service (Users, Roles, Permissions, UserRoles, RolePermissions, UserRefreshTokens, UserPermissionOverrides, DataScopes)
+
 Доступ через EF Core 8. ORM используется для всех операций (нет Dapper / raw SQL).
 
 ## Схема базы данных
@@ -291,18 +295,18 @@ erDiagram
 
 ## Ключевые сущности
 
-### Identity & Access
+### Identity & Access (схема `auth.*`, auth-service)
 
 | Таблица | Назначение | Уникальные индексы |
 |---------|------------|-------------------|
-| Users | Пользователи системы | Username, Email |
-| Roles | Роли (в т.ч. системные) | Name |
-| Permissions | Гранулярные права (31 шт.) | Code |
-| UserRoles | Связь M:N User <-> Role | (UserId, RoleId) |
-| RolePermissions | Связь M:N Role <-> Permission | (RoleId, PermissionId) |
-| UserPermissionOverrides | Персональные переопределения прав | (UserId, PermissionId) |
-| DataScopes | Области видимости данных (row-level) | (UserId, ScopeType, ScopeValue) |
-| UserRefreshTokens | Refresh-токены с ротацией | TokenHash |
+| auth.Users | Пользователи системы | Username, Email |
+| auth.Roles | Роли (в т.ч. системные) | Name |
+| auth.Permissions | Гранулярные права (31 шт.) | Code |
+| auth.UserRoles | Связь M:N User <-> Role | (UserId, RoleId) |
+| auth.RolePermissions | Связь M:N Role <-> Permission | (RoleId, PermissionId) |
+| auth.UserPermissionOverrides | Персональные переопределения прав | (UserId, PermissionId) |
+| auth.DataScopes | Области видимости данных (row-level) | (UserId, ScopeType, ScopeValue) |
+| auth.UserRefreshTokens | Refresh-токены с ротацией | TokenHash |
 
 ### Клиенты
 
@@ -410,15 +414,21 @@ EF Core Code-First миграции:
 
 ## Seed Data
 
-При первом запуске засеиваются:
+Каждый сервис засеивает данные в своей схеме при первом запуске. Demo data управляется переменной `SEED_DEMO_DATA=true` (работает в любом окружении).
+
+### Auth-service (схема `auth.*`):
 
 1. **Permissions** (31 прав) -- из массива `Permissions.All` в коде
-2. **Countries** -- полный список стран с ISO-кодами и флагами
-3. **Admin user** -- логин `admin`, пароль из переменной окружения `ADMIN_PASSWORD`
-4. **Роль Administrator** -- системная роль со всеми permissions
-5. **Clearers** -- справочник клиринговых компаний (Apex Clearing, Pershing, Interactive Brokers, Hilltop Securities)
-6. **TradePlatforms** -- справочник торговых платформ (MetaTrader 5, Sterling Trader, DAS Trader, Thinkorswim)
-7. **Demo data** (опционально, `SEED_DEMO_DATA=true`) -- тестовые пользователи, роли, клиенты, счета (150 шт.), холдеры, торговые и неторговые поручения, торговые и неторговые транзакции
+2. **Admin user** -- логин `admin`, пароль из переменной окружения `ADMIN_PASSWORD`
+3. **Роль Administrator** -- системная роль со всеми permissions
+4. **Demo data** (при `SEED_DEMO_DATA=true`) -- 11 пользователей (1 admin + 10 demo) с портретными фото, 4 роли
+
+### Монолит (схема `dbo.*`):
+
+1. **Countries** -- полный список стран с ISO-кодами и флагами
+2. **Clearers** -- справочник клиринговых компаний (Apex Clearing, Pershing, Interactive Brokers, Hilltop Securities)
+3. **TradePlatforms** -- справочник торговых платформ (MetaTrader 5, Sterling Trader, DAS Trader, Thinkorswim)
+4. **Demo data** (при `SEED_DEMO_DATA=true`) -- клиенты, счета (150 шт.), холдеры, торговые и неторговые поручения, торговые и неторговые транзакции
 
 ## Конкурентность и транзакции
 

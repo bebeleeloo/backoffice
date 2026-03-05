@@ -43,7 +43,8 @@ open http://localhost:3000
 | Сервис | Image | Порт | Зависит от |
 |--------|-------|------|-----------|
 | mssql | mcr.microsoft.com/mssql/server:2022-latest | 1433 | - |
-| api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | mssql (healthy) |
+| auth | Dockerfile.auth (multi-stage .NET 8) | 8082 -> 8080 | mssql (healthy) |
+| api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | mssql (healthy), auth (healthy) |
 | web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 8080 | api (healthy) |
 
 ### Dockerfile.api
@@ -62,7 +63,8 @@ Multi-stage сборка:
 
 ```
 / -> /usr/share/nginx/html (SPA, fallback index.html)
-/api/ -> http://api:8080/api/ (reverse proxy к backend)
+/api/v1/auth/, /api/v1/users, /api/v1/roles, /api/v1/permissions -> http://auth:8080 (auth-service)
+/api/ (остальное) -> http://api:8080/api/ (монолит)
 ```
 
 ## Разработка без Docker
@@ -118,12 +120,14 @@ npm run dev
 
 ## CI/CD
 
-**GitHub Actions** (`.github/workflows/ci.yml`) — 3 параллельных job на каждый push/PR в main:
+**GitHub Actions** (`.github/workflows/ci.yml`) — 5 параллельных job на каждый push/PR в main:
 
 | Job | Шаги | Время |
 |-----|------|-------|
-| `backend` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 326 unit-тестов | ~30с |
-| `backend-integration` | checkout → .NET 8 SDK → NuGet cache → 192 интеграционных теста (Testcontainers MSSQL) | ~1.5 мин |
+| `backend` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 273 unit-тестов | ~30с |
+| `backend-integration` | checkout → .NET 8 SDK → NuGet cache → 145 интеграционных тестов (Testcontainers MSSQL) | ~1.5 мин |
+| `auth-service` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 25 unit-тестов | ~20с |
+| `auth-service-integration` | checkout → .NET 8 SDK → NuGet cache → 13 интеграционных тестов (Testcontainers MSSQL) | ~30с |
 | `frontend` | checkout → Node 22 → npm ci → npm audit → tsc → eslint → 119 vitest-тестов → production build | ~1 мин |
 
 ## Troubleshooting

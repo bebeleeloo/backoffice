@@ -1,6 +1,5 @@
 using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Clients;
-using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
 using Broker.Backoffice.Domain.Orders;
 using Broker.Backoffice.Domain.Transactions;
@@ -74,34 +73,6 @@ public static class EntityTrackingRegistry
             ClrType = typeof(Instrument),
             IsRoot = true,
             ExcludedProperties = [..AuditableExcluded]
-        },
-        [typeof(User)] = new TrackedEntityConfig
-        {
-            EntityTypeName = "User",
-            ClrType = typeof(User),
-            IsRoot = true,
-            ExcludedProperties = [..AuditableExcluded, "PasswordHash", "Photo", "PhotoContentType"]
-        },
-        [typeof(UserRole)] = new TrackedEntityConfig
-        {
-            EntityTypeName = "UserRole",
-            ClrType = typeof(UserRole),
-            ParentMappings = [new() { ParentEntityTypeName = "User", ForeignKeyProperty = "UserId" }],
-            ExcludedProperties = ["Id", "UserId", "User", "Role", "CreatedAt", "CreatedBy"]
-        },
-        [typeof(Role)] = new TrackedEntityConfig
-        {
-            EntityTypeName = "Role",
-            ClrType = typeof(Role),
-            IsRoot = true,
-            ExcludedProperties = [..AuditableExcluded]
-        },
-        [typeof(RolePermission)] = new TrackedEntityConfig
-        {
-            EntityTypeName = "RolePermission",
-            ClrType = typeof(RolePermission),
-            ParentMappings = [new() { ParentEntityTypeName = "Role", ForeignKeyProperty = "RoleId" }],
-            ExcludedProperties = ["Id", "RoleId", "Role", "Permission", "CreatedAt", "CreatedBy"]
         },
         [typeof(Order)] = new TrackedEntityConfig
         {

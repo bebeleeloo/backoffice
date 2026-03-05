@@ -1,6 +1,4 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using Broker.Backoffice.Application.Auth;
 
 namespace Broker.Backoffice.Tests.Integration;
 
@@ -16,21 +14,19 @@ public abstract class IntegrationTestBase
         _client = factory.CreateClient();
     }
 
-    protected async Task AuthenticateAsync()
+    protected Task AuthenticateAsync()
     {
-        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
-            new { Username = "admin", Password = "Admin123!" });
-        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
+        var token = TestJwtTokenHelper.GenerateAdminToken();
         _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+            new AuthenticationHeaderValue("Bearer", token);
+        return Task.CompletedTask;
     }
 
-    protected async Task AuthenticateAsAsync(string username, string password)
+    protected Task AuthenticateWithPermissions(params string[] permissions)
     {
-        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
-            new { Username = username, Password = password });
-        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
+        var token = TestJwtTokenHelper.GenerateToken(permissions: permissions);
         _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+            new AuthenticationHeaderValue("Bearer", token);
+        return Task.CompletedTask;
     }
 }

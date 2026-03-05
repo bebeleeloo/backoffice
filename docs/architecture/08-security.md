@@ -2,6 +2,8 @@
 
 ## Аутентификация
 
+> JWT-выдача (login, refresh) выполняется **auth-service**. JWT-валидация выполняется **локально** в каждом сервисе (проверка подписи + claims, без roundtrip к auth-service). Оба сервиса используют общий JWT secret.
+
 ### JWT Bearer Tokens
 
 | Параметр | Значение |
@@ -11,6 +13,8 @@
 | Refresh token TTL | 7 дней (настраивается) |
 | Clock skew | 30 секунд |
 | Хранение (frontend) | localStorage |
+| Выдача | auth-service |
+| Валидация | Локально в каждом сервисе (claim check) |
 
 ### Claims в Access Token
 
@@ -110,6 +114,8 @@ flowchart LR
 2. `PermissionPolicyProvider` создаёт динамическую policy для любого кода, содержащего `.`
 3. `PermissionAuthorizationHandler` проверяет наличие claim `permission` со значением, совпадающим с требуемым кодом
 4. При отсутствии -- 403 Forbidden
+
+> **Примечание:** `Permissions.cs` (строковые константы всех 31 прав) дублируется в обоих сервисах (auth-service и монолит). Механизм авторизации одинаков в обоих сервисах.
 
 ### Механизм авторизации (Frontend)
 

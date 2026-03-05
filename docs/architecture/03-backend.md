@@ -1,8 +1,10 @@
 # 03. Backend
 
+> **Примечание:** Аутентификация и управление пользователями/ролями/правами вынесены в отдельный auth-service. Этот документ описывает **оба** сервиса. Эндпоинты Auth, Users, Roles, Permissions обслуживаются auth-service (`auth.*` схема БД). Остальные эндпоинты -- монолитом (`dbo.*` схема БД). Nginx маршрутизирует запросы к соответствующему сервису.
+
 ## Точка входа и пайплайн
 
-**Program.cs** настраивает middleware в следующем порядке:
+**Program.cs** (оба сервиса) настраивает middleware в следующем порядке:
 
 ```
 Request
@@ -25,7 +27,7 @@ Response
 
 **Base URL:** `/api/v1`
 
-### Аутентификация и профиль (AuthController)
+### Аутентификация и профиль (AuthController) — auth-service
 
 | Метод | Маршрут | Авторизация | Описание |
 |-------|---------|-------------|----------|
@@ -38,7 +40,7 @@ Response
 | PUT | `/auth/photo` | Bearer | Загрузка фото (multipart, max 2 MB, jpeg/png/gif/webp) |
 | DELETE | `/auth/photo` | Bearer | Удаление фото |
 
-### Пользователи (UsersController)
+### Пользователи (UsersController) — auth-service
 
 | Метод | Маршрут | Permission | Аудит |
 |-------|---------|-----------|-------|
@@ -53,7 +55,7 @@ Response
 
 **Фильтры GET /users:** Page, PageSize, Sort, Q (глобальный поиск), IsActive, Username, Email, FullName, Role.
 
-### Роли (RolesController)
+### Роли (RolesController) — auth-service
 
 | Метод | Маршрут | Permission | Аудит |
 |-------|---------|-----------|-------|
@@ -66,7 +68,7 @@ Response
 
 **Защита:** системные роли (`IsSystem = true`) нельзя изменить или удалить.
 
-### Права (PermissionsController)
+### Права (PermissionsController) — auth-service
 
 | Метод | Маршрут | Permission |
 |-------|---------|-----------|
@@ -223,11 +225,13 @@ GET без `/all` возвращает только active-записи (для 
 
 **FK-валидация (Create/Update):** Order (если указан), Currency и Instrument (если указан) проверяются через `AnyAsync`. OrderId опционален.
 
-### Дашборд (DashboardController)
+### Дашборд (DashboardController) — монолит
 
 | Метод | Маршрут | Авторизация | Описание |
 |-------|---------|-------------|----------|
 | GET | `/dashboard/stats` | Bearer | Агрегированная статистика (клиенты, счета, инструменты, пользователи) |
+
+> Для получения статистики пользователей монолит обращается к auth-service через `IAuthServiceClient` (HTTP). Остальные счётчики (клиенты, счета, инструменты) берутся из собственной БД.
 
 ### Аудит (AuditController)
 
@@ -336,10 +340,10 @@ SaveChangesAsync()
 | Instrument | root | — | Инструменты |
 | Order | root | — | Поручения (торговые и неторговые) |
 | Transaction | root | — | Транзакции (торговые и неторговые) |
-| User | root | — | Пользователи (PasswordHash исключён) |
-| UserRole | child | User | Роли пользователя |
-| Role | root | — | Роли |
-| RolePermission | child | Role | Права роли |
+| User | root | — | Пользователи (PasswordHash исключён) — auth-service |
+| UserRole | child | User | Роли пользователя — auth-service |
+| Role | root | — | Роли — auth-service |
+| RolePermission | child | Role | Права роли — auth-service |
 
 **Ключевые механизмы:**
 

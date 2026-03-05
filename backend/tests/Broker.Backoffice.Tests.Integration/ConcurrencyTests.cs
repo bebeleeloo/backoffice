@@ -4,8 +4,6 @@ using Broker.Backoffice.Application.Accounts;
 using Broker.Backoffice.Application.Clients;
 using Broker.Backoffice.Application.Instruments;
 using Broker.Backoffice.Application.Orders.TradeOrders;
-using Broker.Backoffice.Application.Roles;
-using Broker.Backoffice.Application.Users;
 using FluentAssertions;
 
 namespace Broker.Backoffice.Tests.Integration;
@@ -104,40 +102,6 @@ public class ConcurrencyTests(CustomWebApplicationFactory factory) : Integration
             Status = "Active",
             LotSize = 50,
             IsMarginEligible = true,
-            RowVersion = staleRowVersion,
-        });
-        update2.StatusCode.Should().Be(HttpStatusCode.Conflict);
-    }
-
-    [Fact]
-    public async Task UpdateRole_WithStaleRowVersion_ShouldReturn409()
-    {
-        await AuthenticateAsync();
-
-        var createResp = await _client.PostAsJsonAsync("/api/v1/roles", new
-        {
-            Name = $"conc_{Guid.NewGuid():N}"[..20],
-            Description = "Concurrency test",
-        });
-        var created = await createResp.Content.ReadFromJsonAsync<RoleDto>();
-        var staleRowVersion = created!.RowVersion;
-
-        // First update succeeds
-        var update1 = await _client.PutAsJsonAsync($"/api/v1/roles/{created.Id}", new
-        {
-            Id = created.Id,
-            Name = created.Name,
-            Description = "Updated once",
-            RowVersion = staleRowVersion,
-        });
-        update1.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        // Second update with stale RowVersion fails
-        var update2 = await _client.PutAsJsonAsync($"/api/v1/roles/{created.Id}", new
-        {
-            Id = created.Id,
-            Name = created.Name,
-            Description = "Should fail",
             RowVersion = staleRowVersion,
         });
         update2.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -283,48 +247,6 @@ public class ConcurrencyTests(CustomWebApplicationFactory factory) : Integration
             Quantity = 300,
             Price = 60.00m,
             ExecutedQuantity = 0,
-            RowVersion = staleRowVersion,
-        });
-        update2.StatusCode.Should().Be(HttpStatusCode.Conflict);
-    }
-
-    [Fact]
-    public async Task UpdateUser_WithStaleRowVersion_ShouldReturn409()
-    {
-        await AuthenticateAsync();
-
-        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
-        {
-            Username = $"conc_{Guid.NewGuid():N}",
-            Email = $"conc_{Guid.NewGuid():N}@test.com",
-            Password = "Test123!",
-            FullName = "Conc Test",
-            IsActive = true,
-            RoleIds = Array.Empty<Guid>()
-        });
-        var created = await createResp.Content.ReadFromJsonAsync<UserDto>();
-        var staleRowVersion = created!.RowVersion;
-
-        // First update succeeds
-        var update1 = await _client.PutAsJsonAsync($"/api/v1/users/{created.Id}", new
-        {
-            Id = created.Id,
-            Email = created.Email,
-            FullName = "Updated Once",
-            IsActive = true,
-            RoleIds = Array.Empty<Guid>(),
-            RowVersion = staleRowVersion,
-        });
-        update1.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        // Second update with stale RowVersion fails
-        var update2 = await _client.PutAsJsonAsync($"/api/v1/users/{created.Id}", new
-        {
-            Id = created.Id,
-            Email = created.Email,
-            FullName = "Should Fail",
-            IsActive = true,
-            RoleIds = Array.Empty<Guid>(),
             RowVersion = staleRowVersion,
         });
         update2.StatusCode.Should().Be(HttpStatusCode.Conflict);

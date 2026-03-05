@@ -7,14 +7,16 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 **Repository structure:**
 ```
 /
-├── backend/          # .NET 8 API (Clean Architecture + CQRS)
+├── backend/          # .NET 8 Monolith API (Clean Architecture + CQRS) — business logic
+├── auth-service/     # .NET 8 Auth Service (separate microservice) — users, roles, permissions, auth
 ├── frontend/         # React 18 SPA (TypeScript, MUI, React Query)
 ├── docs/             # Architecture documentation
-├── scripts/          # Test and deployment scripts
+├── scripts/          # Test, deployment, and data migration scripts
 ├── screenshots/      # UI screenshots
-├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
-├── docker-compose.yml
-├── Dockerfile.api    # Multi-stage .NET build
+├── .github/workflows/ci.yml  # GitHub Actions CI pipeline (5 jobs)
+├── docker-compose.yml         # 4 services: mssql, auth, api, web
+├── Dockerfile.api    # Multi-stage .NET build (monolith, port 8080)
+├── Dockerfile.auth   # Multi-stage .NET build (auth service, port 8082)
 ├── Dockerfile.web    # Multi-stage Node + nginx build (non-root, port 8080)
 └── .env.example
 ```
@@ -46,10 +48,10 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - ESLint 9 (flat config, typescript-eslint, react-hooks, react-refresh)
 
 ### Infrastructure
-- Docker Compose (3 services: mssql, api, web) with restart policies, resource limits, log rotation
+- Docker Compose (4 services: mssql, auth, api, web) with restart policies, resource limits, log rotation
 - SQL Server 2022
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
-- GitHub Actions CI (backend build + unit tests + integration tests, frontend tsc + eslint + vitest + build; NuGet/npm caching)
+- GitHub Actions CI (5 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, frontend tsc/eslint/vitest/build; NuGet/npm caching)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (MSSQL)
@@ -60,10 +62,19 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Frontend   │────▶│  nginx:8080  │────▶│  API:8080    │────▶ SQL Server
-│  (React SPA) │     │  /api/ proxy │     │  .NET 8      │     :1433
-└─────────────┘     └──────────────┘     └──────────────┘
-     :3000                                    :5050
+│  (React SPA) │     │  /api/ proxy │     │  Monolith    │     :1433 (dbo.*)
+└─────────────┘     └──────────────┘     │  .NET 8      │
+     :3000               │               └──────────────┘
+                         │                    :5050
+                         │
+                         │  /api/v1/auth/    ┌──────────────┐
+                         │  /api/v1/users/   │  Auth:8082   │────▶ SQL Server
+                         └─────────────────▶│  .NET 8      │     :1433 (auth.*)
+                                            └──────────────┘
 ```
+
+**Two services, one database, separate schemas:** Auth service uses `auth.*` schema, monolith uses `dbo.*`.
+nginx routes `/api/v1/auth/` (trailing slash), `/api/v1/users`, `/api/v1/roles`, `/api/v1/permissions` (no trailing slash — matches both `/users` and `/users/123`) → auth:8082; all other `/api/` → api:8080.
 
 Backend follows Clean Architecture with 4 layers:
 - **Domain** — Entities, enums, value objects. Zero dependencies.
@@ -101,7 +112,7 @@ Frontend follows feature-based organization with shared components.
 backend/src/
 ├── Broker.Backoffice.Domain/
 │   ├── Common/              # Entity<TId>, AuditableEntity
-│   ├── Identity/            # User, Role, Permission, UserRole, RolePermission
+│   ├── Identity/            # Permissions.cs (string constants only; entities moved to auth-service)
 │   ├── Clients/             # Client, ClientAddress, InvestmentProfile + enums
 │   ├── Accounts/            # Account, AccountHolder, Clearer, TradePlatform + enums
 │   ├── Instruments/         # Instrument, Exchange, Currency + enums
@@ -111,10 +122,9 @@ backend/src/
 │   └── Countries/           # Country
 │
 ├── Broker.Backoffice.Application/
-│   ├── Abstractions/        # IAppDbContext, ICurrentUser, IJwtTokenService, IAuditContext
+│   ├── Abstractions/        # IAppDbContext, ICurrentUser, IAuthServiceClient, IAuditContext
 │   ├── Behaviors/           # ValidationBehavior (MediatR pipeline)
 │   ├── Common/              # PagedQuery, PagedResult, QueryableExtensions, LikeHelper
-│   ├── Auth/                # Login, RefreshToken, GetMe, ChangePassword, UpdateProfile
 │   ├── Clients/             # CRUD commands/queries + DTOs
 │   ├── Accounts/            # CRUD commands/queries + DTOs
 │   ├── Instruments/         # CRUD commands/queries + DTOs
@@ -124,17 +134,14 @@ backend/src/
 │   ├── Transactions/
 │   │   ├── TradeTransactions/    # CRUD commands/queries + DTOs for trade transactions
 │   │   └── NonTradeTransactions/ # CRUD commands/queries + DTOs for non-trade transactions
-│   ├── Users/               # CRUD commands/queries + DTOs + Photo upload/delete/get
-│   ├── Roles/               # CRUD commands/queries + DTOs + SetRolePermissions
 │   ├── Clearers/            # CRUD + GetAll / GetActive
 │   ├── Currencies/          # CRUD + GetAll / GetActive
 │   ├── Exchanges/           # CRUD + GetAll / GetActive
 │   ├── TradePlatforms/      # CRUD + GetAll / GetActive
 │   ├── AuditLogs/           # GetAuditLogs, GetAuditLogById
 │   ├── EntityChanges/       # GetEntityChanges (per entity), GetAllEntityChanges (global)
-│   ├── Dashboard/           # GetDashboardStats
-│   ├── Countries/           # GetCountries
-│   └── Permissions/         # GetPermissions
+│   ├── Dashboard/           # GetDashboardStats (calls IAuthServiceClient for user stats)
+│   └── Countries/           # GetCountries
 │
 ├── Broker.Backoffice.Infrastructure/
 │   ├── Persistence/
@@ -142,9 +149,9 @@ backend/src/
 │   │   ├── Configurations/           # IEntityTypeConfiguration<T> per entity
 │   │   ├── ChangeTracking/           # EntityTrackingRegistry, ChangeTrackingContext
 │   │   ├── Migrations/              # EF Core code-first migrations
-│   │   ├── SeedData.cs              # Countries, ref data, admin user, permissions
-│   │   └── SeedDemoData.cs          # Demo users (with portrait photos), clients, accounts, instruments, orders, transactions
-│   ├── Services/                     # JwtTokenService, CurrentUser, DateTimeProvider
+│   │   ├── SeedData.cs              # Countries, ref data (clearers, trade platforms, currencies, exchanges)
+│   │   └── SeedDemoData.cs          # Demo clients, accounts, instruments, orders, transactions
+│   ├── Services/                     # AuthServiceClient, CurrentUser, DateTimeProvider
 │   ├── Auth/                         # HasPermissionAttribute, PermissionPolicyProvider
 │   ├── Middleware/                    # ExceptionHandling, CorrelationId
 │   ├── Filters/                      # AuditActionFilter
@@ -154,6 +161,28 @@ backend/src/
     ├── Controllers/         # One controller per aggregate
     └── Program.cs           # Composition root
 ```
+
+### Auth Service Structure
+
+```
+auth-service/
+├── src/
+│   ├── Broker.Auth.Domain/         # Entity, AuditableEntity, Identity/* (User, Role, Permission, etc.)
+│   ├── Broker.Auth.Application/    # Auth/, Users/, Roles/, Permissions/, AuditLogs/ handlers
+│   ├── Broker.Auth.Infrastructure/ # AuthDbContext (schema: auth), JWT, PasswordHasher, Seed, Configs
+│   └── Broker.Auth.Api/            # Controllers, Middleware, Program.cs (:8082)
+├── tests/
+│   ├── Broker.Auth.Tests.Unit/
+│   └── Broker.Auth.Tests.Integration/
+└── Dockerfile.auth
+```
+
+Auth service owns: users, roles, permissions, authentication (login, refresh, change password, profile), user photos.
+Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
+
+**Demo data seeding** (controlled by `SEED_DEMO_DATA=true` env var or `ASPNETCORE_ENVIRONMENT=Development`):
+- Auth service seeds: 10 demo users (3 Managers, 3 Viewers, 4 Operators), 3 demo roles, portrait photos from randomuser.me
+- Monolith seeds: 100 clients, 150 accounts, 891 instruments, 2001 orders, transactions
 
 ### Key Backend Conventions
 
@@ -617,24 +646,35 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 
 ## 12. Testing Strategy
 
-### Backend Unit Tests (326 tests, ~2s)
+### Monolith Unit Tests (273 tests, ~2s)
 
 - xUnit with `[Fact]` and `[Theory]`/`[InlineData]`
 - FluentValidation.TestHelper for validators
 - NSubstitute for mocking interfaces
 - Location: `backend/tests/Broker.Backoffice.Tests.Unit/`
-- Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Clients (Create/Update, SetAccounts), Accounts (Create/Update, SetHolders), Instruments (Create/Update), Orders (TradeOrder Create/Update, NonTradeOrder Create/Update), Transactions (TradeTransaction Create/Update, NonTradeTransaction Create/Update), Roles (Create/Update), Reference data (Clearer, Currency, Exchange, TradePlatform — Create/Update each)
+- Validators covered: Clients (Create/Update, SetAccounts), Accounts (Create/Update, SetHolders), Instruments (Create/Update), Orders (TradeOrder Create/Update, NonTradeOrder Create/Update), Transactions (TradeTransaction Create/Update, NonTradeTransaction Create/Update), Reference data (Clearer, Currency, Exchange, TradePlatform — Create/Update each)
 
-### Backend Integration Tests (192 tests, ~15s)
+### Auth Service Unit Tests (44 tests, ~1s)
+
+- Same stack: xUnit, FluentValidation.TestHelper, NSubstitute
+- Location: `auth-service/tests/Broker.Auth.Tests.Unit/`
+- Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Roles (Create/Update, FullName MaxLength)
+
+### Monolith Integration Tests (145 tests, ~10s)
 - Testcontainers (real MSSQL 2022 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
-- `IntegrationTestBase` abstract base class with shared `AuthenticateAsync()` / `AuthenticateAsAsync()`
+- `IntegrationTestBase` uses `TestJwtTokenHelper` to generate JWT tokens directly (no auth service dependency)
 - `[Collection("Integration")]` for shared fixture (on base class)
 - Real HTTP calls, real database, real migrations
-- Rate limiting disabled via `UseSetting("RateLimiting:LoginPermitLimit", "10000")`
+- `IAuthServiceClient` mocked in factory (returns TotalUsers=5, ActiveUsers=4)
 - Requires `backend/global.json` pinning SDK to 8.0 (avoids .NET 10 SDK incompatibility)
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
-- Coverage: all API endpoints — Health, Swagger, Auth (login, refresh, me, change-password, update-profile, photo upload/get/delete + unauth + no-file 400 + duplicate email 409), Clients (CRUD + Update + GetAccounts + SetClientAccounts + InvalidAccountId + Filters + DateFilter + SortByDisplayName + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + SetAccountHolders + InvalidClientId + Filters + SortByClearerName + DuplicateNumber on create/update + RouteBodyIdMismatch), Users (CRUD + Update + Filters + DuplicateUsername + DuplicateEmail on create/update + RouteBodyIdMismatch + Photo upload/get/delete/anonymous), Roles (CRUD + GetById + Update + Filters + SetPermissions + DuplicateName + RouteBodyIdMismatch), Instruments (CRUD + Update + Filters + DuplicateSymbol on create/update + RouteBodyIdMismatch), TradeOrders (CRUD + Update + Filters + SortByInstrumentSymbol + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + Filters + InvalidCurrencyId + InvalidAccountId + RouteBodyIdMismatch), TradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (List/ListAll/Create/Update/Delete/DuplicateName + DuplicateOnUpdate), Dashboard (stats), Audit (list + getById + Filters), EntityChanges (list + listAll + Filters), Permissions (list), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion on Account/Instrument/Role/Client/TradeOrder/User/TradeTransaction/NonTradeTransaction)
+- Coverage: Health, Swagger, Clients (CRUD + Update + GetAccounts + SetClientAccounts + InvalidAccountId + Filters + DateFilter + SortByDisplayName + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + SetAccountHolders + InvalidClientId + Filters + SortByClearerName + DuplicateNumber + RouteBodyIdMismatch), Instruments (CRUD + Update + Filters + DuplicateSymbol + RouteBodyIdMismatch), TradeOrders (CRUD + Update + Filters + SortByInstrumentSymbol + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + Filters + InvalidCurrencyId + InvalidAccountId + RouteBodyIdMismatch), TradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (CRUD + DuplicateName), Dashboard (stats), Audit (list + getById + Filters), EntityChanges (list + listAll + Filters), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion)
+
+### Auth Service Integration Tests (36 tests, ~5s)
+- Same Testcontainers pattern as monolith
+- Location: `auth-service/tests/Broker.Auth.Tests.Integration/`
+- Coverage: Health, Auth (login, refresh, me, change-password, update-profile, photo CRUD + unauth + cache-control), Users (CRUD + GetById + Update + Delete + duplicate-username/email + photo + route mismatch), Roles (CRUD + GetById + Update + Delete + duplicate-name + set-permissions + system-role-protection), Permissions (list)
 
 ### Integration test patterns
 - All update tests must include `Id` in the request body (controllers check `id != command.Id`)
@@ -642,6 +682,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Aggregate CRUD (Clients, Accounts, Instruments, Orders, Transactions, Users, Roles) Create returns 201 Created
 - Currency `Code` column is 3 chars max (ISO 4217); test codes must be ≤ 3 chars
 - Prerequisites helper methods (e.g., `CreatePrerequisitesAsync()`) create Account + Instrument/Currency for Order/Transaction tests
+- Monolith integration tests use `TestJwtTokenHelper.GenerateAdminToken()` (all 31 permissions) or `AuthenticateWithPermissions()` for limited permission tests
 
 ### Frontend Tests (119 tests, ~6s)
 - Vitest with jsdom environment
@@ -670,7 +711,8 @@ docker compose up --build -d
 # Frontend: http://localhost:3000
 # API/Swagger: http://localhost:5050/swagger
 # Login: admin / Admin123!
-# Services auto-restart (unless-stopped), memory-limited (mssql: 2G, api: 512M, web: 256M)
+# Services: mssql, auth (:8082), api (:5050), web (:3000)
+# Memory limits: mssql: 2G, auth: 512M, api: 512M, web: 256M
 ```
 
 ### Frontend dev (hot reload):

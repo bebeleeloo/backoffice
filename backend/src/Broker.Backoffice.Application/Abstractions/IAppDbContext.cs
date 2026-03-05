@@ -2,7 +2,6 @@ using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Audit;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
-using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
 using Broker.Backoffice.Domain.Orders;
 using Broker.Backoffice.Domain.Transactions;
@@ -13,14 +12,6 @@ namespace Broker.Backoffice.Application.Abstractions;
 
 public interface IAppDbContext
 {
-    DbSet<User> Users { get; }
-    DbSet<Role> Roles { get; }
-    DbSet<Permission> Permissions { get; }
-    DbSet<UserRole> UserRoles { get; }
-    DbSet<RolePermission> RolePermissions { get; }
-    DbSet<UserPermissionOverride> UserPermissionOverrides { get; }
-    DbSet<DataScope> DataScopes { get; }
-    DbSet<UserRefreshToken> UserRefreshTokens { get; }
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<Client> Clients { get; }
     DbSet<ClientAddress> ClientAddresses { get; }

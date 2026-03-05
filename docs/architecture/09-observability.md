@@ -53,6 +53,7 @@ Frontend генерирует `X-Correlation-Id` (UUID без дефисов) в
 | Контейнер | Механизм | Параметры |
 |-----------|----------|-----------|
 | mssql | `sqlcmd SELECT 1` | interval: 10s, timeout: 5s, retries: 5, start: 30s |
+| auth | TCP check :8080 | interval: 10s, timeout: 5s, retries: 5, start: 20s |
 | api | TCP check :8080 | interval: 10s, timeout: 5s, retries: 5, start: 20s |
 | web | `wget http://127.0.0.1:8080/` | interval: 10s, timeout: 5s, retries: 3, start: 5s |
 

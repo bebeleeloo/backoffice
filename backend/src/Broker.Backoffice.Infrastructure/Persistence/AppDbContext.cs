@@ -3,7 +3,6 @@ using Broker.Backoffice.Domain.Accounts;
 using Broker.Backoffice.Domain.Audit;
 using Broker.Backoffice.Domain.Clients;
 using Broker.Backoffice.Domain.Countries;
-using Broker.Backoffice.Domain.Identity;
 using Broker.Backoffice.Domain.Instruments;
 using Broker.Backoffice.Domain.Orders;
 using Broker.Backoffice.Domain.Transactions;
@@ -32,14 +31,6 @@ public sealed class AppDbContext : DbContext, IAppDbContext
         _changeTrackingContext = changeTrackingContext;
     }
 
-    public DbSet<User> Users => Set<User>();
-    public DbSet<Role> Roles => Set<Role>();
-    public DbSet<Permission> Permissions => Set<Permission>();
-    public DbSet<UserRole> UserRoles => Set<UserRole>();
-    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
-    public DbSet<UserPermissionOverride> UserPermissionOverrides => Set<UserPermissionOverride>();
-    public DbSet<DataScope> DataScopes => Set<DataScope>();
-    public DbSet<UserRefreshToken> UserRefreshTokens => Set<UserRefreshToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientAddress> ClientAddresses => Set<ClientAddress>();
@@ -556,13 +547,9 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             "Client" => BuildClientDisplayName(entry),
             "Account" => GetPropertyStringValueOrNull(entry, "Number"),
             "Instrument" => GetPropertyStringValueOrNull(entry, "Symbol"),
-            "User" => GetPropertyStringValueOrNull(entry, "Username"),
-            "Role" => GetPropertyStringValueOrNull(entry, "Name"),
             "ClientAddress" => BuildAddressDisplayName(entry),
             "InvestmentProfile" => null,
             "AccountHolder" => BuildAccountHolderDisplayName(entry, parentMapping),
-            "UserRole" => ResolveRoleName(entry),
-            "RolePermission" => ResolvePermissionCode(entry),
             "Order" => GetPropertyStringValueOrNull(entry, "OrderNumber"),
             "TradeOrder" => null,
             "NonTradeOrder" => null,
@@ -572,28 +559,6 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             _ => null
         };
     }
-
-    private string? ResolveRoleName(EntityEntry entry)
-    {
-        var roleId = entry.Property("RoleId").CurrentValue ?? entry.Property("RoleId").OriginalValue;
-        if (roleId is not Guid id) return null;
-        return ResolveRoleName(id);
-    }
-
-    private string? ResolveRoleName(Guid id) =>
-        Set<Role>().Local.FirstOrDefault(r => r.Id == id)?.Name
-        ?? Roles.AsNoTracking().Where(r => r.Id == id).Select(r => r.Name).FirstOrDefault();
-
-    private string? ResolvePermissionCode(EntityEntry entry)
-    {
-        var permId = entry.Property("PermissionId").CurrentValue ?? entry.Property("PermissionId").OriginalValue;
-        if (permId is not Guid id) return null;
-        return ResolvePermissionCode(id);
-    }
-
-    private string? ResolvePermissionCode(Guid id) =>
-        Set<Permission>().Local.FirstOrDefault(p => p.Id == id)?.Code
-        ?? Permissions.AsNoTracking().Where(p => p.Id == id).Select(p => p.Code).FirstOrDefault();
 
     private string? ResolveCountryName(Guid id) =>
         Set<Country>().Local.FirstOrDefault(c => c.Id == id)?.Name
@@ -639,8 +604,6 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             "TradePlatformId" => ResolveTradePlatformName(id),
             "ExchangeId" => ResolveExchangeName(id),
             "CurrencyId" => ResolveCurrencyCode(id),
-            "PermissionId" => ResolvePermissionCode(id),
-            "RoleId" => ResolveRoleName(id),
             "AccountId" => ResolveAccountNumber(id),
             "InstrumentId" => ResolveInstrumentSymbol(id),
             _ => null
@@ -710,10 +673,6 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             "Client" => FindClientDisplayName(id),
             "Account" => Set<Account>().Local.FirstOrDefault(a => a.Id == id)?.Number
                          ?? Accounts.AsNoTracking().Where(a => a.Id == id).Select(a => a.Number).FirstOrDefault(),
-            "User" => Set<User>().Local.FirstOrDefault(u => u.Id == id)?.Username
-                      ?? Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Username).FirstOrDefault(),
-            "Role" => Set<Role>().Local.FirstOrDefault(r => r.Id == id)?.Name
-                      ?? Roles.AsNoTracking().Where(r => r.Id == id).Select(r => r.Name).FirstOrDefault(),
             "Order" => Set<Order>().Local.FirstOrDefault(o => o.Id == id)?.OrderNumber
                        ?? Orders.AsNoTracking().Where(o => o.Id == id).Select(o => o.OrderNumber).FirstOrDefault(),
             "Transaction" => Set<Transaction>().Local.FirstOrDefault(t => t.Id == id)?.TransactionNumber

@@ -24,7 +24,7 @@ public sealed record DashboardStatsDto
 
 public sealed record GetDashboardStatsQuery : IRequest<DashboardStatsDto>;
 
-public sealed class GetDashboardStatsQueryHandler(IAppDbContext db)
+public sealed class GetDashboardStatsQueryHandler(IAppDbContext db, IAuthServiceClient authClient)
     : IRequestHandler<GetDashboardStatsQuery, DashboardStatsDto>
 {
     public async Task<DashboardStatsDto> Handle(GetDashboardStatsQuery request, CancellationToken ct)
@@ -59,8 +59,7 @@ public sealed class GetDashboardStatsQueryHandler(IAppDbContext db)
             .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        var totalUsers = await db.Users.CountAsync(ct);
-        var activeUsers = await db.Users.CountAsync(u => u.IsActive, ct);
+        var userStats = await authClient.GetUserStatsAsync(ct);
 
         return new DashboardStatsDto
         {
@@ -73,8 +72,8 @@ public sealed class GetDashboardStatsQueryHandler(IAppDbContext db)
             TotalOrders = ordersByStatus.Values.Sum(),
             OrdersByStatus = ordersByStatus,
             OrdersByCategory = ordersByCategory,
-            TotalUsers = totalUsers,
-            ActiveUsers = activeUsers,
+            TotalUsers = userStats.TotalUsers,
+            ActiveUsers = userStats.ActiveUsers,
         };
     }
 }

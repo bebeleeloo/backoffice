@@ -1,0 +1,32 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
+WORKDIR /src
+
+# 1. Copy project manifests for restore caching
+COPY auth-service/Directory.Build.props auth-service/
+COPY auth-service/src/Broker.Auth.Domain/Broker.Auth.Domain.csproj auth-service/src/Broker.Auth.Domain/
+COPY auth-service/src/Broker.Auth.Application/Broker.Auth.Application.csproj auth-service/src/Broker.Auth.Application/
+COPY auth-service/src/Broker.Auth.Infrastructure/Broker.Auth.Infrastructure.csproj auth-service/src/Broker.Auth.Infrastructure/
+COPY auth-service/src/Broker.Auth.Api/Broker.Auth.Api.csproj auth-service/src/Broker.Auth.Api/
+
+# 2. Restore
+RUN dotnet restore auth-service/src/Broker.Auth.Api/Broker.Auth.Api.csproj
+
+# 3. Copy full source
+COPY auth-service/ auth-service/
+
+# 4. Publish
+RUN dotnet publish auth-service/src/Broker.Auth.Api/Broker.Auth.Api.csproj \
+    -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim AS runtime
+WORKDIR /app
+
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+COPY --from=build /app/publish .
+
+EXPOSE 8082
+ENV ASPNETCORE_URLS=http://+:8082
+
+ENTRYPOINT ["dotnet", "Broker.Auth.Api.dll"]

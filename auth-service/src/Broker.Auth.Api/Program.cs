@@ -1,0 +1,190 @@
+using Asp.Versioning;
+using Broker.Auth.Api.Filters;
+using Broker.Auth.Api.HealthChecks;
+using Broker.Auth.Api.Middleware;
+using Broker.Auth.Application;
+using Broker.Auth.Infrastructure;
+using Broker.Auth.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.OpenApi.Models;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using System.IO.Compression;
+using Microsoft.AspNetCore.ResponseCompression;
+using Broker.Auth.Api.Converters;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
+
+    builder.Host.UseSerilog((ctx, lc) => lc
+        .ReadFrom.Configuration(ctx.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithCorrelationId()
+        .WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}"));
+
+    builder.Services
+        .AddApiVersioning(options =>
+        {
+            options.DefaultApiVersion = new ApiVersion(1, 0);
+            options.AssumeDefaultVersionWhenUnspecified = true;
+            options.ReportApiVersions = true;
+            options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        })
+        .AddApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'VVV";
+            options.SubstituteApiVersionInUrl = true;
+        });
+
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc("v1", new() { Title = "Broker Auth API", Version = "v1" });
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter JWT token"
+        });
+        c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                },
+                Array.Empty<string>()
+            }
+        });
+    });
+
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(builder.Configuration);
+
+    builder.Services.AddScoped<AuditActionFilter>();
+
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new NullableGuidConverter());
+        });
+
+    builder.Services
+        .AddHealthChecks()
+        .AddCheck<SqlServerHealthCheck>("sqlserver", tags: new[] { "ready" });
+
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 5);
+        options.AddFixedWindowLimiter("login", limiter =>
+        {
+            limiter.PermitLimit = loginPermitLimit;
+            limiter.Window = TimeSpan.FromMinutes(1);
+            limiter.QueueLimit = 0;
+        });
+        options.AddFixedWindowLimiter("auth", limiter =>
+        {
+            limiter.PermitLimit = 20;
+            limiter.Window = TimeSpan.FromMinutes(1);
+            limiter.QueueLimit = 0;
+        });
+        options.AddFixedWindowLimiter("sensitive", limiter =>
+        {
+            limiter.PermitLimit = 5;
+            limiter.Window = TimeSpan.FromMinutes(5);
+            limiter.QueueLimit = 0;
+        });
+    });
+
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<GzipCompressionProvider>();
+    });
+    builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+    {
+        options.Level = CompressionLevel.Fastest;
+    });
+
+    var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            if (corsOrigins.Length > 0)
+                policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
+            else if (builder.Environment.IsDevelopment())
+                policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            else
+                throw new InvalidOperationException("Cors:Origins must be configured in non-Development environments");
+        });
+    });
+
+    var app = builder.Build();
+
+    app.UseMiddleware<CorrelationIdMiddleware>();
+    app.UseResponseCompression();
+    app.UseSerilogRequestLogging();
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Broker Auth API v1"));
+
+    app.UseCors();
+    app.UseRateLimiter();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers();
+
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = _ => false,
+        ResultStatusCodes = { [HealthStatus.Healthy] = StatusCodes.Status200OK }
+    });
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    });
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        Log.Information("Applying auth database migrations...");
+        await db.Database.MigrateAsync();
+        Log.Information("Auth database migrations applied successfully");
+
+        Log.Information("Seeding auth data...");
+        var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SeedData");
+        await SeedData.SeedAsync(db, builder.Configuration, seedLogger);
+        Log.Information("Auth seeding completed");
+    }
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Auth service terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
+namespace Broker.Auth.Api
+{
+    public partial class Program;
+}

@@ -2,12 +2,14 @@
 
 ## Текущее состояние
 
-**Общее количество тестов: 637**
+**Общее количество тестов: 575**
 
 | Набор | Тестов | Время | Технологии |
 |-------|--------|-------|------------|
-| Backend unit | 326 | ~2с | xUnit, FluentAssertions, NSubstitute |
-| Backend integration | 192 | ~15с | Testcontainers (MSSQL), WebApplicationFactory |
+| Monolith unit | 273 | ~2с | xUnit, FluentAssertions, NSubstitute |
+| Monolith integration | 145 | ~15с | Testcontainers (MSSQL), WebApplicationFactory |
+| Auth service unit | 25 | ~1с | xUnit, FluentAssertions, NSubstitute |
+| Auth service integration | 13 | ~10с | Testcontainers (MSSQL), WebApplicationFactory |
 | Frontend | 119 | ~6с | Vitest, React Testing Library, MSW, faker |
 
 ---
@@ -72,16 +74,14 @@
 
 ---
 
-## Backend Unit-тесты (326 тестов)
+## Monolith Unit-тесты (273 тестов)
 
 **Проект:** `Broker.Backoffice.Tests.Unit` — xUnit + FluentAssertions + NSubstitute
 
-Покрывают **все валидаторы** всех команд:
+Покрывают **все валидаторы** команд монолита:
 
 | Группа | Валидаторы |
 |--------|-----------|
-| Auth | Login, ChangePassword, UpdateProfile |
-| Users | Create, Update |
 | Clients | Create, Update, SetAccounts |
 | Accounts | Create, Update, SetHolders |
 | Instruments | Create, Update |
@@ -89,27 +89,23 @@
 | Non-Trade Orders | Create, Update |
 | Trade Transactions | Create, Update |
 | Non-Trade Transactions | Create, Update |
-| Roles | Create, Update |
 | Reference data | Clearer, Currency, Exchange, TradePlatform — Create/Update каждый |
 
 ---
 
-## Backend Integration-тесты (192 теста)
+## Monolith Integration-тесты (145 тестов)
 
 **Проект:** `Broker.Backoffice.Tests.Integration` — Testcontainers (реальный MSSQL 2022 в Docker)
 
-Все интеграционные тесты используют общий `[Collection("Integration")]` с `ICollectionFixture<CustomWebApplicationFactory>` — единый контейнер SQL Server на все тест-классы. Rate limiting отключён через `UseSetting`.
+Все интеграционные тесты используют общий `[Collection("Integration")]` с `ICollectionFixture<CustomWebApplicationFactory>` — единый контейнер SQL Server на все тест-классы. Rate limiting отключён через `UseSetting`. JWT генерируется локально через `TestJwtTokenHelper` (без обращения к auth-service).
 
 ### Покрытие по сущностям
 
 | Сущность | Тестов | Что покрыто |
 |----------|--------|-------------|
 | Health/Swagger | 3 | Liveness, readiness, Swagger JSON |
-| Auth | ~12 | Login, refresh, me, change-password, update-profile, photo CRUD, unauth 401, no-file 400, duplicate email 409 |
 | Clients | 18 | CRUD, Update, GetAccounts, SetClientAccounts, InvalidAccountId, Filters (status+clientType+pepStatus+q), DateFilter, SortByDisplayName, DuplicateEmail, DeleteLinkedToAccount, RouteBodyIdMismatch, StaleRowVersion |
 | Accounts | 15 | CRUD, Update, SetAccountHolders, InvalidClientId, Filters (status+accountType+q), SortByClearerName, DuplicateNumber, RouteBodyIdMismatch |
-| Users | 18 | CRUD, Update, Filters (isActive+q), DuplicateUsername/Email, RouteBodyIdMismatch, Photo upload/get/delete/anonymous |
-| Roles | 11 | CRUD, GetById, Update, Filters (isSystem+q), SetPermissions, DuplicateName, DeleteSystem 409, RouteBodyIdMismatch |
 | Instruments | 11 | CRUD, Update, Filters (type+status+isMarginEligible+q), DuplicateSymbol, RouteBodyIdMismatch |
 | Trade Orders | 14 | CRUD, Update, Filters (status+side+orderType+q), SortByInstrumentSymbol, InvalidAccount, LimitWithoutPrice, StopWithoutStopPrice, GTDWithoutExpiration, RouteBodyIdMismatch |
 | Non-Trade Orders | 11 | CRUD, Update, Filters (status+nonTradeType+q), InvalidCurrencyId, InvalidAccountId, RouteBodyIdMismatch |
@@ -119,9 +115,32 @@
 | Dashboard | 1 | Stats endpoint |
 | Audit | 4 | List, GetById, Filters (isSuccess+method+q) |
 | Entity Changes | 4 | List, ListAll, Filters (entityType+changeType) |
-| Permissions/Countries | 2 | List endpoints |
+| Countries | 1 | List endpoint |
 | Permission denial | 1 | 403 для ограниченного пользователя |
-| Concurrency | 8 | 409 stale RowVersion — Account, Instrument, Role, Client, TradeOrder, User, TradeTransaction, NonTradeTransaction |
+| Concurrency | 2 | 409 stale RowVersion — Account, Instrument |
+
+## Auth Service Unit-тесты (25 тестов)
+
+**Проект:** `Broker.Auth.Tests.Unit` — xUnit + FluentAssertions + NSubstitute
+
+Покрывают валидаторы auth-service:
+
+| Группа | Валидаторы |
+|--------|-----------|
+| Auth | Login, ChangePassword, UpdateProfile |
+| Users | Create, Update |
+| Roles | Create, Update |
+
+## Auth Service Integration-тесты (13 тестов)
+
+**Проект:** `Broker.Auth.Tests.Integration` — Testcontainers (реальный MSSQL 2022 в Docker)
+
+| Сущность | Тестов | Что покрыто |
+|----------|--------|-------------|
+| Auth | ~5 | Login, refresh, me, change-password, update-profile |
+| Users | ~4 | CRUD, Filters, DuplicateUsername/Email |
+| Roles | ~3 | CRUD, SetPermissions, DuplicateName |
+| Permissions | 1 | List endpoint |
 
 ### Coverage config
 
@@ -134,11 +153,13 @@
 
 ## CI Pipeline
 
-GitHub Actions: 3 параллельных job-а на каждый push в main (~1.5 мин):
+GitHub Actions: 5 параллельных job-ов на каждый push в main (~1.5 мин):
 
-1. **backend** — build + NuGet audit + 326 unit-тестов
-2. **backend-integration** — 192 интеграционных теста (Testcontainers MSSQL)
-3. **frontend** — tsc + eslint + 119 vitest-тестов + production build
+1. **backend** — build + NuGet audit + 273 unit-тестов (монолит)
+2. **backend-integration** — 145 интеграционных тестов (монолит, Testcontainers MSSQL)
+3. **auth-service** — build + NuGet audit + 25 unit-тестов
+4. **auth-service-integration** — 13 интеграционных тестов (Testcontainers MSSQL)
+5. **frontend** — tsc + eslint + 119 vitest-тестов + production build
 
 ---
 

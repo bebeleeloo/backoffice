@@ -16,7 +16,7 @@ public class DashboardTests(CustomWebApplicationFactory factory) : IntegrationTe
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var stats = await response.Content.ReadFromJsonAsync<DashboardStatsDto>();
         stats.Should().NotBeNull();
-        stats!.TotalUsers.Should().BeGreaterOrEqualTo(1);
+        stats!.TotalUsers.Should().Be(5);
     }
 
     [Fact]
