@@ -68,6 +68,17 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
       - run: dotnet test auth-service/tests/Broker.Auth.Tests.Integration/ --verbosity normal
 
+  permissions-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Permissions.cs sync between monolith and auth-service
+        run: |
+          diff \
+            <(sed '/^namespace /d' backend/src/Broker.Backoffice.Domain/Identity/Permissions.cs) \
+            <(sed '/^namespace /d' auth-service/src/Broker.Auth.Domain/Identity/Permissions.cs) \
+          || { echo "::error::Permissions.cs is out of sync between backend and auth-service"; exit 1; }
+
   frontend:
     runs-on: ubuntu-latest
     steps:
