@@ -701,14 +701,20 @@ export const useDashboardStats = () =>
   });
 
 // Entity Changes
-export const useEntityChanges = (params: EntityChangesParams, enabled = true) =>
-  useQuery({
+const AUTH_ENTITY_TYPES = new Set(["User", "Role"]);
+
+export const useEntityChanges = (params: EntityChangesParams, enabled = true) => {
+  const basePath = AUTH_ENTITY_TYPES.has(params.entityType)
+    ? "/auth/entity-changes"
+    : "/entity-changes";
+  return useQuery({
     queryKey: ["entity-changes", params],
     queryFn: () =>
-      apiClient.get<PagedResult<OperationDto>>("/entity-changes", { params }).then((r) => r.data),
+      apiClient.get<PagedResult<OperationDto>>(basePath, { params }).then((r) => r.data),
     enabled: enabled && !!params.entityId,
     placeholderData: keepPreviousData,
   });
+};
 
 export const useAllEntityChanges = (params: AllEntityChangesParams) =>
   useQuery({

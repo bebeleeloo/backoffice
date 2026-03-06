@@ -9,7 +9,7 @@ import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useRoles, useDeleteRole } from "../api/hooks";
 import type { RoleDto } from "../api/types";
 import { useHasPermission } from "../auth/usePermission";
-import { CreateRoleDialog } from "./RoleDialogs";
+import { CreateRoleDialog, EditRoleDialog } from "./RoleDialogs";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useConfirm } from "../hooks/useConfirm";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -45,6 +45,7 @@ export function RolesPage() {
   const params = readParams(searchParams);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editRole, setEditRole] = useState<RoleDto | null>(null);
 
   const canCreate = useHasPermission("roles.create");
   const canUpdate = useHasPermission("roles.update");
@@ -129,7 +130,7 @@ export function RolesPage() {
             <VisibilityIcon fontSize="small" />
           </IconButton>
           {canUpdate && (
-            <IconButton size="small" onClick={() => navigate(`/roles/${row.id}`)} data-testid={`action-edit-${row.id}`}>
+            <IconButton size="small" onClick={() => setEditRole(row)} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
             </IconButton>
           )}
@@ -239,6 +240,7 @@ export function RolesPage() {
       </Paper>
 
       <CreateRoleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditRoleDialog open={!!editRole} onClose={() => setEditRole(null)} role={editRole} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteRole.isPending} />
     </PageContainer>
   );
