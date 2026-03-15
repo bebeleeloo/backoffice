@@ -1,4 +1,5 @@
 {
+  "id": "2",
   "name": "Client Onboarding with Approval",
   "nodes": [
     {
@@ -21,7 +22,7 @@
         "url": "http://auth:8082/api/v1/auth/login",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"username\": \"admin\", \"password\": \"Admin123!\" }",
+        "jsonBody": "={\"username\":\"admin\",\"password\":\"Admin123!\"}",
         "options": {}
       },
       "id": "login",
@@ -45,31 +46,37 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"firstName\": \"{{ $('Webhook Trigger').first().json.body.firstName }}\",\n  \"lastName\": \"{{ $('Webhook Trigger').first().json.body.lastName }}\",\n  \"email\": \"{{ $('Webhook Trigger').first().json.body.email }}\",\n  \"type\": \"Individual\",\n  \"status\": \"Pending\"\n}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ clientType: 'Individual', status: 'PendingKyc', firstName: $('Webhook Trigger').first().json.body.firstName, lastName: $('Webhook Trigger').first().json.body.lastName, email: $('Webhook Trigger').first().json.body.email, addresses: [{ type: 'Legal', line1: 'Pending verification', city: 'Pending', countryId: '68723caa-77c5-4620-a5c6-409947022c78' }] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
       },
       "id": "create-client",
       "name": "Create Client",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0]
+      "position": [440, 0],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "has-id",
-              "leftValue": "={{ $json.id }}",
-              "rightValue": "",
+              "id": "status-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 201,
               "operator": {
-                "type": "string",
-                "operation": "isNotEmpty"
+                "type": "number",
+                "operation": "equals"
               }
             }
           ],
@@ -85,9 +92,7 @@
     {
       "parameters": {
         "resume": "webhook",
-        "options": {
-          "webhookSuffix": "={{ $json.id }}"
-        }
+        "options": {}
       },
       "id": "wait-approval",
       "name": "Wait for Approval",
@@ -101,7 +106,7 @@
         "url": "http://auth:8082/api/v1/auth/login",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"username\": \"admin\", \"password\": \"Admin123!\" }",
+        "jsonBody": "={{ JSON.stringify({username: 'admin', password: 'Admin123!'}) }}",
         "options": {}
       },
       "id": "login-for-update",
@@ -113,7 +118,7 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "=http://api:8080/api/v1/clients/{{ $('Create Client').first().json.id }}",
+        "url": "=http://api:8080/api/v1/clients/{{ $('Create Client').first().json.body.id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -125,7 +130,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"id\": \"{{ $('Create Client').first().json.id }}\",\n  \"firstName\": \"{{ $('Create Client').first().json.firstName }}\",\n  \"lastName\": \"{{ $('Create Client').first().json.lastName }}\",\n  \"email\": \"{{ $('Create Client').first().json.email }}\",\n  \"type\": \"{{ $('Create Client').first().json.type }}\",\n  \"status\": \"Active\",\n  \"rowVersion\": \"{{ $('Create Client').first().json.rowVersion }}\"\n}",
+        "jsonBody": "={{ JSON.stringify({ id: $('Create Client').first().json.body.id, clientType: $('Create Client').first().json.body.clientType, status: 'Active', firstName: $('Create Client').first().json.body.firstName, lastName: $('Create Client').first().json.body.lastName, email: $('Create Client').first().json.body.email, rowVersion: $('Create Client').first().json.body.rowVersion, addresses: $('Create Client').first().json.body.addresses }) }}",
         "options": {}
       },
       "id": "activate-client",
@@ -147,13 +152,13 @@
             {
               "id": "client-id",
               "name": "clientId",
-              "value": "={{ $('Create Client').first().json.id }}",
+              "value": "={{ $('Create Client').first().json.body.id }}",
               "type": "string"
             },
             {
               "id": "client-name",
               "name": "clientName",
-              "value": "={{ $('Create Client').first().json.firstName }} {{ $('Create Client').first().json.lastName }}",
+              "value": "={{ $('Create Client').first().json.body.firstName }} {{ $('Create Client').first().json.body.lastName }}",
               "type": "string"
             }
           ]
@@ -205,13 +210,13 @@
             {
               "id": "client-id",
               "name": "clientId",
-              "value": "={{ $('Create Client').first().json.id }}",
+              "value": "={{ $('Create Client').first().json.body.id }}",
               "type": "string"
             },
             {
               "id": "resume-url",
               "name": "resumeUrl",
-              "value": "=To approve, send a GET request to the execution's resume webhook URL shown in n8n UI",
+              "value": "=To approve, send GET to http://localhost:5678/webhook-waiting/{executionId} (check n8n Executions tab for the ID)",
               "type": "string"
             }
           ]
