@@ -35,34 +35,8 @@
       "name": "Check API Health",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 0],
+      "position": [220, -80],
       "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "api-status-code",
-              "name": "apiStatusCode",
-              "value": "={{ $json.statusCode }}",
-              "type": "number"
-            },
-            {
-              "id": "api-body",
-              "name": "apiBody",
-              "value": "={{ $json.body }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "save-api-result",
-      "name": "Save API Result",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [440, 0]
     },
     {
       "parameters": {
@@ -80,8 +54,18 @@
       "name": "Check Auth Health",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [660, 0],
+      "position": [220, 80],
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge-results",
+      "name": "Wait for Both",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [480, 0]
     },
     {
       "parameters": {
@@ -94,7 +78,7 @@
           "conditions": [
             {
               "id": "api-ok",
-              "leftValue": "={{ $('Save API Result').first().json.apiStatusCode }}",
+              "leftValue": "={{ $('Check API Health').first().json.statusCode }}",
               "rightValue": 200,
               "operator": {
                 "type": "number",
@@ -103,7 +87,7 @@
             },
             {
               "id": "auth-ok",
-              "leftValue": "={{ $json.statusCode }}",
+              "leftValue": "={{ $('Check Auth Health').first().json.statusCode }}",
               "rightValue": 200,
               "operator": {
                 "type": "number",
@@ -118,7 +102,7 @@
       "name": "Both Healthy?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [880, 0]
+      "position": [700, 0]
     },
     {
       "parameters": {
@@ -133,7 +117,7 @@
             {
               "id": "api-body",
               "name": "apiResponse",
-              "value": "={{ $('Save API Result').first().json.apiBody }}",
+              "value": "={{ $('Check API Health').first().json.body }}",
               "type": "string"
             },
             {
@@ -156,7 +140,7 @@
       "name": "All Healthy",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1100, -80]
+      "position": [920, -80]
     },
     {
       "parameters": {
@@ -171,7 +155,7 @@
             {
               "id": "api-status",
               "name": "apiStatusCode",
-              "value": "={{ $('Save API Result').first().json.apiStatusCode ?? 0 }}",
+              "value": "={{ $('Check API Health').first().json.statusCode ?? 0 }}",
               "type": "number"
             },
             {
@@ -194,32 +178,33 @@
       "name": "Capture Failure",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1100, 80]
+      "position": [920, 80]
     }
   ],
   "connections": {
     "Every 5 Minutes": {
       "main": [
         [
-          { "node": "Check API Health", "type": "main", "index": 0 }
+          { "node": "Check API Health", "type": "main", "index": 0 },
+          { "node": "Check Auth Health", "type": "main", "index": 0 }
         ]
       ]
     },
     "Check API Health": {
       "main": [
         [
-          { "node": "Save API Result", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "Save API Result": {
-      "main": [
-        [
-          { "node": "Check Auth Health", "type": "main", "index": 0 }
+          { "node": "Wait for Both", "type": "main", "index": 0 }
         ]
       ]
     },
     "Check Auth Health": {
+      "main": [
+        [
+          { "node": "Wait for Both", "type": "main", "index": 1 }
+        ]
+      ]
+    },
+    "Wait for Both": {
       "main": [
         [
           { "node": "Both Healthy?", "type": "main", "index": 0 }
