@@ -1,4 +1,5 @@
 {
+  "id": "health-check-001",
   "name": "Broker Health Check",
   "nodes": [
     {
@@ -22,28 +23,64 @@
       "parameters": {
         "url": "http://api:8080/health/ready",
         "options": {
-          "timeout": 10000
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
         }
       },
       "id": "check-api",
       "name": "Check API Health",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, -80],
+      "position": [220, 0],
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "api-status-code",
+              "name": "apiStatusCode",
+              "value": "={{ $json.statusCode }}",
+              "type": "number"
+            },
+            {
+              "id": "api-body",
+              "name": "apiBody",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-api-result",
+      "name": "Save API Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [440, 0]
     },
     {
       "parameters": {
         "url": "http://auth:8082/health/ready",
         "options": {
-          "timeout": 10000
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
         }
       },
       "id": "check-auth",
       "name": "Check Auth Health",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 80],
+      "position": [660, 0],
       "onError": "continueRegularOutput"
     },
     {
@@ -52,24 +89,24 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "api-status",
-              "leftValue": "={{ $('Check API Health').first().json.status }}",
-              "rightValue": "Healthy",
+              "id": "api-ok",
+              "leftValue": "={{ $('Save API Result').first().json.apiStatusCode }}",
+              "rightValue": 200,
               "operator": {
-                "type": "string",
+                "type": "number",
                 "operation": "equals"
               }
             },
             {
-              "id": "auth-status",
-              "leftValue": "={{ $('Check Auth Health').first().json.status }}",
-              "rightValue": "Healthy",
+              "id": "auth-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
               "operator": {
-                "type": "string",
+                "type": "number",
                 "operation": "equals"
               }
             }
@@ -81,7 +118,7 @@
       "name": "Both Healthy?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [480, 0]
+      "position": [880, 0]
     },
     {
       "parameters": {
@@ -91,6 +128,18 @@
               "id": "result",
               "name": "result",
               "value": "All services healthy",
+              "type": "string"
+            },
+            {
+              "id": "api-body",
+              "name": "apiResponse",
+              "value": "={{ $('Save API Result').first().json.apiBody }}",
+              "type": "string"
+            },
+            {
+              "id": "auth-body",
+              "name": "authResponse",
+              "value": "={{ $('Check Auth Health').first().json.body }}",
               "type": "string"
             },
             {
@@ -107,7 +156,7 @@
       "name": "All Healthy",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [700, -80]
+      "position": [1100, -80]
     },
     {
       "parameters": {
@@ -121,15 +170,15 @@
             },
             {
               "id": "api-status",
-              "name": "apiStatus",
-              "value": "={{ $('Check API Health').first().json.status ?? 'UNREACHABLE' }}",
-              "type": "string"
+              "name": "apiStatusCode",
+              "value": "={{ $('Save API Result').first().json.apiStatusCode ?? 0 }}",
+              "type": "number"
             },
             {
               "id": "auth-status",
-              "name": "authStatus",
-              "value": "={{ $('Check Auth Health').first().json.status ?? 'UNREACHABLE' }}",
-              "type": "string"
+              "name": "authStatusCode",
+              "value": "={{ $('Check Auth Health').first().json.statusCode ?? 0 }}",
+              "type": "number"
             },
             {
               "id": "timestamp",
@@ -145,22 +194,28 @@
       "name": "Capture Failure",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [700, 80]
+      "position": [1100, 80]
     }
   ],
   "connections": {
     "Every 5 Minutes": {
       "main": [
         [
-          { "node": "Check API Health", "type": "main", "index": 0 },
-          { "node": "Check Auth Health", "type": "main", "index": 0 }
+          { "node": "Check API Health", "type": "main", "index": 0 }
         ]
       ]
     },
     "Check API Health": {
       "main": [
         [
-          { "node": "Both Healthy?", "type": "main", "index": 0 }
+          { "node": "Save API Result", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save API Result": {
+      "main": [
+        [
+          { "node": "Check Auth Health", "type": "main", "index": 0 }
         ]
       ]
     },
