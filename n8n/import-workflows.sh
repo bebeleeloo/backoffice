@@ -41,6 +41,43 @@ if [ -z "$N8N_API_KEY" ]; then
   exit 1
 fi
 
+# Create "Broker API Auth" credential (httpBasicAuth) for login nodes.
+# Uses BROKER_API_USERNAME / ADMIN_PASSWORD env vars, or prompts.
+create_credential() {
+  local user="${BROKER_API_USERNAME:-admin}"
+  local pass="${ADMIN_PASSWORD:-}"
+
+  if [ -z "$pass" ]; then
+    read -rsp "Enter Broker API password for n8n credential (admin user): " pass
+    echo ""
+  fi
+
+  echo "Creating 'Broker API Auth' credential ..."
+
+  local payload
+  payload=$(jq -n --arg u "$user" --arg p "$pass" \
+    '{name:"Broker API Auth",type:"httpBasicAuth",data:{user:$u,password:$p}}')
+
+  local response
+  response=$(curl -sf -X POST "$N8N_URL/api/v1/credentials" \
+    -H "Content-Type: application/json" \
+    -H "X-N8N-API-KEY: $N8N_API_KEY" \
+    -d "$payload" 2>&1) || {
+    echo "  WARNING: Could not create credential (may already exist): $response"
+    return 0
+  }
+
+  local cred_id
+  cred_id=$(echo "$response" | jq -r '.id')
+  echo "  Created credential id: $cred_id"
+
+  # Patch workflow files so credential ID matches the one n8n assigned
+  CRED_ID="$cred_id"
+}
+
+CRED_ID=""
+create_credential
+
 import_workflow() {
   local file="$1"
   local name
@@ -48,11 +85,20 @@ import_workflow() {
 
   echo "Importing workflow: $name ..."
 
+  # Patch credential IDs to match the one created above
+  local import_data
+  if [ -n "$CRED_ID" ]; then
+    import_data=$(jq --arg id "$CRED_ID" \
+      '(.nodes[] | .credentials?.httpBasicAuth?.id?) = $id' "$file")
+  else
+    import_data=$(cat "$file")
+  fi
+
   local response
-  response=$(curl -sf -X POST "$N8N_URL/api/v1/workflows" \
+  response=$(echo "$import_data" | curl -sf -X POST "$N8N_URL/api/v1/workflows" \
     -H "Content-Type: application/json" \
     -H "X-N8N-API-KEY: $N8N_API_KEY" \
-    -d @"$file" 2>&1) || {
+    -d @- 2>&1) || {
     echo "  FAILED to import $name: $response"
     return 1
   }
@@ -86,3 +132,4 @@ echo "  1. Open $N8N_URL and review the imported workflows"
 echo "  2. Activate workflows you want to run"
 echo "  3. Health Check: runs automatically every 5 minutes"
 echo "  4. Client Onboarding: POST to $N8N_URL/webhook/client-onboarding"
+echo "  5. Transaction Import: POST to $N8N_URL/webhook/import-transactions"

@@ -1,0 +1,603 @@
+{
+  "id": "3",
+  "name": "Transaction Import",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "import-transactions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "import-transactions"
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "method": "POST",
+        "url": "={{ $env.BROKER_AUTH_URL }}/auth/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Broker API Auth"
+        }
+      },
+      "id": "login",
+      "name": "Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const csvText = $('Webhook Trigger').first().json.body;\nconst lines = csvText.trim().split('\\n');\nconst hdrs = lines[0].split(',').map(h => h.trim());\nconst rows = [];\nfor (let i = 1; i < lines.length; i++) {\n  if (!lines[i].trim()) continue;\n  const vals = lines[i].split(',');\n  const row = {};\n  hdrs.forEach((h, j) => { row[h] = (vals[j] || '').trim(); });\n  rows.push(row);\n}\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.results = [];\nstaticData.imported = 0;\nstaticData.skipped = 0;\n\nreturn rows.map(r => ({ json: r }));\n"
+      },
+      "id": "parse-csv",
+      "name": "Parse CSV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-items",
+      "name": "Loop Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.BROKER_API_URL }}/{{ $json.type === 'trade' ? 'trade-transactions' : 'non-trade-transactions' }}?externalId={{ encodeURIComponent($json.externalId) }}&pageSize=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login').first().json.accessToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-exists",
+      "name": "Check Exists",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('Loop Items').first().json;\nconst existingItems = $input.first().json.items || [];\nconst exists = existingItems.some(t => t.externalId === row.externalId);\n\nif (exists) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.skipped = (staticData.skipped || 0) + 1;\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': already imported');\n}\n\nreturn [{ json: { ...row, isNew: !exists } }];\n"
+      },
+      "id": "evaluate",
+      "name": "Evaluate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-is-new",
+              "leftValue": "={{ $json.isNew }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "should-create",
+      "name": "Should Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.BROKER_API_URL }}/accounts?q={{ encodeURIComponent($('Loop Items').first().json.accountNumber) }}&pageSize=10",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login').first().json.accessToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-account",
+      "name": "Lookup Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('Loop Items').first().json;\nconst items = $input.first().json.items || [];\nconst account = items.find(a => a.number === row.accountNumber);\n\nif (!account) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': account ' + row.accountNumber + ' not found');\n}\n\nreturn [{ json: { ...row, accountFound: !!account, accountId: account ? account.id : null } }];\n"
+      },
+      "id": "check-account",
+      "name": "Check Account",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-account-found",
+              "leftValue": "={{ $json.accountFound }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "account-ok",
+      "name": "Account OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-is-trade",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "trade",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-trade",
+      "name": "Is Trade?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2500, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.BROKER_API_URL }}/instruments?q={{ encodeURIComponent($('Loop Items').first().json.instrumentSymbol) }}&pageSize=10",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login').first().json.accessToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-instrument",
+      "name": "Lookup Instrument",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2750, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('Loop Items').first().json;\nconst items = $input.first().json.items || [];\nconst inst = items.find(i => i.symbol === row.instrumentSymbol);\n\nif (!inst) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': instrument ' + row.instrumentSymbol + ' not found');\n}\n\nconst today = new Date().toISOString().split('T')[0];\nconst payload = inst ? {\n  instrumentId: inst.id,\n  transactionDate: today,\n  side: row.side,\n  quantity: parseFloat(row.quantity),\n  price: parseFloat(row.price),\n  commission: row.commission ? parseFloat(row.commission) : null,\n  venue: row.venue || null,\n  comment: row.comment || null,\n  externalId: row.externalId\n} : null;\n\nreturn [{ json: { found: !!inst, payload } }];\n"
+      },
+      "id": "build-trade",
+      "name": "Build Trade",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3000, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-instrument-found",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "instrument-ok",
+      "name": "Instrument OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3250, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BROKER_API_URL }}/trade-transactions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login').first().json.accessToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "create-trade",
+      "name": "Create Trade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3500, 100],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.BROKER_API_URL }}/currencies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login').first().json.accessToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "lookup-currency",
+      "name": "Lookup Currency",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2750, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('Loop Items').first().json;\nconst currencies = $input.first().json.body || [];\nconst curr = currencies.find(c => c.code === row.currencyCode);\n\nif (!curr) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': currency ' + row.currencyCode + ' not found');\n}\n\nconst today = new Date().toISOString().split('T')[0];\nconst payload = curr ? {\n  transactionDate: today,\n  amount: parseFloat(row.amount),\n  currencyId: curr.id,\n  referenceNumber: row.referenceNumber || null,\n  description: row.description || null,\n  comment: row.comment || null,\n  externalId: row.externalId\n} : null;\n\nreturn [{ json: { found: !!curr, payload } }];\n"
+      },
+      "id": "build-non-trade",
+      "name": "Build Non-Trade",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3000, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-currency-found",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "currency-ok",
+      "name": "Currency OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3250, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BROKER_API_URL }}/non-trade-transactions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Login').first().json.accessToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "create-non-trade",
+      "name": "Create Non-Trade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3500, 500],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('Loop Items').first().json;\nconst response = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.results = staticData.results || [];\n\nconst statusCode = response.statusCode || 0;\nif (statusCode === 201) {\n  staticData.imported = (staticData.imported || 0) + 1;\n  staticData.results.push(row.externalId + ': created');\n} else {\n  const msg = response.body?.detail || response.body?.title || response.error?.message || ('HTTP ' + statusCode);\n  staticData.results.push(row.externalId + ': failed (' + msg + ')');\n}\n\nreturn [{ json: { done: true } }];\n"
+      },
+      "id": "record-result",
+      "name": "Record Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst imported = staticData.imported || 0;\nconst skipped = staticData.skipped || 0;\nconst details = staticData.results || [];\n\nlet message;\nif (imported > 0) {\n  message = 'Transaction import complete';\n} else if (skipped > 0) {\n  message = 'All transactions already imported';\n} else {\n  message = 'No valid transactions found';\n}\n\ndelete staticData.results;\ndelete staticData.imported;\ndelete staticData.skipped;\n\nreturn [{ json: { imported, skipped, message, details } }];\n"
+      },
+      "id": "build-summary",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 700]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "send-response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 700]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          { "node": "Login", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Login": {
+      "main": [
+        [
+          { "node": "Parse CSV", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Parse CSV": {
+      "main": [
+        [
+          { "node": "Loop Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop Items": {
+      "main": [
+        [
+          { "node": "Build Summary", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Check Exists", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Check Exists": {
+      "main": [
+        [
+          { "node": "Evaluate", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Evaluate": {
+      "main": [
+        [
+          { "node": "Should Create?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Should Create?": {
+      "main": [
+        [
+          { "node": "Lookup Account", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Loop Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Lookup Account": {
+      "main": [
+        [
+          { "node": "Check Account", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Check Account": {
+      "main": [
+        [
+          { "node": "Account OK?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Account OK?": {
+      "main": [
+        [
+          { "node": "Is Trade?", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Loop Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Is Trade?": {
+      "main": [
+        [
+          { "node": "Lookup Instrument", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Lookup Currency", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Lookup Instrument": {
+      "main": [
+        [
+          { "node": "Build Trade", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build Trade": {
+      "main": [
+        [
+          { "node": "Instrument OK?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Instrument OK?": {
+      "main": [
+        [
+          { "node": "Create Trade", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Loop Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Create Trade": {
+      "main": [
+        [
+          { "node": "Record Result", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Lookup Currency": {
+      "main": [
+        [
+          { "node": "Build Non-Trade", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build Non-Trade": {
+      "main": [
+        [
+          { "node": "Currency OK?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Currency OK?": {
+      "main": [
+        [
+          { "node": "Create Non-Trade", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Loop Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Create Non-Trade": {
+      "main": [
+        [
+          { "node": "Record Result", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Record Result": {
+      "main": [
+        [
+          { "node": "Loop Items", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          { "node": "Send Response", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "import"
+    }
+  ]
+}

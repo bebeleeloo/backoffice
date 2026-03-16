@@ -135,6 +135,7 @@ try
 
     var app = builder.Build();
 
+    app.UseMiddleware<BasicAuthMiddleware>();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();

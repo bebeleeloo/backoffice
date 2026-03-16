@@ -1,0 +1,4 @@
+externalId,type,accountNumber,instrumentSymbol,side,quantity,price,commission,venue,currencyCode,amount,referenceNumber,description,comment
+IMP-TT-001,trade,ACC-00001,AAPL,Buy,100,178.50,9.99,NASDAQ,,,,,AAPL buy
+IMP-TT-002,trade,ACC-00001,MSFT,Sell,50,415.20,,,,,,,MSFT sell
+IMP-NTT-001,non-trade,ACC-00002,,,,,,,USD,5000.00,WT-2026-001,Wire transfer deposit,Deposit

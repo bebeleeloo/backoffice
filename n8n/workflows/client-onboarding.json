@@ -18,12 +18,20 @@
     },
     {
       "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
         "method": "POST",
-        "url": "http://auth:8082/api/v1/auth/login",
+        "url": "={{ $env.BROKER_AUTH_URL }}/auth/login",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"username\":\"admin\",\"password\":\"Admin123!\"}",
+        "jsonBody": "{}",
         "options": {}
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Broker API Auth"
+        }
       },
       "id": "login",
       "name": "Login to API",
@@ -34,7 +42,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8080/api/v1/clients",
+        "url": "={{ $env.BROKER_API_URL }}/clients",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -102,12 +110,20 @@
     },
     {
       "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
         "method": "POST",
-        "url": "http://auth:8082/api/v1/auth/login",
+        "url": "={{ $env.BROKER_AUTH_URL }}/auth/login",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({username: 'admin', password: 'Admin123!'}) }}",
+        "jsonBody": "{}",
         "options": {}
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Broker API Auth"
+        }
       },
       "id": "login-for-update",
       "name": "Login for Update",
@@ -118,7 +134,7 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "=http://api:8080/api/v1/clients/{{ $('Create Client').first().json.body.id }}",
+        "url": "={{ $env.BROKER_API_URL }}/clients/{{ $('Create Client').first().json.body.id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

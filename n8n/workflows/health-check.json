@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "url": "http://api:8080/health/ready",
+        "url": "={{ $env.BROKER_API_HOST }}/health/ready",
         "options": {
           "timeout": 10000,
           "response": {
@@ -40,7 +40,7 @@
     },
     {
       "parameters": {
-        "url": "http://auth:8082/health/ready",
+        "url": "={{ $env.BROKER_AUTH_HOST }}/health/ready",
         "options": {
           "timeout": 10000,
           "response": {

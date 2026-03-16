@@ -165,7 +165,13 @@ services:
       WEBHOOK_URL: "http://localhost:5678/"
       GENERIC_TIMEZONE: "Europe/Moscow"
       N8N_SECURE_COOKIE: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       EXECUTIONS_DATA_MAX_AGE: "720"
+      # Broker API connection (available as $env.* in workflow expressions)
+      BROKER_API_HOST: "http://api:8080"
+      BROKER_AUTH_HOST: "http://auth:8082"
+      BROKER_API_URL: "http://api:8080/api/v1"
+      BROKER_AUTH_URL: "http://auth:8082/api/v1"
     ports:
       - "5678:5678"
     depends_on:
