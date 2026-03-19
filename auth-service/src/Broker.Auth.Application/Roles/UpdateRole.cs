@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Broker.Auth.Application.Roles;
 
 public sealed record UpdateRoleCommand(
-    Guid Id, string Name, string? Description, byte[] RowVersion) : IRequest<RoleDto>;
+    Guid Id, string Name, string? Description, uint RowVersion) : IRequest<RoleDto>;
 
 public sealed class UpdateRoleCommandValidator : AbstractValidator<UpdateRoleCommand>
 {

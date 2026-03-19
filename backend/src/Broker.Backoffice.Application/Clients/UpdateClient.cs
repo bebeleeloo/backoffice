@@ -37,7 +37,7 @@ public sealed record UpdateClientCommand(
     string? TaxId,
     List<CreateClientAddressDto> Addresses,
     CreateInvestmentProfileDto? InvestmentProfile,
-    byte[] RowVersion) : IRequest<ClientDto>;
+    uint RowVersion) : IRequest<ClientDto>;
 
 public sealed class UpdateClientCommandValidator : AbstractValidator<UpdateClientCommand>
 {

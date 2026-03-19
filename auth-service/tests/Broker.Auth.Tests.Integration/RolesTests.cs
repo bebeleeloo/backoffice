@@ -63,7 +63,7 @@ public class RolesTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         });
         var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
         var roleId = created.GetProperty("id").GetString();
-        var rowVersion = created.GetProperty("rowVersion").GetString();
+        var rowVersion = created.GetProperty("rowVersion").GetUInt32();
 
         // Update the role
         var newName = $"Renamed_{Guid.NewGuid():N}"[..20];

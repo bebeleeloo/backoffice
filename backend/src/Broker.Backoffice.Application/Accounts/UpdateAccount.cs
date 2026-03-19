@@ -22,7 +22,7 @@ public sealed record UpdateAccountCommand(
     DateTime? ClosedAt,
     string? Comment,
     string? ExternalId,
-    byte[] RowVersion) : IRequest<AccountDto>;
+    uint RowVersion) : IRequest<AccountDto>;
 
 public sealed class UpdateAccountCommandValidator : AbstractValidator<UpdateAccountCommand>
 {

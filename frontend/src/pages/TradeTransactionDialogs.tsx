@@ -201,7 +201,7 @@ export function EditTradeTransactionDialog({ transaction, onClose }: EditProps) 
   const open = transaction !== null;
   const [form, setForm] = useState<CreateTradeTransactionRequest>(emptyForm);
   const [status, setStatus] = useState<TransactionStatus>("Pending");
-  const [rowVersion, setRowVersion] = useState("");
+  const [rowVersion, setRowVersion] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateTradeTransaction();
   const { data: fullTransaction } = useTradeTransaction(transaction?.id ?? "");

@@ -21,7 +21,7 @@ public sealed record UpdateNonTradeOrderCommand(
     DateTime? ProcessedAt,
     string? Comment,
     string? ExternalId,
-    byte[] RowVersion) : IRequest<NonTradeOrderDto>;
+    uint RowVersion) : IRequest<NonTradeOrderDto>;
 
 public sealed class UpdateNonTradeOrderCommandValidator : AbstractValidator<UpdateNonTradeOrderCommand>
 {

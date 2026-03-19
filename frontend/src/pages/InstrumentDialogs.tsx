@@ -219,7 +219,7 @@ interface EditProps { open: boolean; onClose: () => void; instrument: { id: stri
 
 export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
   const [form, setForm] = useState<CreateInstrumentRequest>(emptyForm);
-  const [rowVersion, setRowVersion] = useState("");
+  const [rowVersion, setRowVersion] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateInstrument();
   const { data: exchanges = [] } = useExchanges();

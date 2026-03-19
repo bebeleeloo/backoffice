@@ -24,7 +24,11 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.Property(e => e.Comment).HasMaxLength(500);
         b.Property(e => e.ExternalId).HasMaxLength(64);
 
-        b.Property(e => e.RowVersion).IsRowVersion();
+        b.Property(e => e.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
         b.Property(e => e.CreatedBy).HasMaxLength(100);
         b.Property(e => e.UpdatedBy).HasMaxLength(100);
 

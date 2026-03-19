@@ -36,8 +36,8 @@ flowchart TB
             dotnet["ASP.NET Core 8<br/>Web API (монолит)"]
         end
 
-        subgraph db["broker-mssql :1433"]
-            mssql["MS SQL Server 2022"]
+        subgraph db["broker-postgres :5432"]
+            postgres["PostgreSQL 16"]
         end
     end
 
@@ -45,8 +45,8 @@ flowchart TB
     nginx -->|"Статика"| spa
     nginx -->|"/api/v1/auth/, /api/v1/users,<br/>/api/v1/roles, /api/v1/permissions"| authsvc
     nginx -->|"Остальные /api/"| dotnet
-    dotnet -->|"EF Core (dbo.* schema)"| mssql
-    authsvc -->|"EF Core (auth.* schema)"| mssql
+    dotnet -->|"EF Core (public.* schema)"| postgres
+    authsvc -->|"EF Core (auth.* schema)"| postgres
     dotnet -.->|"IAuthServiceClient<br/>(dashboard stats)"| authsvc
 
     style web fill:#e1f5fe
@@ -62,7 +62,7 @@ flowchart TB
 | broker-web | 3000 | 8080 | HTTP (Nginx, non-root) |
 | broker-auth | 8082 | 8080 | HTTP (Kestrel) |
 | broker-api | 5050 | 8080 | HTTP (Kestrel) |
-| broker-mssql | 1433 | 1433 | TDS (SQL) |
+| broker-postgres | 5432 | 5432 | TCP (PostgreSQL) |
 
 ### Nginx маршрутизация
 
@@ -76,7 +76,7 @@ flowchart TB
 
 | Контейнер | Механизм | Интервал |
 |-----------|----------|----------|
-| mssql | `sqlcmd SELECT 1` | 10s, 5 retries, start 30s |
+| postgres | `pg_isready -U postgres` | 10s, 5 retries, start 10s |
 | auth | TCP check на порт 8080 | 10s, 5 retries, start 20s |
 | api | TCP check на порт 8080 | 10s, 5 retries, start 20s |
 | web | `wget http://127.0.0.1:8080/` | 10s, 3 retries, start 5s |
@@ -104,7 +104,7 @@ flowchart TB
     end
 
     subgraph Infra["Infrastructure Layer"]
-        dbcontext["AppDbContext<br/>EF Core + SQL Server (dbo.*)"]
+        dbcontext["AppDbContext<br/>EF Core + PostgreSQL (public.*)"]
         jwtValidation["JWT Validation<br/>(local claim check)"]
         seed["SeedData<br/>Countries, ref data,<br/>demo clients/accounts/orders/transactions"]
     end
@@ -147,7 +147,7 @@ flowchart TB
     end
 
     subgraph Infra["Infrastructure Layer"]
-        dbcontext["AuthDbContext<br/>EF Core + SQL Server (auth.*)"]
+        dbcontext["AuthDbContext<br/>EF Core + PostgreSQL (auth.*)"]
         jwt["JwtTokenService<br/>HMAC SHA256 (issuance)"]
         seed["SeedData<br/>Permissions, admin user,<br/>demo users + roles"]
     end

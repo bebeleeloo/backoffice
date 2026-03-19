@@ -22,6 +22,8 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
+    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
     var builder = WebApplication.CreateBuilder(args);
 
     // Serilog
@@ -90,7 +92,7 @@ try
     // Health checks
     builder.Services
         .AddHealthChecks()
-        .AddCheck<SqlServerHealthCheck>("sqlserver", tags: new[] { "ready" });
+        .AddCheck<PostgresHealthCheck>("postgres", tags: new[] { "ready" });
 
     // Rate limiting
     builder.Services.AddRateLimiter(options =>

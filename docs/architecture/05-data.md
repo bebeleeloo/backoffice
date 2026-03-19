@@ -2,10 +2,10 @@
 
 ## СУБД
 
-**Microsoft SQL Server 2022** (Docker-образ `mcr.microsoft.com/mssql/server:2022-latest`).
+**PostgreSQL 16** (Docker-образ `postgres:16-alpine`).
 
-Оба сервиса (монолит и auth-service) используют один экземпляр SQL Server, но разные схемы:
-- **`dbo.*`** -- монолит (клиенты, счета, инструменты, ордера, транзакции, аудит, справочники)
+Оба сервиса (монолит и auth-service) используют один экземпляр PostgreSQL, но разные схемы:
+- **`public.*`** -- монолит (клиенты, счета, инструменты, ордера, транзакции, аудит, справочники)
 - **`auth.*`** -- auth-service (Users, Roles, Permissions, UserRoles, RolePermissions, UserRefreshTokens, UserPermissionOverrides, DataScopes)
 
 Доступ через EF Core 8. ORM используется для всех операций (нет Dapper / raw SQL).
@@ -55,7 +55,7 @@ erDiagram
         string PasswordHash
         string FullName
         bool IsActive
-        binary RowVersion
+        uint RowVersion
         datetime CreatedAt
         string CreatedBy
     }
@@ -65,7 +65,7 @@ erDiagram
         string Name UK
         string Description
         bool IsSystem
-        binary RowVersion
+        uint RowVersion
         datetime CreatedAt
     }
 
@@ -90,7 +90,7 @@ erDiagram
         string CompanyName
         guid ResidenceCountryId FK
         guid CitizenshipCountryId FK
-        binary RowVersion
+        uint RowVersion
         datetime CreatedAt
     }
 
@@ -136,7 +136,7 @@ erDiagram
         datetime ClosedAt
         string Comment
         string ExternalId
-        binary RowVersion
+        uint RowVersion
         datetime CreatedAt
     }
 
@@ -182,7 +182,7 @@ erDiagram
         datetime ListingDate
         datetime ExpirationDate
         string ExternalId
-        binary RowVersion
+        uint RowVersion
         datetime CreatedAt
     }
 
@@ -229,7 +229,7 @@ erDiagram
         string ReferenceNumber
         string Description
         datetime ProcessedAt
-        binary RowVersion
+        uint RowVersion
         datetime CreatedAt
     }
 
@@ -255,7 +255,7 @@ erDiagram
         string ReferenceNumber
         string Description
         datetime ProcessedAt
-        binary RowVersion
+        uint RowVersion
         datetime CreatedAt
     }
 
@@ -423,7 +423,7 @@ EF Core Code-First миграции:
 3. **Роль Administrator** -- системная роль со всеми permissions
 4. **Demo data** (при `SEED_DEMO_DATA=true`) -- 11 пользователей (1 admin + 10 demo) с портретными фото, 4 роли
 
-### Монолит (схема `dbo.*`):
+### Монолит (схема `public.*`):
 
 1. **Countries** -- полный список стран с ISO-кодами и флагами
 2. **Clearers** -- справочник клиринговых компаний (Apex Clearing, Pershing, Interactive Brokers, Hilltop Securities)
@@ -432,7 +432,7 @@ EF Core Code-First миграции:
 
 ## Конкурентность и транзакции
 
-- **Optimistic Concurrency:** все основные сущности используют `RowVersion` (SQL Server `rowversion`)
+- **Optimistic Concurrency:** все основные сущности используют `RowVersion` (PostgreSQL `xmin`)
 - **Явные транзакции:** `UpdateClientCommandHandler` использует `BeginTransactionAsync` для атомарного обновления клиента + адресов + инвестиционного профиля
 - **Остальные операции:** неявная транзакция через `SaveChangesAsync`
 

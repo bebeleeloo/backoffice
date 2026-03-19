@@ -31,7 +31,7 @@ public sealed record InstrumentDto(
     string? Description,
     string? ExternalId,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);
 
 public sealed record InstrumentListItemDto(
     Guid Id,
@@ -52,4 +52,4 @@ public sealed record InstrumentListItemDto(
     bool IsMarginEligible,
     string? ExternalId,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);

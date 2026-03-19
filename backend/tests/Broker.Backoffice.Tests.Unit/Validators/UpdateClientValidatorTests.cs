@@ -38,7 +38,7 @@ public class UpdateClientValidatorTests
         TaxId: null,
         Addresses: [new CreateClientAddressDto(AddressType.Legal, "123 Main St", null, "New York", null, null, Guid.NewGuid())],
         InvestmentProfile: null,
-        RowVersion: [1, 2, 3]);
+        RowVersion: 1u);
 
     [Fact]
     public void ValidCommand_ShouldPass()
@@ -73,7 +73,7 @@ public class UpdateClientValidatorTests
     [Fact]
     public void RowVersion_Empty_ShouldFail()
     {
-        var result = _validator.TestValidate(ValidCommand() with { RowVersion = [] });
+        var result = _validator.TestValidate(ValidCommand() with { RowVersion = 0 });
         result.ShouldHaveValidationErrorFor(x => x.RowVersion);
     }
 

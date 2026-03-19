@@ -32,7 +32,7 @@ open http://localhost:3000
 
 | Переменная | Назначение | Пример |
 |-----------|------------|--------|
-| `SA_PASSWORD` | Пароль SA для MS SQL | `Your_Strong_Password123` |
+| `PG_PASSWORD` | Пароль PostgreSQL | `Your_Strong_Password123` |
 | `JWT_SECRET` | Секрет подписи JWT (min 32 chars) | `this-is-a-development-secret-key-min-32-chars!!` |
 | `ADMIN_PASSWORD` | Пароль admin-пользователя | `Admin123!` |
 | `DEFAULT_DEMO_PASSWORD` | Пароль для demo-пользователей | `Admin123!` |
@@ -42,9 +42,9 @@ open http://localhost:3000
 
 | Сервис | Image | Порт | Зависит от |
 |--------|-------|------|-----------|
-| mssql | mcr.microsoft.com/mssql/server:2022-latest | 1433 | - |
-| auth | Dockerfile.auth (multi-stage .NET 8) | 8082 -> 8080 | mssql (healthy) |
-| api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | mssql (healthy), auth (healthy) |
+| postgres | postgres:16-alpine | 5432 | - |
+| auth | Dockerfile.auth (multi-stage .NET 8) | 8082 -> 8080 | postgres (healthy) |
+| api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | postgres (healthy), auth (healthy) |
 | web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 8080 | api (healthy) |
 
 ### Dockerfile.api
@@ -78,7 +78,7 @@ dotnet run --project src/Broker.Backoffice.Api
 # API доступен на http://localhost:5050
 ```
 
-Требуется доступный MS SQL (можно использовать Docker-контейнер `mssql` отдельно).
+Требуется доступный PostgreSQL (можно использовать Docker-контейнер `postgres` отдельно).
 
 ### Frontend
 
@@ -115,7 +115,7 @@ npm run dev
 | Скрипт | Назначение |
 |--------|------------|
 | `smoke.sh` | Smoke-тест: проверка health endpoints, базовая проверка API |
-| `db_check.sh` | Проверка доступности SQL Server |
+| `db_check.sh` | Проверка доступности PostgreSQL |
 | `test.sh` | Запуск тестов |
 
 ## CI/CD
@@ -125,9 +125,9 @@ npm run dev
 | Job | Шаги | Время |
 |-----|------|-------|
 | `backend` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 273 unit-тестов | ~30с |
-| `backend-integration` | checkout → .NET 8 SDK → NuGet cache → 145 интеграционных тестов (Testcontainers MSSQL) | ~1.5 мин |
+| `backend-integration` | checkout → .NET 8 SDK → NuGet cache → 145 интеграционных тестов (Testcontainers PostgreSQL) | ~1.5 мин |
 | `auth-service` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 25 unit-тестов | ~20с |
-| `auth-service-integration` | checkout → .NET 8 SDK → NuGet cache → 13 интеграционных тестов (Testcontainers MSSQL) | ~30с |
+| `auth-service-integration` | checkout → .NET 8 SDK → NuGet cache → 13 интеграционных тестов (Testcontainers PostgreSQL) | ~30с |
 | `frontend` | checkout → Node 22 → npm ci → npm audit → tsc → eslint → 119 vitest-тестов → production build | ~1 мин |
 
 ## Troubleshooting
@@ -138,7 +138,7 @@ npm run dev
 # Проверить что занимает порт
 lsof -i :3000  # web
 lsof -i :5050  # api
-lsof -i :1433  # mssql
+lsof -i :5432  # postgres
 ```
 
 ### Node версия

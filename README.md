@@ -30,7 +30,7 @@ docker compose up --build -d      # собрать и запустить все 
 | API      | http://localhost:5050/api/v1  |
 | Swagger  | http://localhost:5050/swagger |
 | Фронтенд | http://localhost:3000        |
-| MSSQL    | localhost:1433               |
+| PostgreSQL | localhost:5432             |
 
 База данных создаётся и миграции применяются автоматически при старте API. Ручных SQL-действий не требуется.
 
@@ -63,7 +63,7 @@ curl -s http://localhost:5050/api/v1/auth/login \
 
 | Переменная       | Описание                             | Значение по умолчанию             |
 |------------------|--------------------------------------|-----------------------------------|
-| `SA_PASSWORD`    | Пароль SA для SQL Server (избегайте `;` — ломает connection string) | `Your_Strong_Password123` |
+| `PG_PASSWORD`    | Пароль PostgreSQL                    | `Your_Strong_Password123` |
 | `JWT_SECRET`     | HMAC-SHA256 ключ для подписи JWT     | dev-ключ (32+ символов)           |
 | `ADMIN_PASSWORD` | Пароль администратора при seed        | `Admin123!`                       |
 
@@ -232,4 +232,4 @@ dotnet test tests/Broker.Backoffice.Tests.Integration
 ## Health Checks
 
 - `GET /health/live` — Liveness (приложение запущено)
-- `GET /health/ready` — Readiness (приложение + SQL Server)
+- `GET /health/ready` — Readiness (приложение + PostgreSQL)

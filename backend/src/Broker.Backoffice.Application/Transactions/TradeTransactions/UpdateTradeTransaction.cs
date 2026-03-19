@@ -22,7 +22,7 @@ public sealed record UpdateTradeTransactionCommand(
     string? Venue,
     string? Comment,
     string? ExternalId,
-    byte[] RowVersion) : IRequest<TradeTransactionDto>;
+    uint RowVersion) : IRequest<TradeTransactionDto>;
 
 public sealed class UpdateTradeTransactionCommandValidator : AbstractValidator<UpdateTradeTransactionCommand>
 {

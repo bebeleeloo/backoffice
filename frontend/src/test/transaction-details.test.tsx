@@ -32,7 +32,7 @@ const TRADE_TRANSACTION: TradeTransactionDto = {
   comment: null,
   externalId: null,
   createdAt: "2026-01-01T00:00:00Z",
-  rowVersion: "AAAA",
+  rowVersion: 100,
 };
 
 const NON_TRADE_TRANSACTION: NonTradeTransactionDto = {
@@ -55,7 +55,7 @@ const NON_TRADE_TRANSACTION: NonTradeTransactionDto = {
   comment: null,
   externalId: null,
   createdAt: "2026-01-01T00:00:00Z",
-  rowVersion: "BBBB",
+  rowVersion: 200,
 };
 
 function renderDetailPage(

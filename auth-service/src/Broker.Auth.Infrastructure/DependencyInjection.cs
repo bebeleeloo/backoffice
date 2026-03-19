@@ -22,9 +22,9 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddDbContext<AuthDbContext>(options =>
-            options.UseSqlServer(
+            options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
-                sql => sql.MigrationsAssembly(typeof(AuthDbContext).Assembly.FullName)));
+                npgsql => npgsql.MigrationsAssembly(typeof(AuthDbContext).Assembly.FullName)));
 
         services.AddScoped<IAuthDbContext>(sp => sp.GetRequiredService<AuthDbContext>());
 

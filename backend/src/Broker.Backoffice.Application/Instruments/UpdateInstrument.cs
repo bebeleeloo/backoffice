@@ -30,7 +30,7 @@ public sealed record UpdateInstrumentCommand(
     string? IssuerName,
     string? Description,
     string? ExternalId,
-    byte[] RowVersion) : IRequest<InstrumentDto>;
+    uint RowVersion) : IRequest<InstrumentDto>;
 
 public sealed class UpdateInstrumentCommandValidator : AbstractValidator<UpdateInstrumentCommand>
 {

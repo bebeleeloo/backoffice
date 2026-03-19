@@ -9,4 +9,4 @@ public sealed record UserDto(
     bool HasPhoto,
     IReadOnlyList<string> Roles,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);

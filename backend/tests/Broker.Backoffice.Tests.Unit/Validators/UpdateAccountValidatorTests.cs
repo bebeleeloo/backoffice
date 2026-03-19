@@ -23,7 +23,7 @@ public class UpdateAccountValidatorTests
         ClosedAt: null,
         Comment: null,
         ExternalId: null,
-        RowVersion: [1, 2, 3]);
+        RowVersion: 1u);
 
     [Fact]
     public void ValidCommand_ShouldPass()
@@ -65,7 +65,7 @@ public class UpdateAccountValidatorTests
     [Fact]
     public void RowVersion_Empty_ShouldFail()
     {
-        var result = _validator.TestValidate(ValidCommand() with { RowVersion = [] });
+        var result = _validator.TestValidate(ValidCommand() with { RowVersion = 0 });
         result.ShouldHaveValidationErrorFor(x => x.RowVersion);
     }
 }

@@ -23,7 +23,7 @@ public class UpdateTradeTransactionValidatorTests
         Venue: "NYSE",
         Comment: "Test trade",
         ExternalId: "EXT-001",
-        RowVersion: [1, 2, 3]);
+        RowVersion: 1u);
 
     [Fact]
     public void ValidCommand_ShouldPass()
@@ -132,7 +132,7 @@ public class UpdateTradeTransactionValidatorTests
     [Fact]
     public void RowVersion_Empty_ShouldFail()
     {
-        var result = _validator.TestValidate(ValidCommand() with { RowVersion = [] });
+        var result = _validator.TestValidate(ValidCommand() with { RowVersion = 0 });
         result.ShouldHaveValidationErrorFor(x => x.RowVersion);
     }
 }

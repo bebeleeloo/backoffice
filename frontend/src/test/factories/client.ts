@@ -14,7 +14,7 @@ export function buildClientListItemDto(
     residenceCountryIso2: "US",
     residenceCountryFlagEmoji: "\u{1F1FA}\u{1F1F8}",
     createdAt: faker.date.past().toISOString(),
-    rowVersion: faker.string.alphanumeric(8),
+    rowVersion: faker.number.int({ min: 1, max: 999999 }),
     phone: faker.phone.number(),
     externalId: faker.string.alphanumeric(10),
     pepStatus: false,

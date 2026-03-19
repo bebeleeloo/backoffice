@@ -32,7 +32,7 @@ export interface UserDto {
   hasPhoto: boolean;
   roles: string[];
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface RoleDto {
@@ -42,7 +42,7 @@ export interface RoleDto {
   isSystem: boolean;
   permissions: string[];
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface PermissionDto {
@@ -86,7 +86,7 @@ export interface UpdateUserRequest {
   fullName?: string;
   isActive: boolean;
   roleIds: string[];
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface CreateRoleRequest {
@@ -98,7 +98,7 @@ export interface UpdateRoleRequest {
   id: string;
   name: string;
   description?: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface PagedParams {
@@ -194,7 +194,7 @@ export interface ClientListItemDto {
   residenceCountryIso2: string | null;
   residenceCountryFlagEmoji: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
   phone: string | null;
   externalId: string | null;
   pepStatus: boolean;
@@ -254,7 +254,7 @@ export interface ClientDto {
   registrationNumber: string | null;
   taxId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
   addresses: ClientAddressDto[];
   investmentProfile: InvestmentProfileDto | null;
 }
@@ -302,7 +302,7 @@ export interface CreateClientRequest {
 export interface UpdateClientRequest extends CreateClientRequest {
   id: string;
   kycReviewedAtUtc?: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 // Accounts
@@ -375,7 +375,7 @@ export interface AccountDto {
   comment: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
   holders: AccountHolderDto[];
 }
 
@@ -394,7 +394,7 @@ export interface AccountListItemDto {
   closedAt: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
   holderCount: number;
 }
 
@@ -416,7 +416,7 @@ export interface CreateAccountRequest {
 
 export interface UpdateAccountRequest extends CreateAccountRequest {
   id: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface AccountsParams extends PagedParams {
@@ -471,7 +471,7 @@ export interface InstrumentListItemDto {
   isMarginEligible: boolean;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface InstrumentDto {
@@ -503,7 +503,7 @@ export interface InstrumentDto {
   description: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface CreateInstrumentRequest {
@@ -532,7 +532,7 @@ export interface CreateInstrumentRequest {
 
 export interface UpdateInstrumentRequest extends CreateInstrumentRequest {
   id: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface InstrumentsParams extends PagedParams {
@@ -747,7 +747,7 @@ export interface TradeOrderListItemDto {
   executedAt: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface TradeOrderDto {
@@ -774,7 +774,7 @@ export interface TradeOrderDto {
   executedAt: string | null;
   expirationDate: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface NonTradeOrderListItemDto {
@@ -792,7 +792,7 @@ export interface NonTradeOrderListItemDto {
   processedAt: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface NonTradeOrderDto {
@@ -815,7 +815,7 @@ export interface NonTradeOrderDto {
   description: string | null;
   processedAt: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface CreateTradeOrderRequest {
@@ -853,7 +853,7 @@ export interface UpdateTradeOrderRequest {
   expirationDate?: string;
   comment?: string;
   externalId?: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface CreateNonTradeOrderRequest {
@@ -883,7 +883,7 @@ export interface UpdateNonTradeOrderRequest {
   processedAt?: string;
   comment?: string;
   externalId?: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface TradeOrdersParams extends PagedParams {
@@ -952,7 +952,7 @@ export interface TradeTransactionListItemDto {
   venue: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface TradeTransactionDto {
@@ -975,7 +975,7 @@ export interface TradeTransactionDto {
   comment: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface NonTradeTransactionListItemDto {
@@ -992,7 +992,7 @@ export interface NonTradeTransactionListItemDto {
   processedAt: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface NonTradeTransactionDto {
@@ -1015,7 +1015,7 @@ export interface NonTradeTransactionDto {
   comment: string | null;
   externalId: string | null;
   createdAt: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface CreateTradeTransactionRequest {
@@ -1046,7 +1046,7 @@ export interface UpdateTradeTransactionRequest {
   venue?: string;
   comment?: string;
   externalId?: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface CreateNonTradeTransactionRequest {
@@ -1074,7 +1074,7 @@ export interface UpdateNonTradeTransactionRequest {
   processedAt?: string;
   comment?: string;
   externalId?: string;
-  rowVersion: string;
+  rowVersion: number;
 }
 
 export interface TradeTransactionsParams extends PagedParams {

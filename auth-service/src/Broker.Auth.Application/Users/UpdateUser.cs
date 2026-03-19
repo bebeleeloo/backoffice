@@ -9,7 +9,7 @@ namespace Broker.Auth.Application.Users;
 
 public sealed record UpdateUserCommand(
     Guid Id, string Email, string? FullName, bool IsActive,
-    List<Guid> RoleIds, byte[] RowVersion) : IRequest<UserDto>;
+    List<Guid> RoleIds, uint RowVersion) : IRequest<UserDto>;
 
 public sealed class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand>
 {

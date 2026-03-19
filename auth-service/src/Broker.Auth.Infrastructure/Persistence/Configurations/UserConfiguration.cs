@@ -16,7 +16,11 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(e => e.PasswordHash).IsRequired();
         b.Property(e => e.FullName).HasMaxLength(200);
         b.Property(e => e.PhotoContentType).HasMaxLength(50);
-        b.Property(e => e.RowVersion).IsRowVersion();
+        b.Property(e => e.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
         b.Property(e => e.CreatedBy).HasMaxLength(100);
         b.Property(e => e.UpdatedBy).HasMaxLength(100);
     }
@@ -30,7 +34,11 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         b.Property(e => e.Name).HasMaxLength(100).IsRequired();
         b.HasIndex(e => e.Name).IsUnique();
         b.Property(e => e.Description).HasMaxLength(500);
-        b.Property(e => e.RowVersion).IsRowVersion();
+        b.Property(e => e.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
         b.Property(e => e.CreatedBy).HasMaxLength(100);
         b.Property(e => e.UpdatedBy).HasMaxLength(100);
     }
@@ -46,7 +54,11 @@ public sealed class PermissionConfiguration : IEntityTypeConfiguration<Permissio
         b.Property(e => e.Name).HasMaxLength(200).IsRequired();
         b.Property(e => e.Description).HasMaxLength(500);
         b.Property(e => e.Group).HasMaxLength(100).IsRequired();
-        b.Property(e => e.RowVersion).IsRowVersion();
+        b.Property(e => e.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
         b.Property(e => e.CreatedBy).HasMaxLength(100);
         b.Property(e => e.UpdatedBy).HasMaxLength(100);
     }

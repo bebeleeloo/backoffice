@@ -27,5 +27,5 @@
 
 - Backend: .NET 8, ASP.NET Core, EF Core, MediatR, FluentValidation, Serilog
 - Frontend: React 18, TypeScript, Vite, MUI 6, TanStack React Query, React Router 6
-- БД: Microsoft SQL Server 2022
+- БД: PostgreSQL 16
 - Инфраструктура: Docker Compose, Nginx

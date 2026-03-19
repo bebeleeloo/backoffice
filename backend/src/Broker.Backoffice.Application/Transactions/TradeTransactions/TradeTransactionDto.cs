@@ -23,7 +23,7 @@ public sealed record TradeTransactionDto(
     DateTime? SettlementDate,
     string? Venue,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);
 
 public sealed record TradeTransactionListItemDto(
     Guid Id,
@@ -42,4 +42,4 @@ public sealed record TradeTransactionListItemDto(
     string? Venue,
     string? ExternalId,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);

@@ -11,7 +11,7 @@ public class UpdateRoleValidatorTests
     public void ValidCommand_ShouldPass()
     {
         var result = _validator.TestValidate(new UpdateRoleCommand(
-            Guid.NewGuid(), "Editor", "Can edit content", [1, 2, 3]));
+            Guid.NewGuid(), "Editor", "Can edit content", 1u));
         result.ShouldNotHaveAnyValidationErrors();
     }
 
@@ -19,7 +19,7 @@ public class UpdateRoleValidatorTests
     public void ValidCommand_NullDescription_ShouldPass()
     {
         var result = _validator.TestValidate(new UpdateRoleCommand(
-            Guid.NewGuid(), "Editor", null, [1, 2, 3]));
+            Guid.NewGuid(), "Editor", null, 1u));
         result.ShouldNotHaveAnyValidationErrors();
     }
 
@@ -29,7 +29,7 @@ public class UpdateRoleValidatorTests
     public void Name_Empty_ShouldFail(string? name)
     {
         var result = _validator.TestValidate(new UpdateRoleCommand(
-            Guid.NewGuid(), name!, null, [1, 2, 3]));
+            Guid.NewGuid(), name!, null, 1u));
         result.ShouldHaveValidationErrorFor(x => x.Name);
     }
 
@@ -37,7 +37,7 @@ public class UpdateRoleValidatorTests
     public void Name_TooLong_ShouldFail()
     {
         var result = _validator.TestValidate(new UpdateRoleCommand(
-            Guid.NewGuid(), new string('a', 101), null, [1, 2, 3]));
+            Guid.NewGuid(), new string('a', 101), null, 1u));
         result.ShouldHaveValidationErrorFor(x => x.Name);
     }
 
@@ -45,7 +45,7 @@ public class UpdateRoleValidatorTests
     public void RowVersion_Empty_ShouldFail()
     {
         var result = _validator.TestValidate(new UpdateRoleCommand(
-            Guid.NewGuid(), "Editor", null, Array.Empty<byte>()));
+            Guid.NewGuid(), "Editor", null, 0u));
         result.ShouldHaveValidationErrorFor(x => x.RowVersion);
     }
 }

@@ -42,7 +42,11 @@ public sealed class InstrumentConfiguration : IEntityTypeConfiguration<Instrumen
         b.Property(e => e.Description).HasMaxLength(1000);
         b.Property(e => e.ExternalId).HasMaxLength(64);
 
-        b.Property(e => e.RowVersion).IsRowVersion();
+        b.Property(e => e.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
         b.Property(e => e.CreatedBy).HasMaxLength(100);
         b.Property(e => e.UpdatedBy).HasMaxLength(100);
 

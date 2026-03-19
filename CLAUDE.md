@@ -14,7 +14,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ├── scripts/          # Test, deployment, and data migration scripts
 ├── screenshots/      # UI screenshots
 ├── .github/workflows/ci.yml  # GitHub Actions CI pipeline (5 jobs)
-├── docker-compose.yml         # 4 services: mssql, auth, api, web
+├── docker-compose.yml         # 4 services: postgres, auth, api, web
 ├── Dockerfile.api    # Multi-stage .NET build (monolith, port 8080)
 ├── Dockerfile.auth   # Multi-stage .NET build (auth service, port 8082)
 ├── Dockerfile.web    # Multi-stage Node + nginx build (non-root, port 8080)
@@ -25,7 +25,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 
 ### Backend
 - .NET 8, ASP.NET Core, C# 12
-- EF Core 8 (SQL Server, Code-First migrations)
+- EF Core 8 (PostgreSQL via Npgsql, Code-First migrations)
 - MediatR (CQRS command/query dispatch)
 - FluentValidation (request validation via MediatR pipeline)
 - Serilog (structured logging with correlation IDs)
@@ -48,32 +48,32 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - ESLint 9 (flat config, typescript-eslint, react-hooks, react-refresh)
 
 ### Infrastructure
-- Docker Compose (4 services: mssql, auth, api, web) with restart policies, resource limits, log rotation
-- SQL Server 2022
+- Docker Compose (4 services: postgres, auth, api, web) with restart policies, resource limits, log rotation
+- PostgreSQL 16
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
 - GitHub Actions CI (5 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, frontend tsc/eslint/vitest/build; NuGet/npm caching)
 
 ### Testing
-- Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (MSSQL)
+- Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (PostgreSQL)
 - Frontend: Vitest, React Testing Library, MSW, @faker-js/faker
 
 ## 3. Architecture
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│  nginx:8080  │────▶│  API:8080    │────▶ SQL Server
-│  (React SPA) │     │  /api/ proxy │     │  Monolith    │     :1433 (dbo.*)
+│   Frontend   │────▶│  nginx:8080  │────▶│  API:8080    │────▶ PostgreSQL
+│  (React SPA) │     │  /api/ proxy │     │  Monolith    │     :5432 (public.*)
 └─────────────┘     └──────────────┘     │  .NET 8      │
      :3000               │               └──────────────┘
                          │                    :5050
                          │
                          │  /api/v1/auth/    ┌──────────────┐
-                         │  /api/v1/users/   │  Auth:8082   │────▶ SQL Server
-                         └─────────────────▶│  .NET 8      │     :1433 (auth.*)
+                         │  /api/v1/users/   │  Auth:8082   │────▶ PostgreSQL
+                         └─────────────────▶│  .NET 8      │     :5432 (auth.*)
                                             └──────────────┘
 ```
 
-**Two services, one database, separate schemas:** Auth service uses `auth.*` schema, monolith uses `dbo.*`.
+**Two services, one database, separate schemas:** Auth service uses `auth.*` schema, monolith uses `public.*` (default).
 nginx routes `/api/v1/auth/` (trailing slash), `/api/v1/users`, `/api/v1/roles`, `/api/v1/permissions` (no trailing slash — matches both `/users` and `/users/123`) → auth:8082; all other `/api/` → api:8080.
 
 Backend follows Clean Architecture with 4 layers:
@@ -213,7 +213,7 @@ Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats
 - For computed/navigation property fields (e.g. DisplayName, ClearerName, ExchangeCode), query handlers use private `ApplySort()` methods with explicit switch cases instead of generic `SortBy()`
 
 **Filtering conventions:**
-- Text: `EF.Functions.Like(field, LikeHelper.ContainsPattern(value))` — escapes `%`, `_`, `[` wildcards via `LikeHelper` in `Application/Common/LikeHelper.cs`
+- Text: `EF.Functions.Like(field, LikeHelper.ContainsPattern(value))` — escapes `%`, `_`, `\` wildcards via `LikeHelper` in `Application/Common/LikeHelper.cs`
 - Multi-value enum: `request.Status.Contains(entity.Status)`
 - Date range: `>= from`, `< to.AddDays(1)` (inclusive end date)
 - Numeric range: `>= min`, `<= max` (optional min/max)
@@ -239,7 +239,7 @@ Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats
 - Integration tests override limit to 10000 via `UseSetting`
 
 **User photos:**
-- Stored as binary in DB (Photo byte[], PhotoContentType nvarchar(50))
+- Stored as binary in DB (Photo byte[], PhotoContentType varchar(50))
 - Endpoints: `GET/PUT/DELETE /users/{id}/photo` and `GET/PUT/DELETE /auth/photo`
 - GET photo is `[AllowAnonymous]` — required because `<img src>` cannot send JWT Authorization headers
 - PUT photo accepts `IFormFile` multipart upload, max 2 MB, validates MIME type (jpeg/png/gif/webp)
@@ -251,7 +251,7 @@ Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats
 - Demo data seeds portrait photos from randomuser.me for all users
 
 **Concurrency control:**
-- `RowVersion` byte[] on AuditableEntity
+- `RowVersion` uint on AuditableEntity (mapped to PostgreSQL xmin system column)
 - Passed from client, set as OriginalValue before SaveChanges
 - EF Core throws DbUpdateConcurrencyException on mismatch
 
@@ -661,7 +661,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Roles (Create/Update, FullName MaxLength)
 
 ### Monolith Integration Tests (145 tests, ~10s)
-- Testcontainers (real MSSQL 2022 in Docker)
+- Testcontainers (real PostgreSQL 16 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
 - `IntegrationTestBase` uses `TestJwtTokenHelper` to generate JWT tokens directly (no auth service dependency)
 - `[Collection("Integration")]` for shared fixture (on base class)
@@ -711,8 +711,8 @@ docker compose up --build -d
 # Frontend: http://localhost:3000
 # API/Swagger: http://localhost:5050/swagger
 # Login: admin / Admin123!
-# Services: mssql, auth (:8082), api (:5050), web (:3000)
-# Memory limits: mssql: 2G, auth: 512M, api: 512M, web: 256M
+# Services: postgres, auth (:8082), api (:5050), web (:3000)
+# Memory limits: postgres: 512M, auth: 512M, api: 512M, web: 256M
 ```
 
 ### Frontend dev (hot reload):
@@ -725,20 +725,20 @@ cd frontend && npm install && npm run dev
 ```bash
 cd backend/src/Broker.Backoffice.Api
 dotnet run
-# Runs on :5050, needs MSSQL on :1433
+# Runs on :5050, needs PostgreSQL on :5432
 ```
 
 ### Environment variables:
 | Variable | Required | Description |
 |----------|----------|-------------|
-| SA_PASSWORD | Yes | SQL Server SA password (complex) |
+| PG_PASSWORD | Yes | PostgreSQL password |
 | JWT_SECRET | Yes | JWT signing key (min 32 chars) |
 | ADMIN_PASSWORD | No | Initial admin password (default: Admin123!) |
 | SEED_DEMO_DATA | No | Seed demo data (default: false) |
 
 ### Health checks:
 - `/health/live` — Liveness (always 200)
-- `/health/ready` — Readiness (SQL Server connectivity)
+- `/health/ready` — Readiness (PostgreSQL connectivity)
 
 ## 14. Development Philosophy
 

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Broker.Auth.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialPostgres : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -19,22 +19,22 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    UserName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    Action = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    EntityType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    EntityId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    BeforeJson = table.Column<string>(type: "nvarchar(max)", maxLength: 16384, nullable: true),
-                    AfterJson = table.Column<string>(type: "nvarchar(max)", maxLength: 16384, nullable: true),
-                    CorrelationId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
-                    IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
-                    UserAgent = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    Path = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    Method = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
-                    StatusCode = table.Column<int>(type: "int", nullable: false),
-                    IsSuccess = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: true),
+                    UserName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Action = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    EntityType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    EntityId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    BeforeJson = table.Column<string>(type: "character varying(16384)", maxLength: 16384, nullable: true),
+                    AfterJson = table.Column<string>(type: "character varying(16384)", maxLength: 16384, nullable: true),
+                    CorrelationId = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true),
+                    UserAgent = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Path = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Method = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    StatusCode = table.Column<int>(type: "integer", nullable: false),
+                    IsSuccess = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -46,21 +46,21 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OperationId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    EntityType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    EntityId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    EntityDisplayName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
-                    RelatedEntityType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    RelatedEntityId = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
-                    RelatedEntityDisplayName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
-                    ChangeType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    FieldName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    OldValue = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    NewValue = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    UserId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    UserName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    OperationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EntityType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    EntityId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    EntityDisplayName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    RelatedEntityType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    RelatedEntityId = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    RelatedEntityDisplayName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    ChangeType = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    FieldName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    OldValue = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    NewValue = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    UserId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    UserName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -72,16 +72,16 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    Group = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Group = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -93,15 +93,15 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    IsSystem = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    IsSystem = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -113,19 +113,19 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Username = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    FullName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    Photo = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
-                    PhotoContentType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    UpdatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Username = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: false),
+                    FullName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Photo = table.Column<byte[]>(type: "bytea", nullable: true),
+                    PhotoContentType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -137,11 +137,11 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PermissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    RoleId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PermissionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -167,12 +167,12 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ScopeType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    ScopeValue = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ScopeType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    ScopeValue = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -191,12 +191,12 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PermissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsAllowed = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PermissionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    IsAllowed = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -222,13 +222,13 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    TokenHash = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    RevokedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ReplacedByTokenHash = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TokenHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    RevokedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ReplacedByTokenHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -247,11 +247,11 @@ namespace Broker.Auth.Infrastructure.Persistence.Migrations
                 schema: "auth",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    RoleId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {

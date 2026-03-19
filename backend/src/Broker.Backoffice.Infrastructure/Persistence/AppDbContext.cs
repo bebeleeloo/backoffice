@@ -516,7 +516,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
         if (config.ExcludedProperties.Contains(name))
             return true;
 
-        // Skip byte[] properties (RowVersion, etc.)
+        // Skip byte[] properties (Photo, etc.)
         if (prop.Metadata.ClrType == typeof(byte[]))
             return true;
 

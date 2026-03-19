@@ -160,7 +160,7 @@ interface EditProps { open: boolean; onClose: () => void; account: { id: string 
 
 export function EditAccountDialog({ open, onClose, account }: EditProps) {
   const [form, setForm] = useState<CreateAccountRequest>(emptyForm);
-  const [rowVersion, setRowVersion] = useState("");
+  const [rowVersion, setRowVersion] = useState(0);
   const [holders, setHolders] = useState<AccountHolderInput[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateAccount();

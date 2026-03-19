@@ -239,7 +239,7 @@ function emptyClientForm(): UpdateClientRequest {
     pepStatus: false,
     kycStatus: "NotStarted",
     addresses: [],
-    rowVersion: "",
+    rowVersion: 0,
   };
 }
 

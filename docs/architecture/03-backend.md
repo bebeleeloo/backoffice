@@ -1,6 +1,6 @@
 # 03. Backend
 
-> **Примечание:** Аутентификация и управление пользователями/ролями/правами вынесены в отдельный auth-service. Этот документ описывает **оба** сервиса. Эндпоинты Auth, Users, Roles, Permissions обслуживаются auth-service (`auth.*` схема БД). Остальные эндпоинты -- монолитом (`dbo.*` схема БД). Nginx маршрутизирует запросы к соответствующему сервису.
+> **Примечание:** Аутентификация и управление пользователями/ролями/правами вынесены в отдельный auth-service. Этот документ описывает **оба** сервиса. Эндпоинты Auth, Users, Roles, Permissions обслуживаются auth-service (`auth.*` схема БД). Остальные эндпоинты -- монолитом (`public.*` схема БД). Nginx маршрутизирует запросы к соответствующему сервису.
 
 ## Точка входа и пайплайн
 
@@ -293,9 +293,9 @@ sequenceDiagram
 
 ## Оптимистичная конкурентность
 
-Все мутирующие операции над User, Role, Client, Account, Order, Transaction используют `RowVersion` (SQL Server `rowversion`):
+Все мутирующие операции над User, Role, Client, Account, Order, Transaction используют `RowVersion` (PostgreSQL `xmin` — системная колонка, `uint`):
 
-1. Клиент получает сущность с `RowVersion`
+1. Клиент получает сущность с `RowVersion` (число)
 2. При обновлении передает `RowVersion` обратно
 3. EF Core проверяет совпадение версии при `SaveChangesAsync`
 4. Несовпадение -> `DbUpdateConcurrencyException` -> 409 Conflict
@@ -360,7 +360,7 @@ SaveChangesAsync()
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=...; Database=BrokerBackoffice; ..."
+    "DefaultConnection": "Host=...; Port=5432; Database=BrokerBackoffice; Username=postgres; Password=..."
   },
   "Jwt": {
     "Secret": "min 32 chars",

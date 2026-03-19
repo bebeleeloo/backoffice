@@ -26,7 +26,7 @@ public sealed record UpdateTradeOrderCommand(
     DateTime? ExpirationDate,
     string? Comment,
     string? ExternalId,
-    byte[] RowVersion) : IRequest<TradeOrderDto>;
+    uint RowVersion) : IRequest<TradeOrderDto>;
 
 public sealed class UpdateTradeOrderCommandValidator : AbstractValidator<UpdateTradeOrderCommand>
 {

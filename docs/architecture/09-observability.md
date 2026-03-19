@@ -46,13 +46,13 @@ Frontend генерирует `X-Correlation-Id` (UUID без дефисов) в
 | Эндпоинт | Назначение | Проверка |
 |----------|------------|----------|
 | `/health/live` | Liveness probe | Всегда 200 (приложение запущено) |
-| `/health/ready` | Readiness probe | Подключение к SQL Server |
+| `/health/ready` | Readiness probe | Подключение к PostgreSQL |
 
 ### Docker Health Checks
 
 | Контейнер | Механизм | Параметры |
 |-----------|----------|-----------|
-| mssql | `sqlcmd SELECT 1` | interval: 10s, timeout: 5s, retries: 5, start: 30s |
+| postgres | `pg_isready -U postgres` | interval: 10s, timeout: 5s, retries: 5, start: 10s |
 | auth | TCP check :8080 | interval: 10s, timeout: 5s, retries: 5, start: 20s |
 | api | TCP check :8080 | interval: 10s, timeout: 5s, retries: 5, start: 20s |
 | web | `wget http://127.0.0.1:8080/` | interval: 10s, timeout: 5s, retries: 3, start: 5s |

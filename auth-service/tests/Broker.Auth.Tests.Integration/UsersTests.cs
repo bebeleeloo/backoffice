@@ -87,7 +87,7 @@ public class UsersTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         });
         var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
         var userId = created.GetProperty("id").GetString();
-        var rowVersion = created.GetProperty("rowVersion").GetString();
+        var rowVersion = created.GetProperty("rowVersion").GetUInt32();
 
         // Update the user
         var newEmail = $"updated_{Guid.NewGuid():N}@test.com";
@@ -233,7 +233,7 @@ public class UsersTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         resp2.StatusCode.Should().Be(HttpStatusCode.Created);
         var user2 = await resp2.Content.ReadFromJsonAsync<JsonElement>();
         var user2Id = user2.GetProperty("id").GetString();
-        var user2RowVersion = user2.GetProperty("rowVersion").GetString();
+        var user2RowVersion = user2.GetProperty("rowVersion").GetUInt32();
 
         // Try to update user2's email to user1's email
         var updateResp = await _client.PutAsJsonAsync($"/api/v1/users/{user2Id}", new
@@ -263,7 +263,7 @@ public class UsersTests(CustomWebApplicationFactory factory) : IntegrationTestBa
             FullName = "Mismatch User",
             IsActive = true,
             RoleIds = Array.Empty<Guid>(),
-            RowVersion = Convert.ToBase64String(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 })
+            RowVersion = 1u
         });
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

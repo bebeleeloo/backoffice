@@ -42,7 +42,11 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         b.Property(e => e.RegistrationNumber).HasMaxLength(64);
         b.Property(e => e.TaxId).HasMaxLength(64);
 
-        b.Property(e => e.RowVersion).IsRowVersion();
+        b.Property(e => e.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
         b.Property(e => e.CreatedBy).HasMaxLength(100);
         b.Property(e => e.UpdatedBy).HasMaxLength(100);
 

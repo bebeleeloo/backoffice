@@ -9,7 +9,7 @@ export function buildRoleDto(overrides: Partial<RoleDto> = {}): RoleDto {
     isSystem: false,
     permissions: ["users.read", "roles.read"],
     createdAt: faker.date.past().toISOString(),
-    rowVersion: faker.string.alphanumeric(8),
+    rowVersion: faker.number.int({ min: 1, max: 999999 }),
     ...overrides,
   };
 }

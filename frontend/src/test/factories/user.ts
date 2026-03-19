@@ -24,7 +24,7 @@ export function buildUserDto(overrides: Partial<UserDto> = {}): UserDto {
     hasPhoto: false,
     roles: ["Admin"],
     createdAt: faker.date.past().toISOString(),
-    rowVersion: faker.string.alphanumeric(8),
+    rowVersion: faker.number.int({ min: 1, max: 999999 }),
     ...overrides,
   };
 }

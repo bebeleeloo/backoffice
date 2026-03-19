@@ -2,14 +2,14 @@
 
 ## Текущее состояние
 
-**Общее количество тестов: 575**
+**Общее количество тестов: 617**
 
 | Набор | Тестов | Время | Технологии |
 |-------|--------|-------|------------|
 | Monolith unit | 273 | ~2с | xUnit, FluentAssertions, NSubstitute |
-| Monolith integration | 145 | ~15с | Testcontainers (MSSQL), WebApplicationFactory |
-| Auth service unit | 25 | ~1с | xUnit, FluentAssertions, NSubstitute |
-| Auth service integration | 13 | ~10с | Testcontainers (MSSQL), WebApplicationFactory |
+| Monolith integration | 145 | ~10с | Testcontainers (PostgreSQL), WebApplicationFactory |
+| Auth service unit | 44 | ~1с | xUnit, FluentAssertions, NSubstitute |
+| Auth service integration | 36 | ~5с | Testcontainers (PostgreSQL), WebApplicationFactory |
 | Frontend | 119 | ~6с | Vitest, React Testing Library, MSW, faker |
 
 ---
@@ -95,9 +95,9 @@
 
 ## Monolith Integration-тесты (145 тестов)
 
-**Проект:** `Broker.Backoffice.Tests.Integration` — Testcontainers (реальный MSSQL 2022 в Docker)
+**Проект:** `Broker.Backoffice.Tests.Integration` — Testcontainers (реальный PostgreSQL 16 в Docker)
 
-Все интеграционные тесты используют общий `[Collection("Integration")]` с `ICollectionFixture<CustomWebApplicationFactory>` — единый контейнер SQL Server на все тест-классы. Rate limiting отключён через `UseSetting`. JWT генерируется локально через `TestJwtTokenHelper` (без обращения к auth-service).
+Все интеграционные тесты используют общий `[Collection("Integration")]` с `ICollectionFixture<CustomWebApplicationFactory>` — единый контейнер PostgreSQL на все тест-классы. Rate limiting отключён через `UseSetting`. JWT генерируется локально через `TestJwtTokenHelper` (без обращения к auth-service).
 
 ### Покрытие по сущностям
 
@@ -119,7 +119,7 @@
 | Permission denial | 1 | 403 для ограниченного пользователя |
 | Concurrency | 2 | 409 stale RowVersion — Account, Instrument |
 
-## Auth Service Unit-тесты (25 тестов)
+## Auth Service Unit-тесты (44 тестов)
 
 **Проект:** `Broker.Auth.Tests.Unit` — xUnit + FluentAssertions + NSubstitute
 
@@ -129,17 +129,18 @@
 |--------|-----------|
 | Auth | Login, ChangePassword, UpdateProfile |
 | Users | Create, Update |
-| Roles | Create, Update |
+| Roles | Create, Update, FullName MaxLength |
 
-## Auth Service Integration-тесты (13 тестов)
+## Auth Service Integration-тесты (36 тестов)
 
-**Проект:** `Broker.Auth.Tests.Integration` — Testcontainers (реальный MSSQL 2022 в Docker)
+**Проект:** `Broker.Auth.Tests.Integration` — Testcontainers (реальный PostgreSQL 16 в Docker)
 
 | Сущность | Тестов | Что покрыто |
 |----------|--------|-------------|
-| Auth | ~5 | Login, refresh, me, change-password, update-profile |
-| Users | ~4 | CRUD, Filters, DuplicateUsername/Email |
-| Roles | ~3 | CRUD, SetPermissions, DuplicateName |
+| Health | 1 | Liveness |
+| Auth | ~8 | Login, refresh, me, change-password, update-profile, photo CRUD + unauth + cache-control |
+| Users | ~12 | CRUD, GetById, Update, Delete, duplicate-username/email, photo, route mismatch |
+| Roles | ~10 | CRUD, GetById, Update, Delete, duplicate-name, set-permissions, system-role-protection |
 | Permissions | 1 | List endpoint |
 
 ### Coverage config
@@ -156,9 +157,9 @@
 GitHub Actions: 5 параллельных job-ов на каждый push в main (~1.5 мин):
 
 1. **backend** — build + NuGet audit + 273 unit-тестов (монолит)
-2. **backend-integration** — 145 интеграционных тестов (монолит, Testcontainers MSSQL)
-3. **auth-service** — build + NuGet audit + 25 unit-тестов
-4. **auth-service-integration** — 13 интеграционных тестов (Testcontainers MSSQL)
+2. **backend-integration** — 145 интеграционных тестов (монолит, Testcontainers PostgreSQL)
+3. **auth-service** — build + NuGet audit + 44 unit-тестов
+4. **auth-service-integration** — 36 интеграционных тестов (Testcontainers PostgreSQL)
 5. **frontend** — tsc + eslint + 119 vitest-тестов + production build
 
 ---

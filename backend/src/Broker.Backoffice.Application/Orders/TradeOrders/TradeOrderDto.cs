@@ -26,7 +26,7 @@ public sealed record TradeOrderDto(
     DateTime? ExecutedAt,
     DateTime? ExpirationDate,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);
 
 public sealed record TradeOrderListItemDto(
     Guid Id,
@@ -47,4 +47,4 @@ public sealed record TradeOrderListItemDto(
     DateTime? ExecutedAt,
     string? ExternalId,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);

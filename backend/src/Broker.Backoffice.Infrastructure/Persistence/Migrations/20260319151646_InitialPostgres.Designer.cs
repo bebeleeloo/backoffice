@@ -3,96 +3,96 @@ using System;
 using Broker.Backoffice.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260225232527_AddOrderDate")]
-    partial class AddOrderDate
+    [Migration("20260319151646_InitialPostgres")]
+    partial class InitialPostgres
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.24")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("ProductVersion", "8.0.25")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.Account", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("AccountType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("ClearerId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ClosedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Comment")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int?>("DeliveryType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("ExternalId")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<int>("MarginType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Number")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime?>("OpenedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("OptionLevel")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    b.Property<byte[]>("RowVersion")
+                    b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
-                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("Tariff")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("TradePlatformId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -111,20 +111,20 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.AccountHolder", b =>
                 {
                     b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("ClientId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Role")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("AddedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("IsPrimary")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
                     b.HasKey("AccountId", "ClientId", "Role");
@@ -138,21 +138,21 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -166,21 +166,21 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -194,70 +194,72 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Action")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("AfterJson")
                         .HasMaxLength(16384)
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("character varying(16384)");
 
                     b.Property<string>("BeforeJson")
                         .HasMaxLength(16384)
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("character varying(16384)");
 
                     b.Property<string>("CorrelationId")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("EntityId")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("EntityType")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
-                        .HasColumnType("nvarchar(45)");
+                        .HasColumnType("character varying(45)");
 
                     b.Property<bool>("IsSuccess")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Method")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("Path")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<int>("StatusCode")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("UserAgent")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<Guid?>("UserId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Action");
+
+                    b.HasIndex("CorrelationId");
 
                     b.HasIndex("CreatedAt");
 
@@ -272,65 +274,65 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ChangeType")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("EntityDisplayName")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("EntityId")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("FieldName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("NewValue")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("OldValue")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<Guid>("OperationId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("RelatedEntityDisplayName")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("RelatedEntityId")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("RelatedEntityType")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UserId")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -347,120 +349,120 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("CitizenshipCountryId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("ClientType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("CompanyName")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateOnly?>("DateOfBirth")
                         .HasColumnType("date");
 
                     b.Property<string>("DriverLicenseNumber")
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasColumnType("character varying(30)");
 
                     b.Property<int?>("Education")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("ExternalId")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("FirstName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int?>("Gender")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("KycReviewedAtUtc")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("KycStatus")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("LastName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int?>("MaritalStatus")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("MiddleName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PassportNumber")
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasColumnType("character varying(30)");
 
                     b.Property<bool>("PepStatus")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("PreferredLanguage")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("RegistrationNumber")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<Guid?>("ResidenceCountryId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("RiskLevel")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    b.Property<byte[]>("RowVersion")
+                    b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
-                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("Ssn")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("TaxId")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("TimeZone")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -480,38 +482,38 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("City")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("ClientId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("CountryId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Line1")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("Line2")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("PostalCode")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("State")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int>("Type")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -526,32 +528,32 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("ClientId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("Experience")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int?>("Knowledge")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int?>("LiquidityNeeds")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<int?>("Objective")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int?>("RiskTolerance")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int?>("TimeHorizon")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -565,31 +567,31 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("FlagEmoji")
                         .IsRequired()
                         .HasMaxLength(8)
-                        .HasColumnType("nvarchar(8)");
+                        .HasColumnType("character varying(8)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("Iso2")
                         .IsRequired()
                         .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)");
+                        .HasColumnType("character varying(2)");
 
                     b.Property<string>("Iso3")
                         .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
+                        .HasColumnType("character varying(3)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -598,353 +600,35 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Iso3")
                         .IsUnique()
-                        .HasFilter("[Iso3] IS NOT NULL");
+                        .HasFilter("\"Iso3\" IS NOT NULL");
 
                     b.ToTable("Countries");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.DataScope", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ScopeType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ScopeValue")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "ScopeType", "ScopeValue")
-                        .IsUnique();
-
-                    b.ToTable("DataScopes");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.Permission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Group")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("Permissions");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.Role", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsSystem")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Roles");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.RolePermission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<Guid>("PermissionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PermissionId");
-
-                    b.HasIndex("RoleId", "PermissionId")
-                        .IsUnique();
-
-                    b.ToTable("RolePermissions");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.User", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("FullName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.HasIndex("Username")
-                        .IsUnique();
-
-                    b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserPermissionOverride", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("IsAllowed")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid>("PermissionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PermissionId");
-
-                    b.HasIndex("UserId", "PermissionId")
-                        .IsUnique();
-
-                    b.ToTable("UserPermissionOverrides");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserRefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ReplacedByTokenHash")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserRefreshTokens");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserRole", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.HasIndex("UserId", "RoleId")
-                        .IsUnique();
-
-                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Instruments.Currency", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
+                        .HasColumnType("character varying(3)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Symbol")
                         .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
+                        .HasColumnType("character varying(5)");
 
                     b.HasKey("Id");
 
@@ -958,25 +642,25 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<Guid?>("CountryId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
 
@@ -992,105 +676,105 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("AssetClass")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("CUSIP")
                         .HasMaxLength(9)
-                        .HasColumnType("nvarchar(9)");
+                        .HasColumnType("character varying(9)");
 
                     b.Property<Guid?>("CountryId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("CurrencyId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("DelistingDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<Guid?>("ExchangeId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ExpirationDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("ExternalId")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("ISIN")
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)");
+                        .HasColumnType("character varying(12)");
 
                     b.Property<bool>("IsMarginEligible")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("IssuerName")
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
                     b.Property<DateTime?>("ListingDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("LotSize")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasDefaultValue(1);
 
                     b.Property<decimal?>("MarginRequirement")
                         .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
-                    b.Property<byte[]>("RowVersion")
+                    b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
-                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int?>("Sector")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Symbol")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<decimal?>("TickSize")
                         .HasPrecision(10, 6)
-                        .HasColumnType("decimal(10,6)");
+                        .HasColumnType("numeric(10,6)");
 
                     b.Property<int>("Type")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -1112,34 +796,34 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
+                        .HasColumnType("numeric(18,6)");
 
                     b.Property<Guid>("CurrencyId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<Guid?>("InstrumentId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("NonTradeType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("OrderId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("ReferenceNumber")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -1159,56 +843,58 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Category")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Comment")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ExternalId")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime>("OrderDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
-                    b.Property<byte[]>("RowVersion")
+                    b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
-                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
+
+                    b.HasIndex("OrderDate");
 
                     b.HasIndex("OrderNumber")
                         .IsUnique();
@@ -1222,54 +908,54 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<decimal?>("AveragePrice")
                         .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
+                        .HasColumnType("numeric(18,6)");
 
                     b.Property<decimal?>("Commission")
                         .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
+                        .HasColumnType("numeric(18,6)");
 
                     b.Property<DateTime?>("ExecutedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("ExecutedQuantity")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)")
+                        .HasColumnType("numeric(18,6)")
                         .HasDefaultValue(0m);
 
                     b.Property<DateTime?>("ExpirationDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("InstrumentId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("OrderId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("OrderType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<decimal?>("Price")
                         .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
+                        .HasColumnType("numeric(18,6)");
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
+                        .HasColumnType("numeric(18,6)");
 
                     b.Property<int>("Side")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<decimal?>("StopPrice")
                         .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
+                        .HasColumnType("numeric(18,6)");
 
                     b.Property<int>("TimeInForce")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -1281,6 +967,159 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.HasIndex("Side", "OrderType");
 
                     b.ToTable("TradeOrders");
+                });
+
+            modelBuilder.Entity("Broker.Backoffice.Domain.Transactions.NonTradeTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<Guid>("CurrencyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("InstrumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CurrencyId");
+
+                    b.HasIndex("InstrumentId");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique();
+
+                    b.ToTable("NonTradeTransactions");
+                });
+
+            modelBuilder.Entity("Broker.Backoffice.Domain.Transactions.TradeTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Commission")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<Guid>("InstrumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<DateTime?>("SettlementDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Side")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Venue")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstrumentId");
+
+                    b.HasIndex("Side");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique();
+
+                    b.ToTable("TradeTransactions");
+                });
+
+            modelBuilder.Entity("Broker.Backoffice.Domain.Transactions.Transaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("TransactionNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.HasIndex("TransactionNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Category", "Status");
+
+                    b.ToTable("Transactions");
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.Account", b =>
@@ -1364,85 +1203,6 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.DataScope", b =>
-                {
-                    b.HasOne("Broker.Backoffice.Domain.Identity.User", "User")
-                        .WithMany("DataScopes")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.RolePermission", b =>
-                {
-                    b.HasOne("Broker.Backoffice.Domain.Identity.Permission", "Permission")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Broker.Backoffice.Domain.Identity.Role", "Role")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserPermissionOverride", b =>
-                {
-                    b.HasOne("Broker.Backoffice.Domain.Identity.Permission", "Permission")
-                        .WithMany()
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Broker.Backoffice.Domain.Identity.User", "User")
-                        .WithMany("PermissionOverrides")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserRefreshToken", b =>
-                {
-                    b.HasOne("Broker.Backoffice.Domain.Identity.User", "User")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.UserRole", b =>
-                {
-                    b.HasOne("Broker.Backoffice.Domain.Identity.Role", "Role")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Broker.Backoffice.Domain.Identity.User", "User")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Role");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Broker.Backoffice.Domain.Instruments.Exchange", b =>
@@ -1535,6 +1295,61 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("Broker.Backoffice.Domain.Transactions.NonTradeTransaction", b =>
+                {
+                    b.HasOne("Broker.Backoffice.Domain.Instruments.Currency", "Currency")
+                        .WithMany()
+                        .HasForeignKey("CurrencyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Broker.Backoffice.Domain.Instruments.Instrument", "Instrument")
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Broker.Backoffice.Domain.Transactions.Transaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Currency");
+
+                    b.Navigation("Instrument");
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("Broker.Backoffice.Domain.Transactions.TradeTransaction", b =>
+                {
+                    b.HasOne("Broker.Backoffice.Domain.Instruments.Instrument", "Instrument")
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Broker.Backoffice.Domain.Transactions.Transaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instrument");
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("Broker.Backoffice.Domain.Transactions.Transaction", b =>
+                {
+                    b.HasOne("Broker.Backoffice.Domain.Orders.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Broker.Backoffice.Domain.Accounts.Account", b =>
                 {
                     b.Navigation("Holders");
@@ -1547,29 +1362,6 @@ namespace Broker.Backoffice.Infrastructure.Persistence.Migrations
                     b.Navigation("Addresses");
 
                     b.Navigation("InvestmentProfile");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.Permission", b =>
-                {
-                    b.Navigation("RolePermissions");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.Role", b =>
-                {
-                    b.Navigation("RolePermissions");
-
-                    b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("Broker.Backoffice.Domain.Identity.User", b =>
-                {
-                    b.Navigation("DataScopes");
-
-                    b.Navigation("PermissionOverrides");
-
-                    b.Navigation("RefreshTokens");
-
-                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

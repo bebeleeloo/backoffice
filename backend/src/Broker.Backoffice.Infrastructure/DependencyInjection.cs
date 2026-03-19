@@ -4,6 +4,7 @@ using Broker.Backoffice.Infrastructure.Auth;
 using Broker.Backoffice.Infrastructure.Persistence;
 using Broker.Backoffice.Infrastructure.Persistence.ChangeTracking;
 using Broker.Backoffice.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -21,9 +22,9 @@ public static class DependencyInjection
     {
         // EF Core
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(
+            options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
-                sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
+                npgsql => npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
@@ -41,13 +42,23 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri(authServiceUrl);
         });
+        services.AddHttpClient("AuthService", client =>
+        {
+            client.BaseAddress = new Uri(authServiceUrl);
+        });
 
         // JWT Authentication
         var jwtSecret = configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured");
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+        services.AddMemoryCache();
+
+        services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = "JwtOrBasic";
+                options.DefaultChallengeScheme = "JwtOrBasic";
+            })
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -59,6 +70,18 @@ public static class DependencyInjection
                     ValidAudience = configuration["Jwt:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
                     ClockSkew = TimeSpan.FromSeconds(30)
+                };
+            })
+            .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>(
+                BasicAuthenticationHandler.SchemeName, null)
+            .AddPolicyScheme("JwtOrBasic", "JWT or Basic", options =>
+            {
+                options.ForwardDefaultSelector = context =>
+                {
+                    var auth = context.Request.Headers.Authorization.ToString();
+                    return auth.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase)
+                        ? BasicAuthenticationHandler.SchemeName
+                        : JwtBearerDefaults.AuthenticationScheme;
                 };
             });
 

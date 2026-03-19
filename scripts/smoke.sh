@@ -243,7 +243,7 @@ data = json.dumps({
         "riskTolerance": "Low",
         "notes": "Updated via smoke test"
     },
-    "rowVersion": "${ROW_VERSION}"
+    "rowVersion": ${ROW_VERSION}
 }).encode()
 req = urllib.request.Request("http://localhost:5050/api/v1/clients/${CLIENT_ID}",
                              data=data, method="PUT",

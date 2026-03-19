@@ -219,7 +219,7 @@ export function EditNonTradeOrderDialog({ order, onClose }: EditProps) {
   const [form, setForm] = useState<CreateNonTradeOrderRequest>(emptyForm);
   const [status, setStatus] = useState<OrderStatus>("New");
   const [processedAt, setProcessedAt] = useState<string | undefined>(undefined);
-  const [rowVersion, setRowVersion] = useState("");
+  const [rowVersion, setRowVersion] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateNonTradeOrder();
   const { data: fullOrder } = useNonTradeOrder(order?.id ?? "");

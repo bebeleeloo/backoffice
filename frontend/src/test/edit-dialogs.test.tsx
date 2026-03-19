@@ -32,7 +32,7 @@ const CLIENT: ClientDto = {
   gender: null, maritalStatus: null, education: null,
   ssn: null, passportNumber: null, driverLicenseNumber: null,
   companyName: null, registrationNumber: null, taxId: null,
-  createdAt: "2025-01-01T00:00:00Z", rowVersion: "AAAA",
+  createdAt: "2025-01-01T00:00:00Z", rowVersion: 100,
   addresses: [], investmentProfile: null,
 };
 
@@ -43,7 +43,7 @@ const ACCOUNT: AccountDto = {
   status: "Active", accountType: "Individual", marginType: "Cash",
   optionLevel: "Level0", tariff: "Basic", deliveryType: null,
   openedAt: null, closedAt: null, comment: null, externalId: null,
-  createdAt: "2025-01-01T00:00:00Z", rowVersion: "BBBB",
+  createdAt: "2025-01-01T00:00:00Z", rowVersion: 200,
   holders: [],
 };
 
@@ -58,7 +58,7 @@ const INSTRUMENT: InstrumentDto = {
   isMarginEligible: true,
   listingDate: null, delistingDate: null, expirationDate: null,
   issuerName: null, description: null, externalId: null,
-  createdAt: "2025-01-01T00:00:00Z", rowVersion: "CCCC",
+  createdAt: "2025-01-01T00:00:00Z", rowVersion: 300,
 };
 
 /* ── helpers ── */

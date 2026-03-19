@@ -21,7 +21,7 @@ export function buildTradeTransactionListItemDto(
     venue: faker.datatype.boolean() ? faker.helpers.arrayElement(["NYSE", "NASDAQ", "LSE"]) : null,
     externalId: faker.datatype.boolean() ? `EXT-TT-${faker.number.int({ min: 10000, max: 99999 })}` : null,
     createdAt: faker.date.recent().toISOString(),
-    rowVersion: faker.string.alphanumeric(8),
+    rowVersion: faker.number.int({ min: 1, max: 999999 }),
     ...overrides,
   };
 }

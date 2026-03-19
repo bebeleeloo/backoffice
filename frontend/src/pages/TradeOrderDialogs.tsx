@@ -246,7 +246,7 @@ function emptyEditForm(): EditForm {
 export function EditTradeOrderDialog({ order, onClose }: EditProps) {
   const open = order !== null;
   const [form, setForm] = useState<EditForm>(emptyEditForm);
-  const [rowVersion, setRowVersion] = useState("");
+  const [rowVersion, setRowVersion] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateTradeOrder();
   const { data: fullOrder } = useTradeOrder(order?.id ?? "");

@@ -18,7 +18,7 @@ export function buildNonTradeTransactionListItemDto(
     processedAt: faker.datatype.boolean() ? faker.date.recent().toISOString() : null,
     externalId: faker.datatype.boolean() ? `EXT-NTT-${faker.number.int({ min: 10000, max: 99999 })}` : null,
     createdAt: faker.date.recent().toISOString(),
-    rowVersion: faker.string.alphanumeric(8),
+    rowVersion: faker.number.int({ min: 1, max: 999999 }),
     ...overrides,
   };
 }

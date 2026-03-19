@@ -6,5 +6,5 @@ public abstract class AuditableEntity : Entity
     public string? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
-    public byte[] RowVersion { get; set; } = [];
+    public uint RowVersion { get; set; }
 }

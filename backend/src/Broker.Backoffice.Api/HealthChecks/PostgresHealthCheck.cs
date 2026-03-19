@@ -1,9 +1,9 @@
-using Broker.Auth.Infrastructure.Persistence;
+using Broker.Backoffice.Infrastructure.Persistence;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace Broker.Auth.Api.HealthChecks;
+namespace Broker.Backoffice.Api.HealthChecks;
 
-public sealed class SqlServerHealthCheck(AuthDbContext dbContext) : IHealthCheck
+public sealed class PostgresHealthCheck(AppDbContext dbContext) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -13,12 +13,12 @@ public sealed class SqlServerHealthCheck(AuthDbContext dbContext) : IHealthCheck
         {
             var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
             return canConnect
-                ? HealthCheckResult.Healthy("SQL Server is reachable.")
-                : HealthCheckResult.Unhealthy("SQL Server is not reachable.");
+                ? HealthCheckResult.Healthy("PostgreSQL is reachable.")
+                : HealthCheckResult.Unhealthy("PostgreSQL is not reachable.");
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Unhealthy("SQL Server check failed.", ex);
+            return HealthCheckResult.Unhealthy("PostgreSQL check failed.", ex);
         }
     }
 }

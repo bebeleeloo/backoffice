@@ -210,7 +210,7 @@ export function EditNonTradeTransactionDialog({ transaction, onClose }: EditProp
   const [form, setForm] = useState<CreateNonTradeTransactionRequest>(emptyForm);
   const [status, setStatus] = useState<TransactionStatus>("Pending");
   const [processedAt, setProcessedAt] = useState<string | undefined>(undefined);
-  const [rowVersion, setRowVersion] = useState("");
+  const [rowVersion, setRowVersion] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateNonTradeTransaction();
   const { data: fullTransaction } = useNonTradeTransaction(transaction?.id ?? "");

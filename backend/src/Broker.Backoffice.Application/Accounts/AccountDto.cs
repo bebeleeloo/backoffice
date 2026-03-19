@@ -20,7 +20,7 @@ public sealed record AccountDto(
     string? Comment,
     string? ExternalId,
     DateTime CreatedAt,
-    byte[] RowVersion,
+    uint RowVersion,
     IReadOnlyList<AccountHolderDto> Holders);
 
 public sealed record AccountHolderDto(
@@ -45,5 +45,5 @@ public sealed record AccountListItemDto(
     DateTime? ClosedAt,
     string? ExternalId,
     DateTime CreatedAt,
-    byte[] RowVersion,
+    uint RowVersion,
     int HolderCount);

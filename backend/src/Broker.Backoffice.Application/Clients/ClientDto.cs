@@ -37,7 +37,7 @@ public sealed record ClientDto(
     string? RegistrationNumber,
     string? TaxId,
     DateTime CreatedAt,
-    byte[] RowVersion,
+    uint RowVersion,
     IReadOnlyList<ClientAddressDto> Addresses,
     InvestmentProfileDto? InvestmentProfile);
 
@@ -64,7 +64,7 @@ public sealed record ClientListItemDto(
     string? ResidenceCountryIso2,
     string? ResidenceCountryFlagEmoji,
     DateTime CreatedAt,
-    byte[] RowVersion,
+    uint RowVersion,
     string? Phone,
     string? ExternalId,
     bool PepStatus,

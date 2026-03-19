@@ -22,7 +22,7 @@ public sealed record NonTradeOrderDto(
     string? Description,
     DateTime? ProcessedAt,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);
 
 public sealed record NonTradeOrderListItemDto(
     Guid Id,
@@ -39,4 +39,4 @@ public sealed record NonTradeOrderListItemDto(
     DateTime? ProcessedAt,
     string? ExternalId,
     DateTime CreatedAt,
-    byte[] RowVersion);
+    uint RowVersion);
