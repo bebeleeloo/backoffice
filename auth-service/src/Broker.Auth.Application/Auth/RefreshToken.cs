@@ -1,11 +1,20 @@
 using Broker.Auth.Application.Abstractions;
 using Broker.Auth.Domain.Identity;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Auth.Application.Auth;
 
 public sealed record RefreshTokenCommand(string RefreshToken) : IRequest<AuthResponse>;
+
+public sealed class RefreshTokenCommandValidator : AbstractValidator<RefreshTokenCommand>
+{
+    public RefreshTokenCommandValidator()
+    {
+        RuleFor(x => x.RefreshToken).NotEmpty();
+    }
+}
 
 public sealed class RefreshTokenCommandHandler(
     IAuthDbContext db,

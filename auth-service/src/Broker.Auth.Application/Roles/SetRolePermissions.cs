@@ -1,12 +1,22 @@
 using System.Text.Json;
 using Broker.Auth.Application.Abstractions;
 using Broker.Auth.Domain.Identity;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Auth.Application.Roles;
 
 public sealed record SetRolePermissionsCommand(Guid RoleId, List<Guid> PermissionIds) : IRequest<RoleDto>;
+
+public sealed class SetRolePermissionsCommandValidator : AbstractValidator<SetRolePermissionsCommand>
+{
+    public SetRolePermissionsCommandValidator()
+    {
+        RuleFor(x => x.RoleId).NotEmpty();
+        RuleFor(x => x.PermissionIds).NotNull();
+    }
+}
 
 public sealed class SetRolePermissionsCommandHandler(
     IAuthDbContext db, IDateTimeProvider clock, ICurrentUser currentUser, IAuditContext audit)
@@ -18,6 +28,9 @@ public sealed class SetRolePermissionsCommandHandler(
             .Include(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(r => r.Id == request.RoleId, ct)
             ?? throw new KeyNotFoundException($"Role {request.RoleId} not found");
+
+        if (role.IsSystem)
+            throw new InvalidOperationException("Cannot modify permissions on a system role");
 
         var before = JsonSerializer.Serialize(role.RolePermissions.Select(rp => rp.Permission.Code));
 

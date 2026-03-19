@@ -7,6 +7,7 @@ using Broker.Auth.Infrastructure.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Broker.Auth.Api.Controllers;
 
@@ -68,6 +69,7 @@ public sealed class UsersController(ISender mediator) : ControllerBase
 
     [HttpPut("{id:guid}/photo")]
     [HasPermission(Permissions.UsersUpdate)]
+    [EnableRateLimiting("auth")]
     [RequestSizeLimit(2 * 1024 * 1024)]
     [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> UploadPhoto(Guid id, IFormFile file, CancellationToken ct)
@@ -82,6 +84,7 @@ public sealed class UsersController(ISender mediator) : ControllerBase
 
     [HttpDelete("{id:guid}/photo")]
     [HasPermission(Permissions.UsersUpdate)]
+    [EnableRateLimiting("auth")]
     [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> DeletePhoto(Guid id, CancellationToken ct)
     {

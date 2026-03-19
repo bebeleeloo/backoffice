@@ -79,6 +79,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 
     [HttpPut("photo")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     [RequestSizeLimit(2 * 1024 * 1024)]
     [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> UploadPhoto(IFormFile file, CancellationToken ct)
@@ -94,6 +95,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 
     [HttpDelete("photo")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> DeletePhoto(CancellationToken ct)
     {

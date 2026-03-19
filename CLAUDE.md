@@ -13,8 +13,8 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ├── docs/             # Architecture documentation
 ├── scripts/          # Test, deployment, and data migration scripts
 ├── screenshots/      # UI screenshots
-├── .github/workflows/ci.yml  # GitHub Actions CI pipeline (5 jobs)
-├── docker-compose.yml         # 4 services: postgres, auth, api, web
+├── .github/workflows/ci.yml  # GitHub Actions CI pipeline (6 jobs)
+├── docker-compose.yml         # 6 services: postgres, auth, api, web, n8n-db, n8n
 ├── Dockerfile.api    # Multi-stage .NET build (monolith, port 8080)
 ├── Dockerfile.auth   # Multi-stage .NET build (auth service, port 8082)
 ├── Dockerfile.web    # Multi-stage Node + nginx build (non-root, port 8080)
@@ -48,10 +48,11 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - ESLint 9 (flat config, typescript-eslint, react-hooks, react-refresh)
 
 ### Infrastructure
-- Docker Compose (4 services: postgres, auth, api, web) with restart policies, resource limits, log rotation
+- Docker Compose (6 services: postgres, auth, api, web, n8n-db, n8n) with restart policies, resource limits, log rotation
 - PostgreSQL 16
+- n8n (workflow automation, separate PostgreSQL DB, connects to api/auth via internal Docker network)
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
-- GitHub Actions CI (5 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, frontend tsc/eslint/vitest/build; NuGet/npm caching)
+- GitHub Actions CI (6 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, permissions-sync, frontend tsc/eslint/vitest/build; NuGet/npm caching)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (PostgreSQL)
@@ -711,8 +712,8 @@ docker compose up --build -d
 # Frontend: http://localhost:3000
 # API/Swagger: http://localhost:5050/swagger
 # Login: admin / Admin123!
-# Services: postgres, auth (:8082), api (:5050), web (:3000)
-# Memory limits: postgres: 512M, auth: 512M, api: 512M, web: 256M
+# Services: postgres, auth (:8082), api (:5050), web (:3000), n8n (:5678)
+# Memory limits: postgres: 512M, auth: 512M, api: 512M, web: 256M, n8n-db: 256M, n8n: 512M
 ```
 
 ### Frontend dev (hot reload):
@@ -735,6 +736,8 @@ dotnet run
 | JWT_SECRET | Yes | JWT signing key (min 32 chars) |
 | ADMIN_PASSWORD | No | Initial admin password (default: Admin123!) |
 | SEED_DEMO_DATA | No | Seed demo data (default: false) |
+| N8N_DB_PASSWORD | No | n8n PostgreSQL password (default: n8n_password) |
+| N8N_PASSWORD | No | n8n web UI password (default: Admin123!) |
 
 ### Health checks:
 - `/health/live` — Liveness (always 200)

@@ -47,7 +47,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/localhost/8082'"]
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8082/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,11 +85,11 @@ services:
       auth:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/localhost/8080'"]
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8080/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 30s
     deploy:
       resources:
         limits:
