@@ -1,57 +1,15 @@
 {
-  "name": "broker-backoffice-web",
+  "name": "@broker/root",
   "private": true,
   "version": "0.1.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "generate:api": "orval",
-    "test": "vitest run -c vitest.config.ts",
-    "test:ci": "vitest run -c vitest.config.ts --coverage",
-    "build:ci": "npm run test:ci && npm run build"
-  },
-  "dependencies": {
-    "@emotion/react": "^11.13.0",
-    "@emotion/styled": "^11.13.0",
-    "@mui/icons-material": "^6.1.0",
-    "@mui/material": "^6.1.0",
-    "@mui/x-data-grid": "^7.18.0",
-    "@mui/x-date-pickers": "^7.18.0",
-    "@tanstack/react-query": "^5.56.0",
-    "axios": "^1.7.0",
-    "dayjs": "^1.11.0",
-    "exceljs": "^4.4.0",
-    "file-saver": "^2.0.5",
-    "notistack": "^3.0.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0",
-    "recharts": "^3.7.0"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "lint": "turbo lint"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.3",
-    "@faker-js/faker": "^10.3.0",
-    "@testing-library/jest-dom": "^6.0.0",
-    "@testing-library/react": "^16.0.0",
-    "@testing-library/user-event": "^14.0.0",
-    "@types/file-saver": "^2.0.7",
-    "@types/react": "^18.3.5",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "@vitest/coverage-v8": "^2.0.0",
-    "eslint": "^9.39.3",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "happy-dom": "^20.6.3",
-    "jsdom": "^25.0.0",
-    "msw": "^2.0.0",
-    "orval": "^8.5.1",
-    "typescript": "~5.6.0",
-    "typescript-eslint": "^8.56.1",
-    "vite": "^5.4.0",
-    "vitest": "^2.0.0"
-  }
+    "turbo": "^2.4.0"
+  },
+  "packageManager": "pnpm@9.15.4"
 }

@@ -68,6 +68,22 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
       - run: dotnet test auth-service/tests/Broker.Auth.Tests.Integration/ --verbosity normal
 
+  gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('gateway/**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - run: dotnet build gateway/src/Broker.Gateway.Api/
+      - name: Check for vulnerable NuGet packages
+        run: dotnet list gateway/src/Broker.Gateway.Api/ package --vulnerable --include-transitive
+
   permissions-sync:
     runs-on: ubuntu-latest
     steps:
@@ -86,12 +102,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - run: cd frontend && npm ci
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@9.15.4 --activate
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: cd frontend && pnpm install --frozen-lockfile
       - name: Check for vulnerable npm packages
-        run: cd frontend && npm audit --audit-level=high
-      - run: cd frontend && npx tsc --noEmit
-      - run: cd frontend && npx eslint src/ --max-warnings 0
-      - run: cd frontend && npx vitest run
-      - run: cd frontend && npm run build
+        run: cd frontend && pnpm audit --audit-level=high
+      - run: cd frontend && pnpm turbo lint
+      - run: cd frontend && pnpm turbo test
+      - run: cd frontend && pnpm turbo build

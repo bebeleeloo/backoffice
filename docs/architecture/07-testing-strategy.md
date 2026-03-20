@@ -2,7 +2,7 @@
 
 ## Текущее состояние
 
-**Общее количество тестов: 617**
+**Общее количество тестов: 607**
 
 | Набор | Тестов | Время | Технологии |
 |-------|--------|-------|------------|
@@ -10,28 +10,34 @@
 | Monolith integration | 145 | ~10с | Testcontainers (PostgreSQL), WebApplicationFactory |
 | Auth service unit | 44 | ~1с | xUnit, FluentAssertions, NSubstitute |
 | Auth service integration | 36 | ~5с | Testcontainers (PostgreSQL), WebApplicationFactory |
-| Frontend | 119 | ~6с | Vitest, React Testing Library, MSW, faker |
+| Frontend | 109 | ~6с | Vitest, React Testing Library, MSW, faker |
 
 ---
 
-## Frontend (119 тестов)
+## Frontend (109 тестов)
 
 **Фреймворк:** Vitest 2.x + React Testing Library 16 + jsdom
 
-**Include pattern:** `src/{hooks,auth,lib,utils,test}/**/*.test.{ts,tsx}`
+Тесты распределены по пакетам монорепозитория. Запуск всех тестов: `pnpm turbo test`.
 
-### Утилиты и хуки (51 тест)
+### @broker/ui-kit (51 тест)
+
+Хуки, утилиты, компоненты, auth:
 
 | Файл | Тестов | Что тестирует |
 |------|--------|---------------|
-| `src/utils/validateFields.test.ts` | 19 | Валидаторы: validateRequired, validateEmail |
-| `src/utils/extractErrorMessage.test.ts` | 13 | Парсинг ошибок: Axios, ProblemDetails, fallback |
-| `src/hooks/useConfirm.test.ts` | 6 | Хук useConfirm: promise-based подтверждение |
-| `src/hooks/useDebounce.test.tsx` | 5 | Хук debounce: задержка, сброс таймера, custom delay |
-| `src/auth/usePermission.test.ts` | 3 | Хук useHasPermission: наличие/отсутствие permission |
-| `src/auth/usePermission.test.tsx` | 5 | Хук useHasPermission: рендеринг с провайдерами |
+| `utils/validateFields.test.ts` | 19 | Валидаторы: validateRequired, validateEmail |
+| `utils/extractErrorMessage.test.ts` | 13 | Парсинг ошибок: Axios, ProblemDetails, fallback |
+| `hooks/useConfirm.test.ts` | 6 | Хук useConfirm: promise-based подтверждение |
+| `hooks/useDebounce.test.tsx` | 5 | Хук debounce: задержка, сброс таймера, custom delay |
+| `auth/usePermission.test.ts` | 3 | Хук useHasPermission: наличие/отсутствие permission |
+| `auth/usePermission.test.tsx` | 5 | Хук useHasPermission: рендеринг с провайдерами |
 
-### Smoke-тесты страниц (45 тестов)
+### @broker/backoffice (58 тестов)
+
+Smoke-тесты страниц, компоненты, диалоги:
+
+**Smoke-тесты страниц (35 тестов)**
 
 Каждая страница проверяется на 5 аспектов:
 1. Рендерится заголовок страницы
@@ -42,30 +48,32 @@
 
 | Файл | Тестов | Страницы |
 |------|--------|----------|
-| `src/test/list-pages.test.tsx` | 25 | ClientsPage, AccountsPage, InstrumentsPage, UsersPage, RolesPage |
-| `src/test/order-pages.test.tsx` | 10 | TradeOrdersPage, NonTradeOrdersPage |
-| `src/test/transaction-pages.test.tsx` | 10 | TradeTransactionsPage, NonTradeTransactionsPage |
+| `list-pages.test.tsx` | 15 | ClientsPage, AccountsPage, InstrumentsPage |
+| `order-pages.test.tsx` | 10 | TradeOrdersPage, NonTradeOrdersPage |
+| `transaction-pages.test.tsx` | 10 | TradeTransactionsPage, NonTradeTransactionsPage |
 
-### Компоненты и диалоги (23 теста)
+> Тесты UsersPage и RolesPage перенесены в apps/auth.
+
+**Компоненты и диалоги (23 теста)**
 
 | Файл | Тестов | Что тестирует |
 |------|--------|---------------|
-| `src/test/transaction-details.test.tsx` | 11 | Детальные страницы Trade/NonTrade Transaction |
-| `src/test/components.test.tsx` | 8 | ConfirmDialog, ErrorBoundary, UserAvatar, PageContainer |
-| `src/test/edit-dialogs.test.tsx` | 4 | Regression: Edit-диалоги заполняют форму при закешированных данных |
+| `transaction-details.test.tsx` | 11 | Детальные страницы Trade/NonTrade Transaction |
+| `components.test.tsx` | 8 | ConfirmDialog, ErrorBoundary, UserAvatar, PageContainer |
+| `edit-dialogs.test.tsx` | 4 | Regression: Edit-диалоги заполняют форму при закешированных данных |
 
 ### Инфраструктура тестирования
 
 | Утилита | Путь | Назначение |
 |---------|------|------------|
-| renderWithProviders | `src/test/renderWithProviders.tsx` | Полный набор провайдеров (QueryClient, Theme, Auth, Router) |
-| Factories | `src/test/factories/` | Билдеры тестовых данных (faker.js) |
-| MSW handlers | `src/test/msw/` | Моки API-эндпоинтов |
+| renderWithProviders | `test/renderWithProviders.tsx` | Полный набор провайдеров (QueryClient, Theme, Auth, Router) |
+| Factories | `test/factories/` | Билдеры тестовых данных (faker.js) |
+| MSW handlers | `test/msw/` | Моки API-эндпоинтов |
 
 ### Coverage config
 
-`vitest.config.ts` исключает из метрик покрытия:
-- `src/test/**` — тестовая инфраструктура
+`vitest.config.ts` в каждом пакете исключает из метрик покрытия:
+- `src/test/**` / `test/**` — тестовая инфраструктура
 - `src/types/**` — type augmentations
 
 ### Примечание: OOM-проблема
@@ -160,7 +168,7 @@ GitHub Actions: 5 параллельных job-ов на каждый push в ma
 2. **backend-integration** — 145 интеграционных тестов (монолит, Testcontainers PostgreSQL)
 3. **auth-service** — build + NuGet audit + 44 unit-тестов
 4. **auth-service-integration** — 36 интеграционных тестов (Testcontainers PostgreSQL)
-5. **frontend** — tsc + eslint + 119 vitest-тестов + production build
+5. **frontend** — tsc + eslint + 109 vitest-тестов (`pnpm turbo test`) + production build
 
 ---
 

@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Broker.Gateway.Api/Broker.Gateway.Api.csproj" />
+  </Folder>
+</Solution>

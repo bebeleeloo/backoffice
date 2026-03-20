@@ -2,10 +2,10 @@
 
 ## Назначение
 
-Модульная архитектура позволяет разделить фронтенд на **независимые пакеты** (UI-модули), которые:
+Модульная архитектура разделяет фронтенд на **независимые пакеты** (UI-модули) и **3 отдельных SPA-приложения**, которые:
 
 1. **Разрабатываются независимо** -- разные команды работают над разными модулями в одном монорепозитории
-2. **Деплоятся отдельно** -- каждый модуль собирается в самостоятельное SPA со своим Docker-образом
+2. **Деплоятся вместе** -- один `Dockerfile.web` собирает все 3 SPA, nginx раздаёт по path
 3. **Переиспользуются между проектами** -- auth-модуль подключается к любому проекту как npm-зависимость
 4. **Сохраняют единый стиль** -- общая дизайн-система, тема, компоненты через `@broker/ui-kit`
 5. **Управляются через Config Service** -- sidebar, видимость пунктов меню, доступы -- приходят с сервера
@@ -14,16 +14,15 @@
 
 | Проблема | Решение |
 |----------|---------|
-| Весь фронтенд -- один бандл, деплоится целиком | Каждый модуль -- отдельное SPA, свой Dockerfile, свой релизный цикл |
+| Весь фронтенд -- один бандл, деплоится целиком | 3 SPA (backoffice, auth, config), каждое -- отдельный Vite-бандл |
 | Auth UI нужен на соседнем проекте | `@broker/auth-module` подключается как npm-зависимость |
 | Sidebar захардкожен, для скрытия пункта нужен деплой | Sidebar конфигурируется через Config Service, по ролям |
 | Разные команды конфликтуют в одной кодовой базе | Изолированные пакеты в monorepo, чёткие границы |
 | Новый проект -- заново создавать тему, компоненты, авторизацию | `@broker/ui-kit` -- подключил и получил всё |
-| Report Service UI нужен только на продакшене с отчётами | Модуль `@broker/reports-module` подключается по необходимости |
 
 ---
 
-## Целевая архитектура
+## Реализованная архитектура
 
 ```
                     ┌─────────────────────────────────────────┐
@@ -31,51 +30,27 @@
                     │                                         │
   ┌─────────────────┤  packages/ (shared)                     │
   │                 │  ├── ui-kit/          @broker/ui-kit     │
-  │                 │  ├── auth-module/     @broker/auth-module│
-  │                 │  └── reports-module/  @broker/reports-module
+  │                 │  └── auth-module/     @broker/auth-module│
   │                 │                                         │
-  │                 │  apps/ (deployable SPA)                  │
-  │                 │  ├── backoffice/      Основная админка   │
-  │                 │  ├── auth-standalone/ Auth отдельно      │
-  │                 │  ├── reports/         Reports отдельно   │
-  │                 │  └── other-project/   Соседний проект    │
+  │                 │  apps/ (3 SPA)                           │
+  │                 │  ├── backoffice/      Бизнес-страницы    │
+  │                 │  ├── auth/            Login + Users + Roles│
+  │                 │  └── config/          Config Admin UI    │
   │                 └─────────────────────────────────────────┘
   │
-  │  npm install @broker/ui-kit @broker/auth-module
+  │                        nginx
+  │                          │
+  │          ┌───────────────┼───────────────┐
+  │          │               │               │
+  │    /login,/users,   /config/*      / (всё остальное)
+  │    /roles → auth     → config      → backoffice
+  │       SPA              SPA              SPA
   │
-  ▼
-┌──────────────────────────────────┐
-│  apps/backoffice                 │
-│  ┌──────────┐ ┌───────────────┐ │
-│  │ ui-kit   │ │ auth-module   │ │
-│  │ (тема,   │ │ (Users,Roles, │ │
-│  │ layout,  │ │  Login)       │ │
-│  │ компон.) │ │               │ │
-│  └──────────┘ └───────────────┘ │
-│  ┌──────────────────────────────┤
-│  │ Собственные страницы:        │
-│  │ Clients, Accounts, Orders,   │
-│  │ Instruments, Transactions,   │
-│  │ Dashboard, Settings, Audit   │
-│  └──────────────────────────────┘
-        │
-        │ Dockerfile.web-backoffice
-        ▼
-  Docker image: broker/web-backoffice:1.2.3
-
-┌──────────────────────────────────┐
-│  apps/other-project              │
-│  ┌──────────┐ ┌───────────────┐ │
-│  │ ui-kit   │ │ auth-module   │ │
-│  └──────────┘ └───────────────┘ │
-│  ┌──────────────────────────────┤
-│  │ Собственные страницы проекта │
-│  └──────────────────────────────┘
-        │
-        │ Dockerfile.web-other
-        ▼
-  Docker image: broker/web-other:1.0.0
+  │  Все 3 SPA делят один localStorage (один origin)
+  └──────────────────────────────────────────────────
 ```
+
+Каждое SPA -- самостоятельное React-приложение со своим `main.tsx`, `router/index.tsx` и Vite-конфигом. Общая инфраструктура (тема, компоненты, auth, API client) приходит из `@broker/ui-kit`.
 
 ---
 
@@ -104,11 +79,11 @@ frontend/
 │   │   │   ├── layouts/
 │   │   │   │   ├── MainLayout.tsx        # Sidebar + content area
 │   │   │   │   ├── SidebarItem.tsx       # Пункт меню (иконка, label, children)
+│   │   │   │   ├── NavigationProvider.tsx # Контекст кросс-SPA навигации
 │   │   │   │   └── index.ts
 │   │   │   ├── theme/
 │   │   │   │   ├── index.ts             # createAppTheme, SIDEBAR_COLORS, STAT_GRADIENTS
-│   │   │   │   ├── ThemeContext.tsx      # AppThemeProvider, useThemeMode, useListTheme
-│   │   │   │   └── index.ts
+│   │   │   │   └── ThemeContext.tsx      # AppThemeProvider, useThemeMode, useListTheme
 │   │   │   ├── auth/
 │   │   │   │   ├── AuthContext.tsx       # AuthProvider, AuthState
 │   │   │   │   ├── useAuth.ts           # useAuth hook
@@ -129,46 +104,32 @@ frontend/
 │   │   │   │   ├── validateFields.ts
 │   │   │   │   └── index.ts
 │   │   │   ├── icons.ts                 # iconMap: string → MUI Icon component
-│   │   │   ├── types.ts                 # MenuItem, ModuleDefinition, общие типы
+│   │   │   ├── types.ts                 # MenuItem, общие типы
 │   │   │   └── index.ts                 # Главный реэкспорт
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
-│   ├── auth-module/                     # @broker/auth-module
-│   │   ├── src/
-│   │   │   ├── pages/
-│   │   │   │   ├── LoginPage.tsx
-│   │   │   │   ├── UsersPage.tsx
-│   │   │   │   ├── UserDetailsPage.tsx
-│   │   │   │   ├── UserDialogs.tsx
-│   │   │   │   ├── RolesPage.tsx
-│   │   │   │   ├── RoleDetailsPage.tsx
-│   │   │   │   ├── RoleDialogs.tsx
-│   │   │   │   └── ProfileTab.tsx
-│   │   │   ├── api/
-│   │   │   │   ├── types.ts             # UserDto, RoleDto, PermissionDto
-│   │   │   │   └── hooks.ts            # useUsers, useRoles, useLogin, useMe...
-│   │   │   ├── routes.ts               # Экспорт RouteObject[]
-│   │   │   └── index.ts                # Экспорт модуля
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   │
-│   └── reports-module/                  # @broker/reports-module (будущий)
+│   └── auth-module/                     # @broker/auth-module
 │       ├── src/
 │       │   ├── pages/
-│       │   │   ├── ReportJournalPage.tsx
-│       │   │   ├── ReportTemplatesPage.tsx
-│       │   │   ├── ReportSchedulesPage.tsx
-│       │   │   └── ReportDialogs.tsx
+│       │   │   ├── LoginPage.tsx
+│       │   │   ├── UsersPage.tsx
+│       │   │   ├── UserDetailsPage.tsx
+│       │   │   ├── UserDialogs.tsx
+│       │   │   ├── RolesPage.tsx
+│       │   │   ├── RoleDetailsPage.tsx
+│       │   │   ├── RoleDialogs.tsx
+│       │   │   └── ProfileTab.tsx
 │       │   ├── api/
-│       │   │   ├── types.ts
-│       │   │   └── hooks.ts
-│       │   ├── routes.ts
-│       │   └── index.ts
-│       └── package.json
+│       │   │   ├── types.ts             # UserDto, RoleDto, PermissionDto
+│       │   │   └── hooks.ts            # useUsers, useRoles, useLogin, useMe...
+│       │   ├── routes.ts               # Экспорт RouteObject[]
+│       │   └── index.ts                # Экспорт модуля
+│       ├── package.json
+│       └── tsconfig.json
 │
 ├── apps/
-│   ├── backoffice/                      # Основная админка
+│   ├── backoffice/                      # Бизнес-страницы SPA
 │   │   ├── src/
 │   │   │   ├── pages/
 │   │   │   │   ├── DashboardPage.tsx
@@ -183,31 +144,35 @@ frontend/
 │   │   │   ├── api/
 │   │   │   │   ├── types.ts             # ClientDto, AccountDto, OrderDto...
 │   │   │   │   └── hooks.ts            # useClients, useAccounts, useOrders...
-│   │   │   ├── module.ts               # Экспорт ModuleDefinition
+│   │   │   ├── router/
+│   │   │   │   └── index.tsx           # Роутер с NavigationProvider
 │   │   │   └── main.tsx                # Точка входа
-│   │   ├── Dockerfile
-│   │   ├── nginx.conf
 │   │   ├── vite.config.ts
 │   │   └── package.json
 │   │
-│   ├── auth-standalone/                 # Auth как отдельное SPA (опционально)
+│   ├── auth/                            # Login + Users + Roles SPA
 │   │   ├── src/
-│   │   │   ├── main.tsx
-│   │   │   └── module.ts
-│   │   ├── Dockerfile
+│   │   │   ├── router/
+│   │   │   │   └── index.tsx           # Роутер с NavigationProvider
+│   │   │   └── main.tsx
+│   │   ├── vite.config.ts
 │   │   └── package.json
 │   │
-│   └── other-project/                   # Соседний проект
+│   └── config/                          # Config Admin SPA
 │       ├── src/
-│       │   ├── pages/                   # Страницы этого проекта
-│       │   ├── api/
-│       │   ├── module.ts
+│       │   ├── pages/
+│       │   │   ├── MenuEditorPage.tsx
+│       │   │   ├── EntityFieldsPage.tsx
+│       │   │   └── UpstreamsPage.tsx
+│       │   ├── router/
+│       │   │   └── index.tsx
 │       │   └── main.tsx
-│       ├── Dockerfile
+│       ├── vite.config.ts
 │       └── package.json
 │
 ├── pnpm-workspace.yaml
 ├── turbo.json
+├── nginx.conf                           # Shared nginx: роутинг 3 SPA
 ├── package.json                         # Root package
 └── tsconfig.base.json                   # Общий tsconfig
 ```
@@ -243,13 +208,13 @@ frontend/
 | Категория | Экспорты |
 |-----------|----------|
 | Компоненты | `PageContainer`, `FilteredDataGrid`, `ConfirmDialog`, `UserAvatar`, `Breadcrumbs`, `DetailField`, `ExportButton`, `GlobalSearchBar`, `ErrorBoundary`, `RouteLoadingFallback`, `EntityHistoryDialog`, `AuditDetailDialog` |
-| Layout | `MainLayout`, `SidebarItem` |
+| Layout | `MainLayout`, `SidebarItem`, `NavigationProvider`, `useAppNavigation` |
 | Тема | `createAppTheme`, `createAppListTheme`, `AppThemeProvider`, `useThemeMode`, `useListTheme`, `SIDEBAR_COLORS`, `STAT_GRADIENTS` |
 | Auth | `AuthProvider`, `useAuth`, `useHasPermission`, `RequireAuth` |
 | API | `apiClient` (Axios), `useMenu`, `useEntityConfig` |
 | Хуки | `useDebounce`, `useConfirm` |
 | Утилиты | `exportToExcel`, `extractErrorMessage`, `validateRequired`, `validateEmail` |
-| Типы | `MenuItem`, `ModuleDefinition`, `PagedResult`, `FieldErrors` |
+| Типы | `MenuItem`, `PagedResult`, `FieldErrors` |
 | Иконки | `iconMap` -- маппинг `string → React.ComponentType` |
 
 ### @broker/auth-module
@@ -287,175 +252,159 @@ UI для auth-сервиса. Подключается к любому прое
 | API hooks | `useUsers`, `useUser`, `useCreateUser`, `useUpdateUser`, `useDeleteUser`, `useRoles`, `useRole`, `useCreateRole`, `useUpdateRole`, `useDeleteRole`, `usePermissions`, `useLogin`, `useRefreshToken`, `useMe`, `useChangePassword`, `useUpdateProfile`, `useUploadPhoto`, `useDeletePhoto` |
 | Типы | `UserDto`, `RoleDto`, `PermissionDto`, `AuthResponse`, `UserProfile` |
 
-### @broker/reports-module (будущий)
+---
 
-UI для сервиса отчётов. Подключается к проектам, где нужна генерация и журналирование отчётов.
+## Архитектура SPA-приложений
 
-**Содержит:**
+### Каждое SPA -- самостоятельное React-приложение
 
-| Компонент | Описание |
-|-----------|----------|
-| `ReportJournalPage` | Журнал: кто, когда, какой отчёт, куда отправил |
-| `ReportTemplatesPage` | Список шаблонов отчётов |
-| `ReportSchedulesPage` | Расписания автоматической генерации |
-| `ReportDialogs` | Генерация отчёта вручную, настройка расписания |
-| API hooks | `useReportJournal`, `useReportTemplates`, `useSchedules`, `useGenerateReport` |
+Вместо единого `createApp()` с `ModuleDefinition`, каждое SPA имеет свой собственный `main.tsx` с идентичным стеком провайдеров и свой `router/index.tsx`.
+
+```typescript
+// apps/backoffice/src/main.tsx (аналогично для auth и config)
+import { createRoot } from 'react-dom/client'
+import { AppThemeProvider, AuthProvider } from '@broker/ui-kit'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { RouterProvider } from 'react-router-dom'
+import { SnackbarProvider } from 'notistack'
+import { router } from './router'
+
+const root = createRoot(document.getElementById('root')!)
+root.render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <AppThemeProvider>
+        <SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
+        </SnackbarProvider>
+      </AppThemeProvider>
+    </QueryClientProvider>
+  </StrictMode>
+)
+```
+
+Каждое SPA оборачивает `MainLayout` в `NavigationProvider` со списком своих внутренних путей:
+
+```typescript
+// apps/backoffice/src/router/index.tsx
+import { NavigationProvider, RequireAuth, MainLayout } from '@broker/ui-kit'
+
+const internalPaths = [
+  '/', '/clients', '/accounts', '/instruments',
+  '/trade-orders', '/non-trade-orders',
+  '/trade-transactions', '/non-trade-transactions',
+  '/audit', '/settings',
+]
+
+export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
+  {
+    path: '/',
+    element: (
+      <RequireAuth>
+        <NavigationProvider internalPaths={internalPaths}>
+          <MainLayout />
+        </NavigationProvider>
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, lazy: () => import('../pages/DashboardPage') },
+      { path: 'clients', lazy: () => import('../pages/ClientsPage') },
+      // ... остальные бизнес-роуты
+    ],
+  },
+])
+```
+
+```typescript
+// apps/auth/src/router/index.tsx
+const internalPaths = ['/login', '/users', '/roles']
+
+export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
+  {
+    path: '/',
+    element: (
+      <RequireAuth>
+        <NavigationProvider internalPaths={internalPaths}>
+          <MainLayout />
+        </NavigationProvider>
+      </RequireAuth>
+    ),
+    children: [
+      { path: 'users', lazy: () => import('../pages/UsersPage') },
+      { path: 'users/:id', lazy: () => import('../pages/UserDetailsPage') },
+      { path: 'roles', lazy: () => import('../pages/RolesPage') },
+      { path: 'roles/:id', lazy: () => import('../pages/RoleDetailsPage') },
+    ],
+  },
+])
+```
 
 ---
 
-## Регистрация модулей
+## Кросс-SPA навигация
 
-### ModuleDefinition
+### Проблема
 
-Каждый модуль экспортирует объект `ModuleDefinition`:
+3 SPA работают на одном домене, но каждое -- отдельное React-приложение со своим React Router. Переход между SPA (например, из backoffice в `/users`) невозможен через `react-router-dom` `navigate()` -- нужна полная перезагрузка страницы.
 
-```typescript
-// packages/ui-kit/src/types.ts
-export interface ModuleDefinition {
-  name: string               // Совпадает с menu.yaml → module
-  routes: RouteObject[]      // React Router v6 route objects
-  loginPage?: ComponentType  // Кастомная страница логина (опционально)
-}
-```
+### Решение: NavigationProvider
 
-### Экспорт из модуля
+`NavigationProvider` в `@broker/ui-kit` предоставляет контекст навигации. Каждое SPA передаёт массив `internalPaths` -- пути, которые это SPA обрабатывает.
 
 ```typescript
-// packages/auth-module/src/routes.ts
-import type { RouteObject } from 'react-router-dom'
-
-export const authRoutes: RouteObject[] = [
-  {
-    path: '/users',
-    lazy: () => import('./pages/UsersPage').then(m => ({ Component: m.UsersPage })),
-  },
-  {
-    path: '/users/:id',
-    lazy: () => import('./pages/UserDetailsPage').then(m => ({ Component: m.UserDetailsPage })),
-  },
-  {
-    path: '/roles',
-    lazy: () => import('./pages/RolesPage').then(m => ({ Component: m.RolesPage })),
-  },
-  {
-    path: '/roles/:id',
-    lazy: () => import('./pages/RoleDetailsPage').then(m => ({ Component: m.RoleDetailsPage })),
-  },
-]
-
-// packages/auth-module/src/index.ts
-import type { ModuleDefinition } from '@broker/ui-kit'
-import { authRoutes } from './routes'
-
-export const authModule: ModuleDefinition = {
-  name: 'auth',
-  routes: authRoutes,
-}
-```
-
-### Подключение в приложении
-
-```typescript
-// apps/backoffice/src/module.ts
-import type { ModuleDefinition } from '@broker/ui-kit'
-
-export const backofficeModule: ModuleDefinition = {
-  name: 'backoffice',
-  routes: [
-    {
-      index: true,
-      lazy: () => import('./pages/DashboardPage').then(m => ({ Component: m.DashboardPage })),
-    },
-    {
-      path: '/clients',
-      lazy: () => import('./pages/ClientsPage').then(m => ({ Component: m.ClientsPage })),
-    },
-    {
-      path: '/clients/:id',
-      lazy: () => import('./pages/ClientDetailsPage').then(m => ({ Component: m.ClientDetailsPage })),
-    },
-    // ... остальные бизнес-роуты
-  ],
-}
-```
-
-```typescript
-// apps/backoffice/src/main.tsx
-import { createApp } from '@broker/ui-kit'
-import { backofficeModule } from './module'
-import { authModule } from '@broker/auth-module'
-import { reportsModule } from '@broker/reports-module'
-
-createApp({
-  modules: [backofficeModule, authModule, reportsModule],
-})
-```
-
-```typescript
-// apps/other-project/src/main.tsx
-import { createApp } from '@broker/ui-kit'
-import { otherProjectModule } from './module'
-import { authModule } from '@broker/auth-module'
-// reports-module не подключаем -- на этом проекте его нет
-
-createApp({
-  modules: [otherProjectModule, authModule],
-})
-```
-
-### createApp
-
-Фабричная функция в `@broker/ui-kit`, собирающая приложение из модулей:
-
-```typescript
-// packages/ui-kit/src/createApp.tsx
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-
-interface AppConfig {
-  modules: ModuleDefinition[]
+// packages/ui-kit/src/layouts/NavigationProvider.tsx
+interface NavigationContextValue {
+  navigateTo: (path: string) => void
+  isInternalPath: (path: string) => boolean
 }
 
-export function createApp({ modules }: AppConfig) {
-  // 1. Собрать все роуты из модулей
-  const allRoutes = modules.flatMap(m => m.routes)
+export function NavigationProvider({ internalPaths, children }) {
+  const navigate = useNavigate()
 
-  // 2. Найти LoginPage (из auth-module или дефолтный)
-  const authMod = modules.find(m => m.loginPage)
-  const LoginPage = authMod?.loginPage ?? DefaultLoginPage
+  const navigateTo = useCallback((path: string) => {
+    // Проверяем, обрабатывается ли путь текущим SPA
+    const isInternal = internalPaths.some(p =>
+      path === p || path.startsWith(p + '/')
+    )
 
-  // 3. Собрать роутер
-  const router = createBrowserRouter([
-    { path: '/login', element: <LoginPage /> },
-    {
-      path: '/',
-      element: <RequireAuth><MainLayout /></RequireAuth>,
-      errorElement: <ErrorBoundary />,
-      children: [
-        ...allRoutes,
-        { path: '*', element: <NotFoundPage /> },
-      ],
-    },
-  ])
+    if (isInternal) {
+      navigate(path)         // React Router — без перезагрузки
+    } else {
+      window.location.href = path  // Полная навигация — другое SPA
+    }
+  }, [internalPaths, navigate])
 
-  // 4. Рендер с провайдерами
-  const root = createRoot(document.getElementById('root')!)
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <AppThemeProvider>
-          <SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <AuthProvider>
-                <RouterProvider router={router} />
-              </AuthProvider>
-            </LocalizationProvider>
-          </SnackbarProvider>
-        </AppThemeProvider>
-      </QueryClientProvider>
-    </StrictMode>
+  return (
+    <NavigationContext.Provider value={{ navigateTo, isInternalPath }}>
+      {children}
+    </NavigationContext.Provider>
   )
 }
+
+export const useAppNavigation = () => useContext(NavigationContext)
 ```
+
+### Где используется
+
+| Место | Навигация |
+|-------|-----------|
+| Sidebar (все пункты меню) | `navigateTo(item.path)` -- автоматически выбирает React Router или window.location |
+| Logout | `window.location.href = '/login'` -- всегда полная навигация |
+| RequireAuth (неавторизованный) | `window.location.href = '/login?returnTo=...'` |
+| Ссылки внутри страниц | `<Link to="...">` (React Router) для внутренних ссылок |
+
+### Общий localStorage
+
+Все 3 SPA работают на одном origin (`localhost:3000` или production domain), поэтому делят один `localStorage`:
+- `accessToken`, `refreshToken` -- auth-токены
+- `themeMode` -- тема (light/dark/system)
+- `sidebarCollapsed` -- состояние sidebar
+
+Логин в auth SPA → токен доступен во всех SPA. Logout → удаление токена → все SPA становятся неавторизованными.
 
 ---
 
@@ -463,7 +412,7 @@ export function createApp({ modules }: AppConfig) {
 
 ### Конфигурация меню через Config Service
 
-Sidebar **не содержит** захардкоженных пунктов меню. Структура, видимость и порядок определяются в YAML-конфиге на стороне Config Service и отдаются по API в зависимости от роли пользователя.
+Sidebar **не содержит** захардкоженных пунктов меню. Структура, видимость и порядок определяются в YAML-конфиге на стороне Config Service (встроен в API Gateway) и отдаются по API в зависимости от роли пользователя.
 
 ### YAML-конфигурация
 
@@ -540,24 +489,6 @@ menu:
     module: auth
     permissions: [roles.read]
 
-  - id: reports
-    label: Reports
-    icon: Assessment
-    module: reports
-    children:
-      - id: report-journal
-        label: Journal
-        path: /reports
-        permissions: [reports.read]
-      - id: report-templates
-        label: Templates
-        path: /reports/templates
-        permissions: [reports.manage]
-      - id: report-schedules
-        label: Schedules
-        path: /reports/schedules
-        permissions: [reports.manage]
-
   - id: audit
     label: Audit Log
     icon: History
@@ -580,7 +511,7 @@ GET /api/v1/config/menu
 Authorization: Bearer {jwt}
 ```
 
-Config Service читает YAML, фильтрует пункты по permissions из JWT-токена текущего пользователя и возвращает только разрешённые:
+Config Service (встроен в API Gateway) читает YAML, фильтрует пункты по permissions из JWT-токена текущего пользователя и возвращает только разрешённые:
 
 ```json
 [
@@ -657,10 +588,12 @@ export const iconMap: Record<string, ComponentType> = {
 import { useMenu } from '../api/configApi'
 import { iconMap } from '../icons'
 import { SidebarItem } from './SidebarItem'
+import { useAppNavigation } from './NavigationProvider'
 import { SIDEBAR_COLORS } from '../theme'
 
 export function MainLayout() {
   const { data: menuItems = [], isLoading } = useMenu()
+  const { navigateTo } = useAppNavigation()
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('sidebarCollapsed') === 'true'
   )
@@ -678,6 +611,7 @@ export function MainLayout() {
             path={item.path}
             collapsed={collapsed}
             children={item.children}
+            onNavigate={navigateTo}
           />
         ))}
 
@@ -712,62 +646,21 @@ export const useMenu = () =>
 
 ---
 
-## Конфигурация для разных проектов
+## Конфигурация для разных проектов (будущее)
 
-Каждый проект (app) работает с **своим экземпляром Config Service** (или одним Config Service с разными конфигами по идентификатору проекта).
+Архитектура позволяет подключать `@broker/ui-kit` и `@broker/auth-module` к другим проектам как npm-зависимости. Для этого нужен собственный Config Service с другим `menu.yaml`.
 
-### Проект A: Backoffice (все модули)
-
-```yaml
-# config/projects/backoffice/menu.yaml
-menu:
-  - { id: dashboard, label: Dashboard, icon: Dashboard, path: /, module: backoffice }
-  - { id: clients, label: Clients, icon: People, path: /clients, module: backoffice, permissions: [clients.read] }
-  - { id: accounts, label: Accounts, icon: AccountBalance, path: /accounts, module: backoffice, permissions: [accounts.read] }
-  # ... полное меню (backoffice + auth + reports)
-```
+Пример: соседний проект, которому нужно только управление пользователями:
 
 ```typescript
-// apps/backoffice/src/main.tsx
-createApp({
-  modules: [backofficeModule, authModule, reportsModule],
-})
+// other-project/src/main.tsx
+import { AppThemeProvider, AuthProvider, MainLayout, NavigationProvider } from '@broker/ui-kit'
+import { authRoutes } from '@broker/auth-module'
+
+// Подключить auth-роуты + свои собственные
 ```
 
-### Проект B: Соседний проект (только auth + свои страницы)
-
-```yaml
-# config/projects/other/menu.yaml
-menu:
-  - { id: dashboard, label: Dashboard, icon: Dashboard, path: /, module: other }
-  - { id: analytics, label: Analytics, icon: BarChart, path: /analytics, module: other }
-  - { id: users, label: Users, icon: Group, path: /users, module: auth, permissions: [users.read] }
-  - { id: roles, label: Roles, icon: Shield, path: /roles, module: auth, permissions: [roles.read] }
-```
-
-```typescript
-// apps/other-project/src/main.tsx
-createApp({
-  modules: [otherProjectModule, authModule],
-  // reports-module не подключён — даже если конфиг вернёт пункт reports, роут не найдётся → 404
-})
-```
-
-### Проект C: Только управление пользователями
-
-```yaml
-# config/projects/auth-standalone/menu.yaml
-menu:
-  - { id: users, label: Users, icon: Group, path: /users, module: auth, permissions: [users.read] }
-  - { id: roles, label: Roles, icon: Shield, path: /roles, module: auth, permissions: [roles.read] }
-```
-
-```typescript
-// apps/auth-standalone/src/main.tsx
-createApp({
-  modules: [authModule],
-})
-```
+Каждый проект работает с **своим экземпляром Config Service** (или одним Config Service с разными конфигами по идентификатору проекта). Эта возможность запланирована на будущее.
 
 ---
 
@@ -808,134 +701,91 @@ packages:
 
 `turbo run build` автоматически определяет порядок: сначала `ui-kit`, затем `auth-module`, затем `apps/*`. Кэширует результаты -- если `ui-kit` не менялся, не пересобирается.
 
-### Dockerfile (каждый app -- отдельный образ)
+### Единый Dockerfile.web
+
+Все 3 SPA собираются одним `Dockerfile.web`. nginx раздаёт по path:
 
 ```dockerfile
-# apps/backoffice/Dockerfile
+# Dockerfile.web (упрощённо)
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
-COPY packages/ui-kit/package.json packages/ui-kit/
-COPY packages/auth-module/package.json packages/auth-module/
-COPY packages/reports-module/package.json packages/reports-module/
-COPY apps/backoffice/package.json apps/backoffice/
+COPY frontend/pnpm-workspace.yaml frontend/pnpm-lock.yaml frontend/package.json ./
+COPY frontend/packages/ packages/
+COPY frontend/apps/ apps/
 RUN pnpm install --frozen-lockfile
 
 FROM node:20-alpine AS build
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY --from=deps /app/node_modules ./node_modules
-COPY packages/ packages/
-COPY apps/backoffice/ apps/backoffice/
-COPY pnpm-workspace.yaml turbo.json package.json ./
-RUN pnpm turbo build --filter=@broker/backoffice
+COPY --from=deps /app/ ./
+COPY frontend/ .
+RUN pnpm turbo build
 
 FROM nginx:alpine
-COPY apps/backoffice/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/apps/backoffice/dist /usr/share/nginx/html
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/backoffice/dist /usr/share/nginx/html/backoffice
+COPY --from=build /app/apps/auth/dist /usr/share/nginx/html/auth
+COPY --from=build /app/apps/config/dist /usr/share/nginx/html/config
 RUN chown -R nginx:nginx /usr/share/nginx/html
 USER nginx
 EXPOSE 8080
 ```
 
-### CI -- path-based триггеры
+### nginx роутинг 3 SPA
 
-```yaml
-# .github/workflows/deploy-web-backoffice.yml
-name: Deploy Backoffice Web
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'frontend/packages/ui-kit/**'
-      - 'frontend/packages/auth-module/**'
-      - 'frontend/packages/reports-module/**'
-      - 'frontend/apps/backoffice/**'
-      - 'frontend/pnpm-lock.yaml'
+```nginx
+# frontend/nginx.conf (ключевые location-блоки)
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-        working-directory: frontend
-      - run: pnpm turbo build --filter=@broker/backoffice
-        working-directory: frontend
-      - run: docker build -f apps/backoffice/Dockerfile -t broker/web-backoffice:${{ github.sha }} .
-        working-directory: frontend
-      - run: docker push broker/web-backoffice:${{ github.sha }}
+# Auth SPA: login, users, roles
+location ~ ^/(login|users|roles) {
+    root /usr/share/nginx/html/auth;
+    try_files $uri /index.html;
+}
+
+# Config SPA: /config/*
+location /config {
+    root /usr/share/nginx/html/config;
+    try_files $uri /index.html;
+}
+
+# API proxy → Gateway
+location /api/ {
+    proxy_pass http://broker-gateway:8090;
+}
+
+# Backoffice SPA: всё остальное (default)
+location / {
+    root /usr/share/nginx/html/backoffice;
+    try_files $uri /index.html;
+}
 ```
 
-```yaml
-# .github/workflows/deploy-web-other.yml
-name: Deploy Other Project Web
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'frontend/packages/ui-kit/**'
-      - 'frontend/packages/auth-module/**'
-      - 'frontend/apps/other-project/**'
-      - 'frontend/pnpm-lock.yaml'
-```
-
-Изменение в `ui-kit` триггерит пересборку **всех** app. Изменение только в `apps/backoffice/` триггерит сборку **только** backoffice.
-
-### Docker Compose (полный стек)
+### Docker Compose
 
 ```yaml
-# docker-compose.yml (дополнение к существующим сервисам)
+# docker-compose.yml
 services:
-  web-backoffice:
+  web:
     build:
-      context: frontend
-      dockerfile: apps/backoffice/Dockerfile
-    container_name: broker-web-backoffice
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: broker-web
     restart: unless-stopped
     ports:
       - "3000:8080"
     depends_on:
-      api:
-        condition: service_healthy
-
-  web-other:
-    build:
-      context: frontend
-      dockerfile: apps/other-project/Dockerfile
-    container_name: broker-web-other
-    restart: unless-stopped
-    ports:
-      - "3001:8080"
-    depends_on:
-      api:
+      gateway:
         condition: service_healthy
 ```
 
-### Docker-образы в registry
-
-```
-registry.example.com/broker/web-backoffice:1.2.3
-registry.example.com/broker/web-backoffice:latest
-registry.example.com/broker/web-other:1.0.0
-registry.example.com/broker/web-other:latest
-registry.example.com/broker/web-reports:1.0.0   # если деплоится отдельно
-```
-
-Каждая площадка тянет только нужные образы.
+Один контейнер `broker-web` обслуживает все 3 SPA.
 
 ---
 
 ## Разработка
 
-### Локальный запуск одного модуля
+### Локальный запуск
 
 ```bash
 cd frontend
@@ -943,63 +793,77 @@ cd frontend
 # Запустить только backoffice (+ зависимости ui-kit, auth-module)
 pnpm turbo dev --filter=@broker/backoffice
 
-# Запустить только auth-standalone
-pnpm turbo dev --filter=@broker/auth-standalone
+# Запустить только auth
+pnpm turbo dev --filter=@broker/auth
 
 # Запустить все apps параллельно
 pnpm turbo dev
 ```
 
-### Добавление нового модуля
+### Добавление нового SPA
 
-1. Создать пакет:
+1. Создать приложение:
 ```bash
-mkdir -p packages/new-module/src/{pages,api}
+mkdir -p apps/new-app/src/{pages,router}
 ```
 
-2. `packages/new-module/package.json`:
+2. `apps/new-app/package.json`:
 ```json
 {
-  "name": "@broker/new-module",
+  "name": "@broker/new-app",
   "version": "0.0.1",
   "private": true,
-  "main": "src/index.ts",
   "dependencies": {
     "@broker/ui-kit": "workspace:*"
   }
 }
 ```
 
-3. Экспортировать `ModuleDefinition`:
-```typescript
-// packages/new-module/src/index.ts
-import type { ModuleDefinition } from '@broker/ui-kit'
+3. Создать `main.tsx` с провайдерами (скопировать из существующего app).
 
-export const newModule: ModuleDefinition = {
-  name: 'new-module',
-  routes: [
-    { path: '/new-feature', lazy: () => import('./pages/NewFeaturePage') },
-  ],
+4. Создать `router/index.tsx` с `NavigationProvider`:
+```typescript
+import { NavigationProvider, RequireAuth, MainLayout } from '@broker/ui-kit'
+
+const internalPaths = ['/new-feature', '/new-other']
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: (
+      <RequireAuth>
+        <NavigationProvider internalPaths={internalPaths}>
+          <MainLayout />
+        </NavigationProvider>
+      </RequireAuth>
+    ),
+    children: [
+      { path: 'new-feature', lazy: () => import('../pages/NewFeaturePage') },
+    ],
+  },
+])
+```
+
+5. Добавить location-блок в `nginx.conf`:
+```nginx
+location /new-feature {
+    root /usr/share/nginx/html/new-app;
+    try_files $uri /index.html;
 }
 ```
 
-4. Подключить в нужном app:
-```typescript
-// apps/backoffice/src/main.tsx
-import { newModule } from '@broker/new-module'
-
-createApp({
-  modules: [backofficeModule, authModule, reportsModule, newModule],
-})
+6. Добавить COPY в `Dockerfile.web`:
+```dockerfile
+COPY --from=build /app/apps/new-app/dist /usr/share/nginx/html/new-app
 ```
 
-5. Добавить пункт в `menu.yaml` Config Service:
+7. Добавить пункт в `menu.yaml` Config Service:
 ```yaml
   - id: new-feature
     label: New Feature
     icon: Star
     path: /new-feature
-    module: new-module
+    module: new-app
     permissions: [new-feature.read]
 ```
 
@@ -1011,9 +875,6 @@ createApp({
 # Тесты ui-kit
 pnpm turbo test --filter=@broker/ui-kit
 
-# Тесты auth-module
-pnpm turbo test --filter=@broker/auth-module
-
 # Тесты конкретного app
 pnpm turbo test --filter=@broker/backoffice
 
@@ -1022,70 +883,6 @@ pnpm turbo test
 ```
 
 Стек тестирования единый: Vitest + React Testing Library + MSW. Общие тестовые утилиты (`renderWithProviders`, MSW handlers) выносятся в `packages/ui-kit/test/` или в отдельный пакет `packages/test-utils/`.
-
----
-
-## Миграция с текущей структуры
-
-### Текущее состояние
-
-```
-frontend/
-├── src/
-│   ├── api/            # types.ts (1120 строк), hooks.ts (830 строк), client.ts
-│   ├── auth/           # AuthContext, useAuth, usePermission, RequireAuth
-│   ├── components/     # 14 общих компонентов
-│   ├── hooks/          # useDebounce, useConfirm
-│   ├── layouts/        # MainLayout (sidebar захардкожен)
-│   ├── pages/          # 20+ страниц (все модули вместе)
-│   ├── theme/          # createAppTheme, ThemeContext
-│   ├── utils/          # exportToExcel, validateFields, extractErrorMessage
-│   └── main.tsx
-```
-
-### План миграции
-
-**Фаза 1: Инициализация монорепо**
-
-1. Инициализировать pnpm workspaces и Turborepo
-2. Создать `packages/ui-kit/` и перенести:
-   - `src/components/*` → `packages/ui-kit/src/components/`
-   - `src/theme/*` → `packages/ui-kit/src/theme/`
-   - `src/hooks/*` → `packages/ui-kit/src/hooks/`
-   - `src/utils/*` → `packages/ui-kit/src/utils/`
-   - `src/auth/*` → `packages/ui-kit/src/auth/`
-   - `src/api/client.ts` → `packages/ui-kit/src/api/client.ts`
-   - `src/layouts/MainLayout.tsx` → `packages/ui-kit/src/layouts/`
-3. Текущий `frontend/src/` → `apps/backoffice/src/`
-4. Заменить относительные импорты на `@broker/ui-kit`
-5. Проверить: `pnpm turbo build && pnpm turbo test` -- всё должно работать как раньше
-
-**Фаза 2: Выделение auth-module**
-
-1. Создать `packages/auth-module/`
-2. Перенести auth-страницы из `apps/backoffice/src/pages/`:
-   - `LoginPage.tsx`, `UsersPage.tsx`, `UserDetailsPage.tsx`, `UserDialogs.tsx`
-   - `RolesPage.tsx`, `RoleDetailsPage.tsx`, `RoleDialogs.tsx`
-   - `settings/ProfileTab.tsx`
-3. Перенести auth-хуки и типы из `apps/backoffice/src/api/`:
-   - Вырезать из `hooks.ts`: `useUsers`, `useRoles`, `usePermissions`, `useLogin`, `useMe`...
-   - Вырезать из `types.ts`: `UserDto`, `RoleDto`, `PermissionDto`, `AuthResponse`...
-4. Экспортировать `authModule: ModuleDefinition`
-5. В `apps/backoffice/` подключить `@broker/auth-module`
-
-**Фаза 3: Динамический sidebar**
-
-1. Добавить `useMenu()` хук в `@broker/ui-kit`
-2. Переписать `MainLayout` -- убрать захардкоженные пункты, получать из API
-3. Добавить `iconMap` и fallback для неизвестных иконок
-4. Настроить YAML-конфиг в Config Service
-5. Добавить эндпоинт `GET /api/v1/config/menu`
-
-**Фаза 4: Новые модули**
-
-1. `@broker/reports-module` -- при реализации Report Service
-2. `@broker/gateway-module` -- при реализации Gateway Admin UI
-3. Каждый подключается к нужным apps через `createApp({ modules: [...] })`
 
 ---
 
@@ -1121,6 +918,7 @@ frontend/
 | `createAppTheme()` | Одна функция создания темы для всех apps |
 | `SIDEBAR_COLORS` | Единые токены тёмного sidebar |
 | `MainLayout` | Одинаковый sidebar layout везде |
+| `NavigationProvider` | Бесшовная навигация между SPA |
 | `FilteredDataGrid` | Одинаковые гриды с фильтрами |
 | `PageContainer` | Одинаковая обёртка страниц |
 | `ConfirmDialog` | Одинаковые диалоги подтверждения |

@@ -1,0 +1,101 @@
+menu:
+  - id: dashboard
+    label: Dashboard
+    icon: Dashboard
+    path: /
+
+  - id: clients
+    label: Clients
+    icon: Groups
+    path: /clients
+    permissions:
+      - clients.read
+
+  - id: accounts
+    label: Accounts
+    icon: AccountBalance
+    path: /accounts
+    permissions:
+      - accounts.read
+
+  - id: instruments
+    label: Instruments
+    icon: ShowChart
+    path: /instruments
+    permissions:
+      - instruments.read
+
+  - id: orders
+    label: Orders
+    icon: Assignment
+    permissions:
+      - orders.read
+    children:
+      - id: trade-orders
+        label: Trade Orders
+        icon: ReceiptLong
+        path: /trade-orders
+      - id: non-trade-orders
+        label: Non-Trade Orders
+        icon: SwapHoriz
+        path: /non-trade-orders
+
+  - id: transactions
+    label: Transactions
+    icon: Receipt
+    permissions:
+      - transactions.read
+    children:
+      - id: trade-transactions
+        label: Trade Transactions
+        icon: ReceiptLong
+        path: /trade-transactions
+      - id: non-trade-transactions
+        label: Non-Trade Transactions
+        icon: AccountBalanceWallet
+        path: /non-trade-transactions
+
+  - id: users
+    label: Users
+    icon: People
+    path: /users
+    permissions:
+      - users.read
+
+  - id: roles
+    label: Roles
+    icon: Security
+    path: /roles
+    permissions:
+      - roles.read
+
+  - id: audit
+    label: Audit Log
+    icon: History
+    path: /audit
+    permissions:
+      - audit.read
+
+  - id: settings
+    label: Settings
+    icon: Settings
+    path: /settings
+
+  - id: config
+    label: Configuration
+    icon: AdminPanelSettings
+    permissions:
+      - settings.manage
+    children:
+      - id: config-menu
+        label: Menu Editor
+        icon: Menu
+        path: /config/menu
+      - id: config-entities
+        label: Entity Fields
+        icon: ViewColumn
+        path: /config/entities
+      - id: config-upstreams
+        label: Upstreams
+        icon: Cloud
+        path: /config/upstreams

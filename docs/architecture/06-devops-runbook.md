@@ -45,6 +45,7 @@ open http://localhost:3000
 | postgres | postgres:16-alpine | 5432 | - |
 | auth | Dockerfile.auth (multi-stage .NET 8) | 8082 -> 8080 | postgres (healthy) |
 | api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | postgres (healthy), auth (healthy) |
+| gateway | Dockerfile.gateway (.NET 8) | 8090 -> 8090 | postgres (healthy) |
 | web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 8080 | api (healthy) |
 
 ### Dockerfile.api
@@ -55,16 +56,25 @@ Multi-stage сборка:
 
 ### Dockerfile.web
 
-Multi-stage сборка:
-1. **Build stage**: Node 20 Alpine, `npm ci` + `npm run build` (tsc + vite)
-2. **Runtime stage**: Nginx Alpine, копирование `dist/` + `nginx.conf`
+Multi-stage сборка (3 SPA-приложения через pnpm + Turborepo):
+1. **Build stage**: Node 20 Alpine, `corepack enable && corepack prepare pnpm@latest`, `pnpm install --frozen-lockfile`, `pnpm turbo build` (все 3 приложения)
+2. **Runtime stage**: Nginx Alpine
+   - `COPY apps/backoffice/dist → /usr/share/nginx/html/backoffice/`
+   - `COPY apps/auth/dist → /usr/share/nginx/html/auth/`
+   - `COPY apps/config/dist → /usr/share/nginx/html/config/`
+   - `COPY logo.svg → /usr/share/nginx/html/logo.svg`
+   - `COPY frontend/nginx.conf → /etc/nginx/conf.d/default.conf`
 
 ### Nginx конфигурация
 
+Маршрутизация по 3 SPA-приложениям + API через gateway:
+
 ```
-/ -> /usr/share/nginx/html (SPA, fallback index.html)
-/api/v1/auth/, /api/v1/users, /api/v1/roles, /api/v1/permissions -> http://auth:8080 (auth-service)
-/api/ (остальное) -> http://api:8080/api/ (монолит)
+/login, /users*, /roles*           → try_files /auth/index.html         (Auth SPA)
+/config*                           → try_files /config/index.html       (Config SPA)
+/ (всё остальное)                  → try_files $uri $uri/ /backoffice/index.html (Backoffice SPA)
+/api/                              → proxy_pass gateway:8090            (API Gateway)
+~^/(backoffice|auth|config)/assets/ → immutable cache 1y               (хэшированные ассеты)
 ```
 
 ## Разработка без Docker
@@ -84,31 +94,36 @@ dotnet run --project src/Broker.Backoffice.Api
 
 ```bash
 cd frontend
-npm install
-npm run dev
-# Dev-сервер на http://localhost:5173, /api проксируется на localhost:5050
+pnpm install
+pnpm turbo dev
+# 3 dev-сервера: backoffice :5173, auth :5174, config :5175
+# /api проксируется на localhost:8090 (gateway)
+```
+
+Для запуска отдельного приложения:
+```bash
+pnpm turbo dev --filter=@broker/backoffice
 ```
 
 ## Скрипты
 
-### npm-скрипты (frontend/package.json)
+### pnpm/turbo-скрипты (frontend/)
+
+pnpm monorepo с Turborepo — скрипты запускаются из корня `frontend/`:
 
 | Скрипт | Команда |
 |--------|---------|
-| `dev` | `vite` (dev server, port 5173) |
-| `build` | `tsc -b && vite build` |
-| `test` | `vitest run -c vitest.config.ts` |
-| `test:ci` | `vitest run -c vitest.config.ts --coverage` |
-| `build:ci` | `npm run test:ci && npm run build` |
-| `lint` | `eslint .` |
-| `generate:api` | `orval` (генерация API-клиента) |
+| `dev` | `pnpm turbo dev` (все 3 приложения) |
+| `build` | `pnpm turbo build` |
+| `test` | `pnpm turbo test` |
+| `lint` | `pnpm turbo lint` |
 
-### npm-скрипты (корневой package.json)
-
-| Скрипт | Команда |
-|--------|---------|
-| `test` | `cd frontend && npm test` |
-| `test:ci` | `cd frontend && npm run test:ci` |
+Для запуска отдельного приложения используется фильтр:
+```bash
+pnpm turbo dev --filter=@broker/backoffice
+pnpm turbo dev --filter=@broker/auth
+pnpm turbo dev --filter=@broker/config
+```
 
 ### Shell-скрипты (scripts/)
 
@@ -128,7 +143,7 @@ npm run dev
 | `backend-integration` | checkout → .NET 8 SDK → NuGet cache → 145 интеграционных тестов (Testcontainers PostgreSQL) | ~1.5 мин |
 | `auth-service` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 25 unit-тестов | ~20с |
 | `auth-service-integration` | checkout → .NET 8 SDK → NuGet cache → 13 интеграционных тестов (Testcontainers PostgreSQL) | ~30с |
-| `frontend` | checkout → Node 22 → npm ci → npm audit → tsc → eslint → 119 vitest-тестов → production build | ~1 мин |
+| `frontend` | checkout → Node 22 → pnpm install → pnpm turbo build → pnpm turbo lint → 109 vitest-тестов | ~1 мин |
 
 ## Troubleshooting
 
@@ -143,14 +158,7 @@ lsof -i :5432  # postgres
 
 ### Node версия
 
-Файл `frontend/.nvmrc` указывает Node 20 (для Docker-сборки). CI использует Node 22. При использовании nvm:
-```bash
-cd frontend && nvm use
-```
-
-### OOM при тестах
-
-Unit-тесты (`npm test`) настроены на минимальный набор (только hooks/auth). Тяжёлые page-тесты с MUI DataGrid исключены из default suite для предотвращения OOM в jsdom-окружении.
+pnpm monorepo — Node 20+ требуется для сборки. CI использует Node 22. Менеджер пакетов: pnpm (устанавливается через `corepack enable`).
 
 ### Миграции БД
 

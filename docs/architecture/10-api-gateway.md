@@ -200,6 +200,8 @@ gateway/
 │
 ├── config/
 │   ├── gateway.yaml                    # Основной конфиг (entities, fields, access)
+│   ├── menu.yaml                       # Навигационное меню (секции, пункты, permissions)
+│   ├── entities.yaml                   # Конфигурация сущностей (поля, UI, валидация)
 │   ├── upstreams.yaml                  # gRPC-подключения к сервисам
 │   └── profiles.yaml                  # Профили доступа (frontend, n8n, external)
 │
@@ -1242,6 +1244,60 @@ services:
       gateway:
         condition: service_healthy
 ```
+
+---
+
+## Реализованные CRUD-эндпоинты конфигурации
+
+Gateway уже предоставляет набор REST-эндпоинтов для управления YAML-конфигурацией через Admin UI. Все эндпоинты требуют разрешение `settings.manage`.
+
+### Эндпоинты
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/v1/config/menu/raw` | Полное меню без фильтрации по ролям (для редактора) |
+| PUT | `/api/v1/config/menu` | Сохранить меню в YAML-файл |
+| GET | `/api/v1/config/entities/raw` | Все сущности без фильтрации по ролям |
+| PUT | `/api/v1/config/entities` | Сохранить сущности в YAML-файл |
+| GET | `/api/v1/config/upstreams` | Все upstreams |
+| PUT | `/api/v1/config/upstreams` | Сохранить upstreams в YAML-файл |
+
+`/raw`-эндпоинты возвращают полные данные без учёта роли текущего пользователя -- предназначены для UI-редактора конфигурации. PUT-эндпоинты принимают JSON, сериализуют в YAML и записывают на диск.
+
+### Сериализация в ConfigLoader
+
+Для записи конфигурации обратно в YAML-файлы в `ConfigLoader` добавлен `ISerializer` из YamlDotNet (`SerializerBuilder` с `CamelCaseNamingConvention`):
+
+- `SaveMenu()` -- сериализует структуру меню и записывает в `config/menu.yaml`
+- `SaveEntities()` -- сериализует конфигурацию сущностей и записывает в `config/entities.yaml`
+- `SaveUpstreams()` -- сериализует upstreams и записывает в `config/upstreams.yaml`
+- Общий generic-метод `SaveFile<T>()` инкапсулирует сериализацию в YAML и запись на диск
+
+### Секция Configuration в menu.yaml
+
+В `menu.yaml` добавлена секция для навигации к страницам управления конфигурацией:
+
+```yaml
+- id: config
+  label: Configuration
+  icon: AdminPanelSettings
+  permissions: [settings.manage]
+  children:
+    - id: config-menu
+      label: Menu Editor
+      icon: Menu
+      path: /config/menu
+    - id: config-entities
+      label: Entity Fields
+      icon: ViewColumn
+      path: /config/entities
+    - id: config-upstreams
+      label: Upstreams
+      icon: Cloud
+      path: /config/upstreams
+```
+
+Секция доступна только пользователям с разрешением `settings.manage`. Каждый дочерний пункт ведёт на соответствующую страницу Admin UI для редактирования YAML-конфигурации.
 
 ---
 

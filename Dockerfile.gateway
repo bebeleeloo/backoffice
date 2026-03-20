@@ -1,0 +1,30 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
+WORKDIR /src
+
+# 1. Copy project manifest for restore caching
+COPY gateway/global.json gateway/
+COPY gateway/src/Broker.Gateway.Api/Broker.Gateway.Api.csproj gateway/src/Broker.Gateway.Api/
+
+# 2. Restore
+RUN dotnet restore gateway/src/Broker.Gateway.Api/Broker.Gateway.Api.csproj
+
+# 3. Copy full gateway source
+COPY gateway/ gateway/
+
+# 4. Publish
+RUN dotnet publish gateway/src/Broker.Gateway.Api/Broker.Gateway.Api.csproj \
+    -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim AS runtime
+WORKDIR /app
+
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+COPY --from=build /app/publish .
+COPY gateway/config/ config/
+
+EXPOSE 8090
+ENV ASPNETCORE_URLS=http://+:8090
+
+ENTRYPOINT ["dotnet", "Broker.Gateway.Api.dll"]

@@ -2,9 +2,25 @@
 
 ## Архитектура
 
-SPA на React 18 + TypeScript. Вся логика работы с данными вынесена в React Query хуки, UI построен на Material UI 6.
+3 SPA на React 18 + TypeScript в pnpm monorepo. Вся логика работы с данными вынесена в React Query хуки, UI построен на Material UI 6.
 
-### Иерархия провайдеров (main.tsx)
+### Структура monorepo
+
+```
+frontend/
+├── pnpm-workspace.yaml          # packages/* + apps/*
+├── turbo.json                   # Turborepo: build, dev, test, lint
+├── tsconfig.base.json           # Общий TS-конфиг
+├── apps/
+│   ├── backoffice/              # Основное SPA — клиенты, счета, инструменты, ордера, транзакции, дашборд, настройки, аудит
+│   ├── auth/                    # Auth SPA — логин, пользователи, роли (порт 5174)
+│   └── config/                  # Config SPA — конфигурация меню, сущностей, upstreams (порт 5175)
+├── packages/
+│   ├── ui-kit/                  # Общие компоненты: MainLayout, RequireAuth, NavigationProvider, theme, auth, хуки, утилиты
+│   └── auth-module/             # Страницы LoginPage, UsersPage, RolesPage, RoleDetailsPage (используются в auth SPA)
+```
+
+### Иерархия провайдеров (main.tsx каждого SPA)
 
 ```
 React.StrictMode
@@ -16,46 +32,113 @@ React.StrictMode
             RouterProvider (React Router v6)
 ```
 
+Все 3 SPA используют идентичную иерархию провайдеров. Общие компоненты (`MainLayout`, `RequireAuth`, `AuthProvider`, `AppThemeProvider`, `NavigationProvider`) импортируются из `@broker/ui-kit`.
+
 ## Маршрутизация
 
+Каждое SPA имеет собственное дерево маршрутов. Все защищённые маршруты обёрнуты в `<RequireAuth>` + `<NavigationProvider>` + `<MainLayout>`.
+
+### Backoffice SPA (`apps/backoffice`)
+
 ```
-/login                    -> LoginPage (публичный)
-/                         -> MainLayout (защищенный через RequireAuth)
-  / (index)              -> DashboardPage
-  /clients               -> ClientsPage
-  /clients/:id           -> ClientDetailsPage
-  /accounts              -> AccountsPage
-  /accounts/:id          -> AccountDetailsPage
-  /instruments           -> InstrumentsPage
-  /instruments/:id       -> InstrumentDetailsPage
-  /trade-orders          -> TradeOrdersPage
-  /trade-orders/:id      -> TradeOrderDetailsPage
-  /non-trade-orders      -> NonTradeOrdersPage
-  /non-trade-orders/:id  -> NonTradeOrderDetailsPage
-  /trade-transactions    -> TradeTransactionsPage
-  /trade-transactions/:id -> TradeTransactionDetailsPage
-  /non-trade-transactions -> NonTradeTransactionsPage
-  /non-trade-transactions/:id -> NonTradeTransactionDetailsPage
-  /users                 -> UsersPage
-  /roles                 -> RolesPage
-  /roles/:id             -> RoleDetailsPage
-  /audit                 -> AuditPage
-  /settings              -> SettingsPage
+/ → RequireAuth + NavigationProvider + MainLayout
+  / (index)                        → DashboardPage
+  /clients                         → ClientsPage
+  /clients/:id                     → ClientDetailsPage
+  /accounts                        → AccountsPage
+  /accounts/:id                    → AccountDetailsPage
+  /instruments                     → InstrumentsPage
+  /instruments/:id                 → InstrumentDetailsPage
+  /trade-orders                    → TradeOrdersPage
+  /trade-orders/:id                → TradeOrderDetailsPage
+  /non-trade-orders                → NonTradeOrdersPage
+  /non-trade-orders/:id            → NonTradeOrderDetailsPage
+  /trade-transactions              → TradeTransactionsPage
+  /trade-transactions/:id          → TradeTransactionDetailsPage
+  /non-trade-transactions          → NonTradeTransactionsPage
+  /non-trade-transactions/:id      → NonTradeTransactionDetailsPage
+  /audit                           → AuditPage
+  /settings                        → SettingsPage
+  *                                → NotFoundPage
 ```
 
-Все маршруты кроме `/login` обёрнуты в `<RequireAuth>`, который проверяет `isAuthenticated` из AuthContext и редиректит на `/login`.
+### Auth SPA (`apps/auth`)
+
+```
+/login                             → LoginPage (публичный, из @broker/auth-module)
+/ → RequireAuth + NavigationProvider + MainLayout
+  /users                           → UsersPage (из @broker/auth-module)
+  /roles                           → RolesPage (из @broker/auth-module)
+  /roles/:id                       → RoleDetailsPage (из @broker/auth-module)
+  *                                → NotFoundPage
+```
+
+### Config SPA (`apps/config`)
+
+```
+/ → RequireAuth + NavigationProvider + MainLayout
+  /config                          → ConfigDashboardPage
+  /config/menu                     → MenuEditorPage
+  /config/entities                 → EntityFieldsPage
+  /config/upstreams                → UpstreamsPage
+  *                                → NotFoundPage
+```
+
+Все страницы (кроме `LoginPage`, `NotFoundPage`) загружаются через `React.lazy()` + `withSuspense()` для code splitting.
+
+## Кросс-SPA навигация
+
+Три SPA работают на одном origin, но являются независимыми React-приложениями. Для навигации между ними используется `NavigationContext` из `@broker/ui-kit`.
+
+### NavigationProvider
+
+Каждое SPA оборачивает защищённые маршруты в `<NavigationProvider internalPaths={[...]}>`:
+
+- **Backoffice**: `internalPaths = ["/", "/clients", "/accounts", "/instruments", "/trade-orders", "/non-trade-orders", "/trade-transactions", "/non-trade-transactions", "/audit", "/settings"]`
+- **Auth**: `internalPaths = ["/login", "/users", "/roles"]`
+- **Config**: `internalPaths = ["/config"]`
+
+### useAppNavigation
+
+Хук `useAppNavigation()` предоставляет метод `navigateTo(path)`:
+
+1. Если `path` совпадает с одним из `internalPaths` (точное совпадение или начинается с `prefix + "/"`), используется `navigate()` из React Router (SPA-навигация без перезагрузки)
+2. Если `path` не входит в `internalPaths`, выполняется `window.location.href = path` (полная перезагрузка страницы с переходом в другое SPA)
+
+### Общие данные между SPA
+
+- Все 3 SPA работают на одном origin, поэтому JWT-токены в `localStorage` доступны из любого SPA
+- Настройки темы (`themeMode`), состояние sidebar (`sidebarCollapsed`) также общие
+- Sidebar использует `navigateTo()` для навигации — внутренние ссылки работают мгновенно, кросс-SPA ссылки вызывают полную перезагрузку
+
+### Logout
+
+Кнопка выхода всегда выполняет `window.location.href = "/login"` (кросс-SPA редирект в Auth SPA).
 
 ## Аутентификация
+
+### RequireAuth
+
+`RequireAuth` (`packages/ui-kit/src/auth/RequireAuth.tsx`) проверяет `isAuthenticated` из AuthContext. При отсутствии аутентификации выполняет кросс-SPA редирект через `useEffect`:
+
+```typescript
+window.location.href = "/login?returnTo=" + encodeURIComponent(location.pathname);
+```
+
+Используется `window.location.href` вместо React Router `<Navigate>`, поскольку `/login` находится в Auth SPA, а `RequireAuth` может вызываться из любого SPA.
 
 ### Поток логина
 
 ```mermaid
 sequenceDiagram
     participant U as Пользователь
-    participant LP as LoginPage
+    participant RA as RequireAuth (любое SPA)
+    participant LP as LoginPage (Auth SPA)
     participant AC as AuthContext
     participant API as /api/v1/auth
 
+    U->>RA: Заходит на /clients (не авторизован)
+    RA->>LP: window.location.href = "/login?returnTo=/clients"
     U->>LP: Вводит логин/пароль
     LP->>AC: login(username, password)
     AC->>API: POST /auth/login
@@ -64,8 +147,15 @@ sequenceDiagram
     AC->>API: GET /auth/me
     API-->>AC: UserProfile { permissions, roles, scopes }
     AC-->>LP: Authenticated
-    LP->>LP: navigate(redirectUrl || "/")
+    LP->>LP: returnTo ? window.location.href(returnTo) : navigate("/")
 ```
+
+### LoginPage и returnTo
+
+`LoginPage` (`packages/auth-module/src/pages/LoginPage.tsx`) после успешного логина проверяет параметр `returnTo` из URL:
+
+- Если `returnTo` есть — выполняет `window.location.href = returnTo` (кросс-SPA редирект, например обратно в Backoffice SPA)
+- Если `returnTo` нет — использует `navigate(from)` через React Router (остаётся в Auth SPA)
 
 ### Автоматическое обновление токена
 
@@ -73,7 +163,7 @@ Axios interceptor при получении 401:
 1. Ставит запрос в очередь
 2. Отправляет POST `/auth/refresh` (один раз, без thundering herd)
 3. При успехе: обновляет токены в localStorage, повторяет все запросы из очереди
-4. При неудаче: очищает localStorage, редиректит на `/login`
+4. При неудаче: очищает токены из localStorage, редиректит на `/login` через `window.location.href` (кросс-SPA)
 
 ### Хранение
 
@@ -83,7 +173,7 @@ Axios interceptor при получении 401:
 
 ## API-клиент
 
-**Axios instance** (`src/api/client.ts`):
+**Axios instance** (`packages/ui-kit/src/api/client.ts`):
 
 ```
 baseURL: import.meta.env.VITE_API_URL ?? "/api/v1"
@@ -95,7 +185,7 @@ Request interceptor:
 
 ## Хуки данных (React Query)
 
-Все хуки в `src/api/hooks.ts`:
+Общие хуки в `packages/ui-kit/src/api/hooks.ts`, app-специфичные хуки в `apps/*/src/api/hooks.ts`:
 
 | Хук | Endpoint | Кеш |
 |-----|----------|-----|
@@ -224,6 +314,16 @@ if (open && !populated && fullData) {
 - `InstrumentDetailsPage` -- просмотр инструмента со всеми параметрами
 - `RoleDetailsPage` -- просмотр роли: общие данные + permissions с чекбоксами (read-only, сгруппированные по группам)
 
+### Config-страницы (apps/config)
+
+**ConfigDashboardPage** — 3 stat-карточки (количество элементов меню, сущностей, upstreams) + кнопка "Reload Config" для перезагрузки конфигурации из API.
+
+**MenuEditorPage** — древовидный редактор меню sidebar. Поддерживает добавление, редактирование и удаление пунктов меню. Иконки отображаются через `iconMap` (маппинг строковых имён на MUI-иконки).
+
+**EntityFieldsPage** — конфигурация видимости полей сущностей по ролям. Каждая сущность отображается как Accordion, внутри — чекбокс-матрица (поле x роль).
+
+**UpstreamsPage** — управление upstream-маршрутами. Каждый upstream отображается как Card с route chips (список маршрутов). Поддерживает добавление, редактирование и удаление upstreams.
+
 ### EntityHistoryDialog
 
 Переиспользуемый компонент `EntityHistoryDialog` для просмотра поле-уровневой истории изменений сущности. Интегрирован в:
@@ -292,6 +392,7 @@ Fintech-стиль с Teal/Emerald палитрой. Поддержка Light/Da
 |---------------|------------|
 | Серверные данные | React Query |
 | Аутентификация | React Context (AuthContext) |
+| Навигация | React Context (NavigationContext) |
 | URL / фильтры | URLSearchParams |
 | Локальный UI | useState / useReducer |
 

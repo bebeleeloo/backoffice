@@ -9,15 +9,23 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 /
 ├── backend/          # .NET 8 Monolith API (Clean Architecture + CQRS) — business logic
 ├── auth-service/     # .NET 8 Auth Service (separate microservice) — users, roles, permissions, auth
-├── frontend/         # React 18 SPA (TypeScript, MUI, React Query)
+├── gateway/          # .NET 8 API Gateway — config, REST proxy, field-level access control
+├── frontend/         # pnpm monorepo + Turborepo
+│   ├── packages/
+│   │   ├── ui-kit/           # @broker/ui-kit — shared components, theme, auth, layout
+│   │   └── auth-module/      # @broker/auth-module — login, users, roles pages
+│   └── apps/
+│       ├── backoffice/       # Business SPA (clients, accounts, orders, etc.) :5173
+│       ├── auth/             # Auth SPA (login, users, roles) :5174
+│       └── config/           # Config SPA (menu editor, entity fields, upstreams) :5175
 ├── docs/             # Architecture documentation
 ├── scripts/          # Test, deployment, and data migration scripts
-├── screenshots/      # UI screenshots
-├── .github/workflows/ci.yml  # GitHub Actions CI pipeline (6 jobs)
-├── docker-compose.yml         # 6 services: postgres, auth, api, web, n8n-db, n8n
+├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
+├── docker-compose.yml         # Services: postgres, auth, api, gateway, web, n8n-db, n8n
 ├── Dockerfile.api    # Multi-stage .NET build (monolith, port 8080)
 ├── Dockerfile.auth   # Multi-stage .NET build (auth service, port 8082)
-├── Dockerfile.web    # Multi-stage Node + nginx build (non-root, port 8080)
+├── Dockerfile.gateway # Multi-stage .NET build (gateway, port 8090)
+├── Dockerfile.web    # Multi-stage pnpm + nginx build (3 SPAs, non-root, port 8080)
 └── .env.example
 ```
 
@@ -35,6 +43,8 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - ASP.NET Core Response Compression (Gzip, CompressionLevel.Fastest)
 
 ### Frontend
+- pnpm monorepo + Turborepo (5 packages: ui-kit, auth-module, backoffice, auth, config)
+- 3 separate SPAs: backoffice, auth, config (cross-SPA navigation via NavigationProvider)
 - React 18 + TypeScript (strict mode)
 - Vite 5 (build tool, dev server)
 - MUI v6 (Material UI components + DataGrid)
@@ -61,21 +71,25 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ## 3. Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│  nginx:8080  │────▶│  API:8080    │────▶ PostgreSQL
-│  (React SPA) │     │  /api/ proxy │     │  Monolith    │     :5432 (public.*)
-└─────────────┘     └──────────────┘     │  .NET 8      │
-     :3000               │               └──────────────┘
-                         │                    :5050
-                         │
-                         │  /api/v1/auth/    ┌──────────────┐
-                         │  /api/v1/users/   │  Auth:8082   │────▶ PostgreSQL
-                         └─────────────────▶│  .NET 8      │     :5432 (auth.*)
-                                            └──────────────┘
+┌─────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  3 React SPAs    │────▶│  nginx:8080  │────▶│ Gateway:8090 │────▶│  API:8080    │──▶ PostgreSQL
+│  backoffice     │     │  SPA routing  │     │  Config, Proxy│     │  Monolith    │   :5432 (public.*)
+│  auth           │     │  /api/ proxy │     │  .NET 8      │     │  .NET 8      │
+│  config         │     └──────────────┘     └──────────────┘     └──────────────┘
+└─────────────────┘          │                      │
+     :3000                   │                      │              ┌──────────────┐
+                             │                      └─────────────▶│  Auth:8082   │──▶ PostgreSQL
+                             │                                     │  .NET 8      │   :5432 (auth.*)
+                             │                                     └──────────────┘
 ```
 
-**Two services, one database, separate schemas:** Auth service uses `auth.*` schema, monolith uses `public.*` (default).
-nginx routes `/api/v1/auth/` (trailing slash), `/api/v1/users`, `/api/v1/roles`, `/api/v1/permissions` (no trailing slash — matches both `/users` and `/users/123`) → auth:8082; all other `/api/` → api:8080.
+**Three services, one database, separate schemas:** Auth service uses `auth.*` schema, monolith uses `public.*` (default). API Gateway reads YAML configs and proxies REST requests.
+
+**nginx routes 3 SPAs + API:**
+- `/login`, `/users*`, `/roles*` → Auth SPA (`auth/index.html`)
+- `/config*` → Config SPA (`config/index.html`)
+- `/api/` → Gateway (:8090) → routes to monolith or auth-service
+- Everything else → Backoffice SPA (`backoffice/index.html`)
 
 Backend follows Clean Architecture with 4 layers:
 - **Domain** — Entities, enums, value objects. Zero dependencies.
@@ -83,7 +97,7 @@ Backend follows Clean Architecture with 4 layers:
 - **Infrastructure** — EF Core, JWT, audit tracking, seeding. Implements Application interfaces.
 - **Api** — Controllers, middleware, filters, Program.cs. Composes everything.
 
-Frontend follows feature-based organization with shared components.
+Frontend is a pnpm monorepo with 3 SPAs sharing `@broker/ui-kit` and `@broker/auth-module` packages. Cross-SPA navigation via `NavigationProvider` (React Router for internal paths, `window.location.href` for cross-SPA).
 
 **Security headers** (nginx — applied in server block AND all location blocks):
 - `Content-Security-Policy`: default-src 'self', unsafe-inline for styles (MUI), data:/blob: for images
@@ -178,6 +192,24 @@ auth-service/
 └── Dockerfile.auth
 ```
 
+### API Gateway Structure
+
+```
+gateway/
+├── src/
+│   └── Broker.Gateway.Api/
+│       ├── Controllers/ConfigController.cs  # Menu, entities, upstreams endpoints + CRUD
+│       ├── Services/ConfigLoader.cs         # YAML loading + serialization (YamlDotNet)
+│       └── Program.cs                       # :8090
+├── config/
+│   ├── menu.yaml        # Sidebar menu structure + permissions
+│   ├── entities.yaml    # Entity field visibility by role
+│   └── upstreams.yaml   # Backend service routing
+└── Dockerfile.gateway
+```
+
+API Gateway serves config (menu, entities, upstreams), proxies REST to backend services, and provides CRUD endpoints for config editing (`settings.manage` permission).
+
 Auth service owns: users, roles, permissions, authentication (login, refresh, change password, profile), user photos.
 Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
 
@@ -260,78 +292,52 @@ Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats
 
 ```
 frontend/
-├── public/
-│   ├── logo.svg              # App logo (SVG) — sidebar, login page, favicon
-│   └── login-bg.jpg          # Login page background image (legacy, not used)
-├── index.html                # Entry HTML (favicon → /logo.svg)
-└── src/
-    ├── api/
-    │   ├── client.ts           # Axios instance, interceptors, token refresh
-    │   ├── hooks.ts            # React Query hooks for all entities
-    │   └── types.ts            # TypeScript interfaces matching backend DTOs
-    ├── auth/
-    │   ├── AuthContext.tsx      # Auth state provider (user, permissions, login/logout)
-    │   └── usePermission.ts    # useHasPermission() hook
-    ├── components/
-    │   ├── UserAvatar.tsx        # Reusable avatar (photo from API or initials fallback)
-    │   ├── Breadcrumbs.tsx      # MUI breadcrumb navigation for detail pages
-    │   ├── DetailField.tsx      # Reusable label+value field for detail pages
-    │   ├── ErrorBoundary.tsx    # React error boundary with MUI fallback UI
-    │   ├── PageContainer.tsx    # Page wrapper (title, actions, subheader, variant, breadcrumbs)
-    │   ├── ExportButton.tsx     # Excel export button with loading state
-    │   ├── ConfirmDialog.tsx    # MUI confirmation dialog for delete actions
-    │   ├── RouteLoadingFallback.tsx # Centered spinner for lazy-loaded routes
-    │   ├── grid/
-    │   │   ├── FilteredDataGrid.tsx   # DataGrid + inline filter row + empty state overlay + controlled sortModel
-    │   │   ├── GridFilterRow.tsx      # Filter row rendering (native scroll sync, theme-aware), CustomColumnHeaders slot wrapper
-    │   │   ├── InlineTextFilter.tsx   # Debounced text input (300ms)
-    │   │   ├── CompactMultiSelect.tsx # Checkbox multi-select dropdown
-    │   │   ├── CompactCountrySelect.tsx
-    │   │   ├── DateRangePopover.tsx   # From/To date picker
-    │   │   ├── NumericRangePopover.tsx # Min/Max numeric range
-    │   │   └── InlineBooleanFilter.tsx
-    │   ├── GlobalSearchBar.tsx         # Debounced auto-search input (300ms)
-    │   ├── EntityHistoryDialog.tsx    # Change history per entity
-    │   ├── AuditDetailDialog.tsx      # Audit log entry detail
-    │   └── ChangeHistoryComponents.tsx
-    ├── layouts/
-    │   └── MainLayout.tsx      # Dark collapsible sidebar (no AppBar) + content area
-    ├── pages/
-    │   ├── LoginPage.tsx        # Split-screen login (branded left panel + form right)
-    │   ├── DashboardPage.tsx
-    │   ├── ClientsPage.tsx / ClientDetailsPage.tsx / ClientDialogs.tsx
-    │   ├── AccountsPage.tsx / AccountDetailsPage.tsx / AccountDialogs.tsx
-    │   ├── InstrumentsPage.tsx / InstrumentDetailsPage.tsx / InstrumentDialogs.tsx
-    │   ├── TradeOrdersPage.tsx / TradeOrderDetailsPage.tsx / TradeOrderDialogs.tsx
-    │   ├── NonTradeOrdersPage.tsx / NonTradeOrderDetailsPage.tsx / NonTradeOrderDialogs.tsx
-    │   ├── TradeTransactionsPage.tsx / TradeTransactionDetailsPage.tsx / TradeTransactionDialogs.tsx
-    │   ├── NonTradeTransactionsPage.tsx / NonTradeTransactionDetailsPage.tsx / NonTradeTransactionDialogs.tsx
-    │   ├── UsersPage.tsx / UserDialogs.tsx
-    │   ├── RolesPage.tsx / RoleDetailsPage.tsx / RoleDialogs.tsx
-    │   ├── AuditPage.tsx
-    │   ├── NotFoundPage.tsx     # 404 page (wildcard route)
-    │   └── settings/           # ProfileTab, AppearanceTab, ReferenceDataTab, CRUD dialogs
-    ├── router/
-    │   └── index.tsx            # Route definitions with RequireAuth + React.lazy()
-    ├── theme/
-    │   ├── index.ts             # createAppTheme(mode), createAppListTheme(base), SIDEBAR_COLORS, STAT_GRADIENTS
-    │   └── ThemeContext.tsx      # AppThemeProvider, useThemeMode, useListTheme — dark/light/system
-    ├── hooks/
-    │   ├── useDebounce.ts
-    │   └── useConfirm.ts       # Promise-based confirmation dialog hook
-    ├── types/
-    │   └── react-query.d.ts    # Type augmentation for mutation meta
-    ├── utils/
-    │   ├── exportToExcel.ts     # ExcelJS-based export utility
-    │   ├── extractErrorMessage.ts # Axios/ProblemDetails error parser for toasts
-    │   ├── orderConstants.ts    # Order status descriptions for tooltips
-    │   ├── transactionConstants.ts # Transaction status descriptions for tooltips
-    │   └── validateFields.ts    # Inline form validation helpers (validateRequired, validateEmail)
-    └── test/
-        ├── setupTests.ts
-        ├── renderWithProviders.tsx
-        ├── msw/                 # MSW handlers per entity
-        └── factories/           # Test data factories with faker
+├── packages/
+│   ├── ui-kit/                          # @broker/ui-kit — shared across all SPAs
+│   │   └── src/
+│   │       ├── components/              # PageContainer, FilteredDataGrid, ConfirmDialog, UserAvatar,
+│   │       │                            # Breadcrumbs, DetailField, ExportButton, GlobalSearchBar,
+│   │       │                            # ErrorBoundary, RouteLoadingFallback, EntityHistoryDialog,
+│   │       │                            # AuditDetailDialog, ChangeHistoryComponents, grid/*
+│   │       ├── layouts/MainLayout.tsx   # Dark collapsible sidebar + content area
+│   │       ├── navigation/             # NavigationProvider, useAppNavigation (cross-SPA nav)
+│   │       ├── auth/                   # AuthProvider, useAuth, useHasPermission, RequireAuth
+│   │       ├── api/                    # Axios client, configApi (useMenu, useEntityConfig)
+│   │       ├── theme/                  # createAppTheme, ThemeContext, SIDEBAR_COLORS, STAT_GRADIENTS
+│   │       ├── hooks/                  # useDebounce, useConfirm
+│   │       ├── utils/                  # exportToExcel, extractErrorMessage, validateFields
+│   │       └── icons.ts               # iconMap: string → MUI Icon component
+│   │
+│   └── auth-module/                     # @broker/auth-module — auth pages
+│       └── src/
+│           ├── pages/                  # LoginPage, UsersPage, UserDialogs, RolesPage,
+│           │                           # RoleDetailsPage, RoleDialogs, ProfileTab
+│           └── api/                    # types.ts, hooks.ts (useUsers, useRoles, useLogin, etc.)
+│
+├── apps/
+│   ├── backoffice/                      # Business SPA (:5173)
+│   │   └── src/
+│   │       ├── pages/                  # Dashboard, Clients, Accounts, Instruments, Orders,
+│   │       │                           # Transactions, Audit, Settings, NotFoundPage
+│   │       ├── api/                    # types.ts, hooks.ts (useClients, useAccounts, etc.)
+│   │       └── router/index.tsx        # Routes wrapped in NavigationProvider
+│   │
+│   ├── auth/                            # Auth SPA (:5174)
+│   │   └── src/
+│   │       ├── pages/NotFoundPage.tsx
+│   │       └── router/index.tsx        # /login, /users, /roles (from @broker/auth-module)
+│   │
+│   └── config/                          # Config SPA (:5175)
+│       └── src/
+│           ├── pages/                  # ConfigDashboardPage, MenuEditorPage,
+│           │                           # EntityFieldsPage, UpstreamsPage, NotFoundPage
+│           ├── api/                    # types.ts, hooks.ts (useMenuRaw, useSaveMenu, etc.)
+│           └── router/index.tsx        # /config, /config/menu, /config/entities, /config/upstreams
+│
+├── nginx.conf                           # Shared nginx routing 3 SPAs + API proxy
+├── pnpm-workspace.yaml
+├── turbo.json
+└── tsconfig.base.json
 ```
 
 ### Key Frontend Conventions
@@ -418,6 +424,16 @@ frontend/
 - `useListTheme()` — get scoped list theme (replaces static `listTheme` import)
 - `createAppTheme(mode)` / `createAppListTheme(base)` in `theme/index.ts` — factory functions
 - Settings > Appearance tab (`AppearanceTab.tsx`) — ToggleButtonGroup with Light/Dark/System
+
+**Cross-SPA navigation:**
+- 3 SPAs (backoffice, auth, config) share same origin — JWT tokens in localStorage persist across SPAs
+- `NavigationProvider` wraps MainLayout in each SPA with `internalPaths: string[]`
+- `useAppNavigation().navigateTo(path)` — if path matches internalPaths → React Router `navigate()`, else → `window.location.href` (full page reload)
+- Sidebar clicks use `navigateTo()` for automatic internal/external routing
+- Logout always uses `window.location.href = "/login"` (cross-SPA to auth app)
+- `RequireAuth` redirects via `useEffect` → `window.location.href = "/login?returnTo=" + encodeURIComponent(path)`
+- `LoginPage` reads `returnTo` from URL search params, redirects after login via `window.location.href`
+- nginx routes: `/login`, `/users*`, `/roles*` → auth SPA; `/config*` → config SPA; rest → backoffice SPA
 
 **Sidebar / Layout:**
 - No AppBar — sidebar is the only navigation element
@@ -685,17 +701,17 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Prerequisites helper methods (e.g., `CreatePrerequisitesAsync()`) create Account + Instrument/Currency for Order/Transaction tests
 - Monolith integration tests use `TestJwtTokenHelper.GenerateAdminToken()` (all 31 permissions) or `AuthenticateWithPermissions()` for limited permission tests
 
-### Frontend Tests (119 tests, ~6s)
+### Frontend Tests (109 tests, ~6s)
 - Vitest with jsdom environment
 - React Testing Library + user-event
 - MSW for network-level API mocking
 - Test factories with @faker-js/faker
 - `renderWithProviders()` wraps with QueryClient, Theme, Auth, Router
-- Test scope: `src/{hooks,auth,lib,utils,test}/**/*.test.{ts,tsx}`
-- Location: `frontend/src/test/` (page/component tests), inline `*.test.ts` next to source (utility/hook tests)
-- Utility/hook tests: `validateFields.test.ts`, `extractErrorMessage.test.ts`, `useConfirm.test.ts`, `usePermission.test.tsx`
-- Page smoke tests: all 9 list pages (Clients, Accounts, Instruments, Users, Roles, TradeOrders, NonTradeOrders, TradeTransactions, NonTradeTransactions) — title, search bar, create button permission gating, export button
-- Component tests: `ConfirmDialog`, `ErrorBoundary`, `UserAvatar`, `PageContainer`
+- Tests split across monorepo packages: `@broker/ui-kit` (51 tests), `@broker/backoffice` (58 tests)
+- Run all: `pnpm turbo test`
+- Utility/hook tests (ui-kit): `validateFields.test.ts`, `extractErrorMessage.test.ts`, `useConfirm.test.ts`, `usePermission.test.tsx`, `useDebounce.test.tsx`
+- Page smoke tests (backoffice): 7 list pages (Clients, Accounts, Instruments, TradeOrders, NonTradeOrders, TradeTransactions, NonTradeTransactions) — title, search bar, create button permission gating, export button
+- Component tests (ui-kit): `ConfirmDialog`, `ErrorBoundary`, `UserAvatar`, `PageContainer`
 - Coverage excludes `src/test/**` and `src/types/**` (test infra/type augmentations)
 
 ### Scripts
@@ -709,17 +725,18 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 ```bash
 cp .env.example .env    # Edit secrets
 docker compose up --build -d
-# Frontend: http://localhost:3000
+# Frontend: http://localhost:3000 (3 SPAs via nginx)
+# Gateway: http://localhost:8090
 # API/Swagger: http://localhost:5050/swagger
 # Login: admin / Admin123!
-# Services: postgres, auth (:8082), api (:5050), web (:3000), n8n (:5678)
-# Memory limits: postgres: 512M, auth: 512M, api: 512M, web: 256M, n8n-db: 256M, n8n: 512M
+# Services: postgres, auth (:8082), api (:5050), gateway (:8090), web (:3000), n8n (:5678)
 ```
 
 ### Frontend dev (hot reload):
 ```bash
-cd frontend && npm install && npm run dev
-# Runs on :5173, proxies /api to :5050
+cd frontend && pnpm install && pnpm turbo dev
+# Backoffice: :5173, Auth: :5174, Config: :5175
+# Each proxies /api to localhost:8090 (gateway)
 ```
 
 ### Backend dev:

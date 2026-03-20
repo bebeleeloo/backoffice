@@ -1,0 +1,59 @@
+entities:
+  - name: Client
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: clientType
+        roles: ["*"]
+      - name: displayName
+        roles: ["*"]
+      - name: email
+        roles: [Manager, Operator]
+      - name: phone
+        roles: [Manager, Operator]
+      - name: status
+        roles: ["*"]
+      - name: kycStatus
+        roles: ["*"]
+      - name: ssn
+        roles: [Manager]
+      - name: passportNumber
+        roles: [Manager]
+      - name: driverLicenseNumber
+        roles: [Manager]
+      - name: taxId
+        roles: [Manager]
+      - name: dateOfBirth
+        roles: [Manager, Operator]
+
+  - name: Account
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: number
+        roles: ["*"]
+      - name: status
+        roles: ["*"]
+      - name: accountType
+        roles: ["*"]
+      - name: marginType
+        roles: ["*"]
+      - name: clearerName
+        roles: ["*"]
+      - name: tradePlatformName
+        roles: ["*"]
+
+  - name: User
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: username
+        roles: ["*"]
+      - name: email
+        roles: [Manager]
+      - name: fullName
+        roles: ["*"]
+      - name: isActive
+        roles: ["*"]
+      - name: roles
+        roles: ["*"]

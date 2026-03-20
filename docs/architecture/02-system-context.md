@@ -25,7 +25,11 @@ flowchart TB
 
         subgraph web["broker-web :3000"]
             nginx["Nginx Alpine"]
-            spa["React SPA<br/>(статика)"]
+            spa["3 React SPA<br/>(backoffice, auth, config)"]
+        end
+
+        subgraph gw["broker-gateway :8090"]
+            gateway["ASP.NET Core 8<br/>API Gateway"]
         end
 
         subgraph auth["broker-auth :8082"]
@@ -42,14 +46,16 @@ flowchart TB
     end
 
     browser["Браузер оператора"] -->|"HTTP :3000"| nginx
-    nginx -->|"Статика"| spa
-    nginx -->|"/api/v1/auth/, /api/v1/users,<br/>/api/v1/roles, /api/v1/permissions"| authsvc
-    nginx -->|"Остальные /api/"| dotnet
+    nginx -->|"Статика (3 SPA)"| spa
+    nginx -->|"/api/"| gateway
+    gateway -->|"REST proxy<br/>/api/v1/auth/, /api/v1/users,<br/>/api/v1/roles, /api/v1/permissions"| authsvc
+    gateway -->|"REST proxy<br/>Остальные /api/"| dotnet
     dotnet -->|"EF Core (public.* schema)"| postgres
     authsvc -->|"EF Core (auth.* schema)"| postgres
     dotnet -.->|"IAuthServiceClient<br/>(dashboard stats)"| authsvc
 
     style web fill:#e1f5fe
+    style gw fill:#fce4ec
     style auth fill:#f3e5f5
     style api fill:#e8f5e9
     style db fill:#fff3e0
@@ -60,7 +66,8 @@ flowchart TB
 | Контейнер | Внешний порт | Внутренний порт | Протокол |
 |-----------|-------------|-----------------|----------|
 | broker-web | 3000 | 8080 | HTTP (Nginx, non-root) |
-| broker-auth | 8082 | 8080 | HTTP (Kestrel) |
+| broker-gateway | 8090 | 8090 | HTTP (Kestrel) |
+| broker-auth | 8082 | 8082 | HTTP (Kestrel) |
 | broker-api | 5050 | 8080 | HTTP (Kestrel) |
 | broker-postgres | 5432 | 5432 | TCP (PostgreSQL) |
 
@@ -68,17 +75,20 @@ flowchart TB
 
 | Путь | Backend |
 |------|---------|
-| `/api/v1/auth/`, `/api/v1/users`, `/api/v1/roles`, `/api/v1/permissions` | auth:8082 |
-| Остальные `/api/` | api:8080 |
-| `/`, `/assets/` | Статика SPA |
+| `/login`, `/users*`, `/roles*` | Auth SPA (`auth/index.html`) |
+| `/config*` | Config SPA (`config/index.html`) |
+| `/api/` | gateway:8090 |
+| `~^/(backoffice\|auth\|config)/assets/` | Статические файлы (immutable cache 1y) |
+| Всё остальное | Backoffice SPA (`backoffice/index.html`) |
 
 ### Health Checks
 
 | Контейнер | Механизм | Интервал |
 |-----------|----------|----------|
 | postgres | `pg_isready -U postgres` | 10s, 5 retries, start 10s |
-| auth | TCP check на порт 8080 | 10s, 5 retries, start 20s |
-| api | TCP check на порт 8080 | 10s, 5 retries, start 20s |
+| auth | `wget http://127.0.0.1:8082/health/live` | 10s, 5 retries, start 20s |
+| api | `wget http://127.0.0.1:8080/health/live` | 10s, 5 retries, start 30s |
+| gateway | `wget http://127.0.0.1:8090/health/live` | 10s, 5 retries, start 15s |
 | web | `wget http://127.0.0.1:8080/` | 10s, 3 retries, start 5s |
 
 ## C4 Level 3 -- Компоненты Backend (монолит)
@@ -168,17 +178,17 @@ flowchart TB
     style Infra fill:#e8f5e9
 ```
 
-## C4 Level 3 -- Компоненты Frontend
+## C4 Level 3 -- Компоненты Frontend (3 SPA)
 
 ```mermaid
 flowchart TB
-    subgraph Entry["Точка входа"]
-        main["main.tsx<br/>Провайдеры"]
-        router["Router<br/>React Router v6"]
+    subgraph Entry["Точки входа (3 main.tsx)"]
+        mainBO["backoffice/main.tsx"]
+        mainAuth["auth/main.tsx"]
+        mainCfg["config/main.tsx"]
     end
 
-    subgraph Pages["Страницы"]
-        login["LoginPage"]
+    subgraph BackofficePages["Backoffice SPA — Страницы"]
         dashboard["DashboardPage"]
         clients["ClientsPage"]
         accounts["AccountsPage"]
@@ -187,14 +197,26 @@ flowchart TB
         nonTradeOrders["NonTradeOrdersPage"]
         tradeTx["TradeTransactionsPage"]
         nonTradeTx["NonTradeTransactionsPage"]
-        users["UsersPage"]
-        roles["RolesPage"]
         audit["AuditPage"]
         settings["SettingsPage"]
     end
 
-    subgraph Shared["Переиспользуемые"]
-        layout["MainLayout<br/>Sidebar + Content"]
+    subgraph AuthPages["Auth SPA — Страницы"]
+        login["LoginPage"]
+        users["UsersPage"]
+        roles["RolesPage"]
+        profile["ProfileTab"]
+    end
+
+    subgraph ConfigPages["Config SPA — Страницы"]
+        menuCfg["MenuConfigPage"]
+        entityCfg["EntityConfigPage"]
+        upstreamCfg["UpstreamConfigPage"]
+    end
+
+    subgraph Shared["@broker/ui-kit (shared)"]
+        layout["MainLayout<br/>Динамический Sidebar"]
+        navProvider["NavigationProvider<br/>Кросс-SPA навигация"]
         pageContainer["PageContainer"]
         grid["FilteredDataGrid<br/>+ InlineFilters"]
         dialogs["Диалоги<br/>Create/Edit/Permissions"]
@@ -202,22 +224,31 @@ flowchart TB
 
     subgraph Data["Данные"]
         apiClient["Axios Client<br/>+ Token Refresh"]
-        hooks["React Query Hooks<br/>useUsers, useClients, ..."]
+        hooks["React Query Hooks<br/>useClients, useUsers, ..."]
         authCtx["AuthContext<br/>useAuth, usePermission"]
+        configApi["Config API<br/>useMenu, useEntityConfig"]
     end
 
-    main --> router
-    router --> login
-    router --> layout
-    layout --> dashboard & clients & accounts & instruments & tradeOrders & nonTradeOrders & tradeTx & nonTradeTx & users & roles & audit & settings
+    mainBO --> layout
+    mainAuth --> layout
+    mainCfg --> layout
+
+    layout --> navProvider
+    layout --> dashboard & clients & accounts & instruments & tradeOrders & nonTradeOrders & tradeTx & nonTradeTx & audit & settings
+    layout --> login & users & roles & profile
+    layout --> menuCfg & entityCfg & upstreamCfg
+
     clients & accounts & instruments & tradeOrders & nonTradeOrders & tradeTx & nonTradeTx & users & roles & audit --> grid
     clients & accounts & instruments & users & roles --> dialogs
     grid --> hooks
     hooks --> apiClient
     layout --> authCtx
+    layout --> configApi
 
     style Entry fill:#e3f2fd
-    style Pages fill:#f3e5f5
+    style BackofficePages fill:#f3e5f5
+    style AuthPages fill:#f3e5f5
+    style ConfigPages fill:#f3e5f5
     style Shared fill:#fff8e1
     style Data fill:#e8f5e9
 ```

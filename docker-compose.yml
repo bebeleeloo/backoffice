@@ -100,6 +100,39 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: broker-gateway
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      Jwt__Secret: "${JWT_SECRET:?Set JWT_SECRET in .env}"
+      ConfigDir: "config"
+    ports:
+      - "8090:8090"
+    depends_on:
+      api:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8090/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   web:
     build:
       context: .
@@ -109,7 +142,7 @@ services:
     ports:
       - "3000:8080"
     depends_on:
-      api:
+      gateway:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8080/ || exit 1"]
@@ -171,16 +204,16 @@ services:
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       EXECUTIONS_DATA_MAX_AGE: "720"
       # Broker API connection (available as $env.* in workflow expressions)
-      BROKER_API_HOST: "http://api:8080"
-      BROKER_AUTH_HOST: "http://auth:8082"
-      BROKER_API_URL: "http://api:8080/api/v1"
-      BROKER_AUTH_URL: "http://auth:8082/api/v1"
+      BROKER_API_HOST: "http://gateway:8090"
+      BROKER_AUTH_HOST: "http://gateway:8090"
+      BROKER_API_URL: "http://gateway:8090/api/v1"
+      BROKER_AUTH_URL: "http://gateway:8090/api/v1"
     ports:
       - "5678:5678"
     depends_on:
       n8n-db:
         condition: service_healthy
-      api:
+      gateway:
         condition: service_healthy
     volumes:
       - n8n-data:/home/node/.n8n

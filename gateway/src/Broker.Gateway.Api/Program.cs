@@ -1,0 +1,117 @@
+using System.Text;
+using Broker.Gateway.Api.Middleware;
+using Broker.Gateway.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using Yarp.ReverseProxy.Configuration;
+
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
+
+    builder.Host.UseSerilog((context, cfg) =>
+        cfg.ReadFrom.Configuration(context.Configuration)
+           .Enrich.FromLogContext()
+           .Enrich.WithCorrelationId()
+           .WriteTo.Console(outputTemplate:
+               "[{Timestamp:HH:mm:ss} {Level:u3}] {CorrelationId} {Message:lj}{NewLine}{Exception}"));
+
+    // Config loader (YAML)
+    builder.Services.AddSingleton<ConfigLoader>();
+    builder.Services.AddSingleton<MenuService>();
+    builder.Services.AddSingleton<EntityConfigService>();
+
+    // JWT authentication (same config as backend/auth-service)
+    var jwtSecret = builder.Configuration["Jwt:Secret"]
+        ?? throw new InvalidOperationException("Jwt:Secret is not configured");
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                ValidAudience = builder.Configuration["Jwt:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                ClockSkew = TimeSpan.FromSeconds(30)
+            };
+        });
+
+    builder.Services.AddAuthorization(options =>
+    {
+        // Dynamic permission policies (same pattern as backend)
+        options.AddPolicy("settings.manage", policy =>
+            policy.RequireClaim("permission", "settings.manage"));
+    });
+
+    // YARP reverse proxy — configured programmatically from upstreams.yaml
+    builder.Services.AddReverseProxy();
+    builder.Services.AddSingleton<IProxyConfigProvider, YamlProxyConfigProvider>();
+
+    // Controllers (for ConfigController)
+    builder.Services.AddControllers();
+
+    // Swagger
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc("v1", new() { Title = "Broker Gateway", Version = "v1" });
+    });
+
+    // Health checks
+    builder.Services.AddHealthChecks();
+
+    // Response compression
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+    });
+
+    var app = builder.Build();
+
+    app.UseResponseCompression();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseSerilogRequestLogging();
+    app.UseMiddleware<CorrelationIdMiddleware>();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    // Health endpoints
+    app.MapHealthChecks("/health/live", new()
+    {
+        Predicate = _ => false // liveness = always 200
+    });
+    app.MapHealthChecks("/health/ready");
+
+    // YARP reverse proxy
+    app.MapReverseProxy();
+
+    Log.Information("Gateway starting on {Urls}", builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:8090");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Gateway terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

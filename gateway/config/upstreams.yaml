@@ -1,0 +1,27 @@
+upstreams:
+  monolith:
+    address: http://broker-api:8080
+    routes:
+      - /api/v1/clients
+      - /api/v1/accounts
+      - /api/v1/instruments
+      - /api/v1/trade-orders
+      - /api/v1/non-trade-orders
+      - /api/v1/trade-transactions
+      - /api/v1/non-trade-transactions
+      - /api/v1/dashboard
+      - /api/v1/audit
+      - /api/v1/entity-changes
+      - /api/v1/countries
+      - /api/v1/clearers
+      - /api/v1/currencies
+      - /api/v1/exchanges
+      - /api/v1/trade-platforms
+
+  auth:
+    address: http://broker-auth:8082
+    routes:
+      - /api/v1/auth
+      - /api/v1/users
+      - /api/v1/roles
+      - /api/v1/permissions
