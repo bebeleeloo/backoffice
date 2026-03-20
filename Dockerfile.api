@@ -22,6 +22,7 @@ RUN dotnet publish backend/src/Broker.Backoffice.Api/Broker.Backoffice.Api.cspro
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim AS runtime
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 RUN adduser --disabled-password --gecos "" appuser
 USER appuser
 
