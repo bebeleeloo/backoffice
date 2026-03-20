@@ -5,7 +5,7 @@
 API Gateway -- центральный сервис-прослойка между внешними потребителями (Frontend, n8n, внешние интеграции) и внутренними сервисами (Monolith, Auth Service, будущие сервисы). Объединяет три ключевые функции:
 
 1. **Конфигурация видимости** -- YAML-конфиг определяет какие сущности, поля, действия и эндпоинты доступны для каждой роли и каждого потребителя
-2. **Protocol translation** -- принимает REST от внешних клиентов, вызывает внутренние сервисы по gRPC
+2. **Protocol translation** -- принимает REST от внешних клиентов, вызывает внутренние сервисы по gRPC или REST (настраивается per-upstream)
 3. **Field-level access control** -- фильтрует поля в ответах и запросах на основании конфигурации и роли текущего пользователя
 
 ### Зачем нужен
@@ -15,7 +15,7 @@ API Gateway -- центральный сервис-прослойка между
 | Фронтенд и n8n напрямую вызывают разные сервисы | Единая точка входа, один base URL |
 | Нельзя скрыть поле/сущность без деплоя кода | YAML-конфиг: изменил -> перезагрузил -> готово |
 | Разные роли должны видеть разные поля (PII, compliance) | Field-level RBAC на уровне gateway |
-| Межсервисное взаимодействие по HTTP -- медленно | gRPC для внутренней коммуникации |
+| Межсервисное взаимодействие только по HTTP -- нет выбора | gRPC и/или REST для внутренней коммуникации (настраивается per-upstream) |
 | nginx вручную маршрутизирует /api/ по сервисам | Gateway маршрутизирует автоматически из конфига |
 | n8n нужен чистый Swagger для построения workflows | Gateway генерирует Swagger из конфига |
 | Добавление нового сервиса требует правок nginx, docker-compose | Достаточно добавить upstream в YAML |
@@ -29,15 +29,15 @@ API Gateway -- центральный сервис-прослойка между
                          │              API Gateway (.NET 8)            │
                          │                                              │
   Frontend ──REST───────▶│  ┌──────────┐ ┌───────────┐ ┌────────────┐ │
-                         │  │  YAML    │ │ REST→gRPC │ │  Swagger   │ │
-  n8n      ──REST───────▶│  │  Config  │ │ Translate │ │ Generator  │ │
+                         │  │  YAML    │ │   Proxy   │ │  Swagger   │ │
+  n8n      ──REST───────▶│  │  Config  │ │ REST/gRPC │ │ Generator  │ │
                          │  └──────────┘ └───────────┘ └────────────┘ │
   External ──REST───────▶│  ┌──────────┐ ┌───────────┐ ┌────────────┐ │
                          │  │  Field   │ │  Access   │ │  Admin UI  │ │
-                         │  │  Filter  │ │  Control  │ │  (Blazor)  │ │
+                         │  │  Filter  │ │  Control  │ │  (React)   │ │
                          │  └──────────┘ └───────────┘ └────────────┘ │
                          └──────┬───────────────┬───────────────┬──────┘
-                                │ gRPC          │ gRPC          │ gRPC
+                                │ gRPC/REST     │ gRPC/REST     │ gRPC/REST
                                 ▼               ▼               ▼
                          ┌───────────┐   ┌───────────┐   ┌───────────┐
                          │ Monolith  │   │   Auth    │   │  Future   │
@@ -58,18 +58,23 @@ API Gateway -- центральный сервис-прослойка между
 sequenceDiagram
     participant FE as Frontend
     participant GW as API Gateway
-    participant M as Monolith (gRPC)
-    participant A as Auth (gRPC)
+    participant M as Monolith (gRPC/REST)
+    participant A as Auth (gRPC/REST)
 
     FE->>GW: GET /api/v1/clients?status=Active
     Note over GW: 1. Извлечь JWT → роль "manager"
     Note over GW: 2. Загрузить YAML-конфиг для Client
     Note over GW: 3. Проверить: endpoint разрешён для manager?
     Note over GW: 4. Проверить: query params (status) разрешены?
-    GW->>M: gRPC ClientService.ListClients(status=Active, field_mask=[...])
-    M-->>GW: ListClientsResponse (все поля)
+    alt upstream.protocol = grpc
+        GW->>M: gRPC ClientService.ListClients(status=Active, field_mask=[...])
+        M-->>GW: ListClientsResponse (protobuf)
+    else upstream.protocol = rest
+        GW->>M: GET /api/v1/clients?status=Active (HTTP)
+        M-->>GW: JSON response (все поля)
+    end
     Note over GW: 5. Отфильтровать поля по конфигу для "manager"
-    Note over GW: 6. Преобразовать proto → JSON (camelCase)
+    Note over GW: 6. Вернуть JSON (camelCase)
     GW-->>FE: JSON (только разрешённые поля)
 ```
 
@@ -77,7 +82,7 @@ sequenceDiagram
 sequenceDiagram
     participant FE as Frontend
     participant GW as API Gateway
-    participant A as Auth (gRPC)
+    participant A as Auth (gRPC/REST)
 
     FE->>GW: GET /api/v1/config/Client
     Note over GW: Вернуть конфиг полей для роли из JWT
@@ -99,7 +104,7 @@ sequenceDiagram
 | broker-postgres | 5432 | 5432 | TCP | База данных |
 | broker-n8n | 5678 | 5678 | HTTP | Workflow automation |
 
-> **Важно:** После внедрения Gateway монолит и auth-service перестают экспонировать HTTP-порты наружу. Весь внешний REST-трафик идёт через Gateway. REST-эндпоинты на backend-сервисах сохраняются на переходный период (Phase 1-3) и удаляются в Phase 5.
+> **Важно:** После внедрения Gateway монолит и auth-service перестают экспонировать HTTP-порты наружу. Весь внешний REST-трафик идёт через Gateway. REST-эндпоинты на backend-сервисах сохраняются — Gateway может вызывать upstream как по gRPC, так и по REST (настраивается per-upstream в YAML). gRPC рекомендуется для новых сервисов и высоконагруженных вызовов, REST — для простоты и обратной совместимости.
 
 ---
 
@@ -143,9 +148,10 @@ gateway/
 │   │   │   └── RouteMapping.cs         # REST path → gRPC method mapping
 │   │   │
 │   │   ├── Proxy/
-│   │   │   ├── GrpcProxyMiddleware.cs  # REST → gRPC translation middleware
-│   │   │   ├── RequestTranslator.cs    # JSON body → protobuf message
-│   │   │   ├── ResponseTranslator.cs   # Protobuf message → JSON
+│   │   │   ├── ProxyMiddleware.cs      # Основной middleware (REST → gRPC или REST → REST)
+│   │   │   ├── GrpcUpstreamClient.cs   # Вызов upstream по gRPC (protobuf)
+│   │   │   ├── RestUpstreamClient.cs   # Вызов upstream по REST (JSON passthrough)
+│   │   │   ├── IUpstreamClient.cs      # Абстракция upstream-клиента
 │   │   │   ├── FieldFilter.cs          # Фильтрация полей по конфигу и роли
 │   │   │   ├── QueryParamValidator.cs  # Валидация query params
 │   │   │   └── FieldMaskBuilder.cs     # Построение gRPC FieldMask из конфига
@@ -160,7 +166,7 @@ gateway/
 │   │   │   └── SwaggerFieldFilter.cs        # Фильтрация полей в Swagger по профилю
 │   │   │
 │   │   ├── HealthChecks/
-│   │   │   ├── GrpcUpstreamHealthCheck.cs   # Проверка gRPC-подключений
+│   │   │   ├── UpstreamHealthCheck.cs       # Проверка gRPC/REST-подключений
 │   │   │   └── ConfigHealthCheck.cs         # Валидность конфига
 │   │   │
 │   │   ├── Middleware/
@@ -170,17 +176,27 @@ gateway/
 │   │   │
 │   │   └── appsettings.json
 │   │
-│   └── Broker.Gateway.Admin/          # Admin UI для редактирования конфига
-│       ├── Pages/                      # Blazor Server pages
-│       │   ├── EntitiesPage.razor      # Список сущностей + toggle enabled
-│       │   ├── EntityFieldsPage.razor  # Настройка полей сущности
-│       │   ├── AccessProfilesPage.razor # Профили доступа
-│       │   ├── UpstreamsPage.razor     # gRPC-подключения + health status
-│       │   └── ConfigDiffPage.razor    # История изменений конфига
-│       └── Components/
-│           ├── FieldEditor.razor       # Редактор одного поля
-│           ├── YamlPreview.razor       # Превью YAML с подсветкой
-│           └── ConfigValidation.razor  # Результаты валидации
+├── admin/                              # Admin UI (React SPA, тот же стек что основной frontend)
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   ├── index.html
+│   └── src/
+│       ├── api/
+│       │   ├── client.ts               # Axios instance (gateway admin API)
+│       │   ├── hooks.ts                # React Query hooks (entities, fields, profiles, upstreams)
+│       │   └── types.ts                # TypeScript interfaces
+│       ├── pages/
+│       │   ├── EntitiesPage.tsx         # Список сущностей + toggle enabled
+│       │   ├── EntityFieldsPage.tsx     # Настройка полей сущности (DataGrid)
+│       │   ├── AccessProfilesPage.tsx   # Профили доступа
+│       │   ├── UpstreamsPage.tsx        # gRPC/REST-подключения + health status
+│       │   └── ConfigDiffPage.tsx       # История изменений конфига
+│       ├── components/
+│       │   ├── FieldEditor.tsx          # Редактор одного поля (drawer/dialog)
+│       │   ├── YamlPreview.tsx          # Превью YAML с подсветкой
+│       │   └── ConfigValidation.tsx     # Результаты валидации
+│       └── main.tsx
 │
 ├── config/
 │   ├── gateway.yaml                    # Основной конфиг (entities, fields, access)
@@ -210,13 +226,15 @@ gateway/
 
 Конфигурация разделена на три файла для удобства управления:
 
-#### `config/upstreams.yaml` -- gRPC-подключения
+#### `config/upstreams.yaml` -- подключения к сервисам
 
 ```yaml
 upstreams:
   monolith:
-    address: broker-api:50051
-    protos:
+    protocol: grpc                # grpc | rest (выбор протокола для upstream)
+    grpcAddress: broker-api:50051
+    restAddress: http://broker-api:8080
+    protos:                       # используется при protocol: grpc
       - broker.v1.ClientService
       - broker.v1.AccountService
       - broker.v1.InstrumentService
@@ -241,8 +259,10 @@ upstreams:
       backoff: exponential
 
   auth:
-    address: broker-auth:50052
-    protos:
+    protocol: rest                # auth-service пока работает по REST
+    grpcAddress: broker-auth:50052
+    restAddress: http://broker-auth:8082
+    protos:                       # будут использоваться после перехода на grpc
       - broker.v1.AuthService
       - broker.v1.UserService
       - broker.v1.RoleService
@@ -620,7 +640,7 @@ entities:
 | `access.write: []` | Запись запрещена | Поле вырезается из request body, игнорируется при create/update |
 | `ui.grid: false` | Не показывать в таблице | Frontend не рендерит колонку |
 | `ui.form: false` | Не показывать в форме | Frontend не рендерит поле в диалогах create/edit |
-| `validation.required: true` | Обязательное | Gateway валидирует до отправки в gRPC |
+| `validation.required: true` | Обязательное | Gateway валидирует до отправки в upstream |
 | `roles` (endpoint) | Разрешённые роли | 403 если роль не в списке |
 
 ---
@@ -636,8 +656,8 @@ entities:
 | YAML парсинг | `YamlDotNet` | Зрелая библиотека, типизированная десериализация |
 | Hot reload | `IOptionsMonitor<T>` + `FileSystemWatcher` | Стандартный .NET паттерн |
 | Swagger | `Swashbuckle` + кастомный `IDocumentFilter` | Динамическая генерация OpenAPI spec |
-| Admin UI | Blazor Server | .NET без отдельного фронтенда, быстрая разработка |
-| Health checks | `AspNetCore.Diagnostics.HealthChecks` + `Grpc.HealthCheck` | gRPC health protocol v1 |
+| Admin UI | React 18, TypeScript, Vite 5, MUI 6 | Единый стек с основным фронтендом, переиспользование компонентов |
+| Health checks | `AspNetCore.Diagnostics.HealthChecks` + `Grpc.HealthCheck` | gRPC health protocol v1 + HTTP health для REST upstreams |
 | Logging | Serilog | Единообразно с остальными сервисами |
 | Rate limiting | `AspNetCore.RateLimiting` | Встроенный, уже используется в auth |
 | JWT валидация | `Microsoft.AspNetCore.Authentication.JwtBearer` | Единообразно с остальными сервисами |
@@ -936,24 +956,34 @@ Hot-reload:
      - GET /api/v1/config — список доступных сущностей
 ```
 
-### 3. GrpcProxyMiddleware — translation REST → gRPC
+### 3. ProxyMiddleware — вызов upstream (gRPC или REST)
 
 ```
 Incoming REST request:
   1. Resolve entity config по URL path
-  2. Resolve gRPC upstream (address, service, method)
-  3. Создать gRPC channel (с connection pooling)
-  4. Map REST → gRPC:
-     - Route params ({id}) → proto message fields
-     - Query params (?status=Active) → proto filter fields
-     - Request body (JSON) → proto message (via JsonParser)
-     - Построить FieldMask из конфига (запрашивать только разрешённые поля)
-  5. Вызвать gRPC method
-  6. Map gRPC → REST:
-     - Proto message → JSON (via JsonFormatter, camelCase)
-     - gRPC status codes → HTTP status codes
-     - Apply FieldFilter (удалить поля, недоступные для роли)
-  7. Вернуть JSON response
+  2. Resolve upstream config (protocol: grpc | rest)
+  3. Выбрать IUpstreamClient:
+
+  ── Если upstream.protocol == grpc ──
+     a. Создать gRPC channel (с connection pooling)
+     b. Map REST → gRPC:
+        - Route params ({id}) → proto message fields
+        - Query params (?status=Active) → proto filter fields
+        - Request body (JSON) → proto message (via JsonParser)
+        - Построить FieldMask из конфига
+     c. Вызвать gRPC method
+     d. Map gRPC → REST:
+        - Proto message → JSON (via JsonFormatter, camelCase)
+        - gRPC status codes → HTTP status codes
+
+  ── Если upstream.protocol == rest ──
+     a. Построить HTTP request к upstream (HttpClient, connection pooling)
+     b. Проксировать: route params, query params, request body (JSON passthrough)
+     c. Получить JSON response от upstream
+     d. HTTP status codes передаются as-is
+
+  4. Apply FieldFilter (удалить поля, недоступные для роли)
+  5. Вернуть JSON response
 ```
 
 ### 4. FieldFilter — фильтрация полей
@@ -1071,8 +1101,8 @@ Frontend → nginx → monolith (REST)
 ### Целевое состояние
 
 ```
-Frontend → nginx → Gateway (REST) → auth-service (gRPC)
-Frontend → nginx → Gateway (REST) → monolith (gRPC)
+Frontend → nginx → Gateway (REST) → auth-service (gRPC или REST)
+Frontend → nginx → Gateway (REST) → monolith (gRPC или REST)
 Frontend → Gateway: GET /api/v1/config/{entity} — metadata для рендеринга
 ```
 
@@ -1125,10 +1155,10 @@ services:
       context: .
       dockerfile: Dockerfile.auth
     container_name: broker-auth
-    # Больше НЕ экспонирует порт наружу
+    # Не экспонирует порты наружу — доступен только через Gateway
     expose:
-      - "8082"          # REST (переходный период)
-      - "50052"         # gRPC
+      - "8082"          # REST
+      - "50052"         # gRPC (когда включён)
     environment:
       ASPNETCORE_URLS: "http://+:8082;http://+:50052"
       Kestrel__Endpoints__Rest__Url: "http://+:8082"
@@ -1145,10 +1175,10 @@ services:
       context: .
       dockerfile: Dockerfile.api
     container_name: broker-api
-    # Больше НЕ экспонирует порт наружу
+    # Не экспонирует порты наружу — доступен только через Gateway
     expose:
-      - "8080"          # REST (переходный период)
-      - "50051"         # gRPC
+      - "8080"          # REST
+      - "50051"         # gRPC (когда включён)
     environment:
       ASPNETCORE_URLS: "http://+:8080;http://+:50051"
       Kestrel__Endpoints__Rest__Url: "http://+:8080"
@@ -1269,17 +1299,18 @@ public sealed class ClientGrpcService(ISender mediator) : ClientService.ClientSe
 
 ### Phase 3: Gateway MVP (без field filtering)
 
-**Цель:** Gateway принимает REST, вызывает gRPC, возвращает JSON. Без фильтрации полей.
+**Цель:** Gateway принимает REST, вызывает upstream (gRPC или REST), возвращает JSON. Без фильтрации полей.
 
 **Задачи:**
 1. Создать проект `gateway/Broker.Gateway/`
 2. Реализовать `ConfigLoader` — чтение YAML-файлов
 3. Реализовать `DynamicRouteBuilder` — регистрация REST-эндпоинтов из конфига
-4. Реализовать `GrpcProxyMiddleware` — REST→gRPC→REST translation
-5. Реализовать `RequestTranslator` (JSON→proto) и `ResponseTranslator` (proto→JSON)
-6. JWT-валидация (копия текущей конфигурации из backend)
-7. Маппинг gRPC status → HTTP status + ProblemDetails
-8. Health checks (gRPC upstream connectivity)
+4. Реализовать `ProxyMiddleware` с двумя upstream-клиентами:
+   - `GrpcUpstreamClient` — для `protocol: grpc` (REST→gRPC translation)
+   - `RestUpstreamClient` — для `protocol: rest` (JSON passthrough + field filtering)
+5. JWT-валидация (копия текущей конфигурации из backend)
+6. Маппинг gRPC status / HTTP status → ProblemDetails
+7. Health checks (gRPC + HTTP upstream connectivity)
 9. Swagger generation из YAML-конфига
 10. Обновить docker-compose: добавить gateway service
 11. Обновить nginx: `/api/*` → gateway вместо backend-сервисов
@@ -1315,19 +1346,31 @@ public sealed class ClientGrpcService(ISender mediator) : ClientService.ClientSe
 
 **Цель:** Веб-интерфейс для управления YAML-конфигурацией.
 
+**Стек:** React 18, TypeScript, Vite 5, MUI 6, React Query — единый стек с основным фронтендом.
+
 **Задачи:**
-1. Создать Blazor Server проект `Broker.Gateway.Admin`
-2. Страницы:
+1. Создать React SPA проект `gateway/admin/` (Vite + TypeScript + MUI)
+2. Gateway сервирует Admin SPA на порте 8081 (статика через Kestrel `UseStaticFiles`)
+3. Admin API endpoints в Gateway (`/admin/api/`):
+   - `GET /admin/api/entities` — список сущностей с конфигом
+   - `PUT /admin/api/entities/{name}` — обновить конфиг сущности
+   - `GET /admin/api/upstreams` — список upstreams + health status
+   - `GET /admin/api/profiles` — профили доступа
+   - `PUT /admin/api/profiles/{name}` — обновить профиль
+   - `POST /admin/api/config/reload` — применить изменения (hot-reload)
+   - `GET /admin/api/config/diff` — diff текущего vs сохранённого конфига
+4. Страницы:
    - Список сущностей (toggle enabled, overview)
-   - Настройка полей сущности (grid с toggle visibility, access roles, validation)
+   - Настройка полей сущности (DataGrid с toggle visibility, access roles, validation)
    - Настройка endpoints (toggle, roles)
    - Профили доступа (CRUD)
-   - gRPC upstreams (статус подключений, health)
+   - Upstreams (статус gRPC/REST подключений, health)
    - Diff/история изменений конфига
-3. YAML-превью с подсветкой синтаксиса
-4. Валидация конфига перед сохранением
-5. Кнопка "Apply" — сохранить YAML + trigger hot-reload
-6. Аутентификация: Basic Auth (admin-only)
+5. YAML-превью с подсветкой синтаксиса (Monaco Editor или react-simple-code-editor)
+6. Валидация конфига перед сохранением
+7. Кнопка "Apply" — сохранить YAML + trigger hot-reload
+8. Аутентификация: Basic Auth (admin-only)
+9. Dockerfile.gateway включает multi-stage build admin SPA
 
 **Результат:** Конфигурация управляется через UI без редактирования YAML вручную.
 
@@ -1349,21 +1392,22 @@ public sealed class ClientGrpcService(ISender mediator) : ClientService.ClientSe
 
 ---
 
-### Phase 7: Удаление REST из backend-сервисов
+### Phase 7: Стабилизация и оптимизация
 
-**Цель:** Backend-сервисы обслуживают только gRPC. REST полностью в Gateway.
+**Цель:** Перевести высоконагруженные upstreams на gRPC, оптимизировать Gateway.
 
 **Задачи:**
-1. Удалить Controllers из монолита и auth-service
-2. Удалить REST middleware (ExceptionHandling → gRPC interceptors)
-3. Удалить Swagger из backend-сервисов
-4. Удалить REST-специфичные NuGet (Asp.Versioning, Swashbuckle)
-5. Оставить только gRPC services + MediatR handlers
-6. Обновить health checks (gRPC health protocol)
-7. Обновить интеграционные тесты (gRPC client вместо HTTP client)
-8. Обновить CI pipeline
+1. Перевести monolith upstream на `protocol: grpc` в YAML (list queries — основная нагрузка)
+2. Профилирование: замерить latency REST vs gRPC для типичных запросов
+3. Connection pooling и retry policy для gRPC-каналов
+4. Кэширование конфига и метаданных в памяти Gateway
+5. Distributed tracing (OpenTelemetry) сквозь Gateway → upstream
+6. Нагрузочное тестирование Gateway (k6 / bombardier)
+7. Документация: обновить CLAUDE.md, архитектурные диаграммы
 
-**Результат:** Чистое разделение: Gateway = REST, Backend = gRPC + бизнес-логика.
+> **Примечание:** REST-эндпоинты на backend-сервисах сохраняются. Gateway поддерживает оба протокола — выбор per-upstream в YAML. Это позволяет новым сервисам стартовать с REST и переходить на gRPC по мере необходимости.
+
+**Результат:** Gateway стабилен под нагрузкой. Критичные пути используют gRPC, остальные — REST.
 
 ---
 
@@ -1380,12 +1424,17 @@ public sealed class ClientGrpcService(ISender mediator) : ClientService.ClientSe
 ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
 │  gateway/        │ │  backend/        │ │  auth-service/   │
 │  Broker.Gateway  │ │  Infrastructure  │ │  Infrastructure  │
-│                  │ │  (gRPC services) │ │  (gRPC services) │
+│                  │ │  (REST + gRPC)   │ │  (REST + gRPC)   │
 │  References:     │ │                  │ │                  │
 │  - Broker.Proto  │ │  References:     │ │  References:     │
 │  - YamlDotNet    │ │  - Broker.Proto  │ │  - Broker.Proto  │
 │  - Grpc.Net.Client│ │  - Grpc.AspNetCore│ │  - Grpc.AspNetCore│
 └──────────────────┘ └──────────────────┘ └──────────────────┘
+
+┌──────────────────┐
+│  gateway/admin/  │   React 18, TypeScript, Vite 5, MUI 6
+│  (React SPA)     │   Сервируется Gateway на :8081
+└──────────────────┘
 ```
 
 ---
@@ -1410,6 +1459,6 @@ public sealed class ClientGrpcService(ISender mediator) : ClientService.ClientSe
 | Внешних точек входа API | 2 (auth:8082, api:5050) | 1 (gateway:8080) |
 | Время добавления нового сервиса | Правка nginx + docker-compose | Добавить upstream в YAML |
 | Время скрытия/показа поля | Deploy (код + build + restart) | Правка YAML (hot-reload, ~1 сек) |
-| Межсервисный протокол | HTTP/REST (text JSON) | gRPC (binary protobuf) |
+| Межсервисный протокол | HTTP/REST (text JSON) | gRPC или REST (настраивается per-upstream в YAML) |
 | Swagger для n8n | Ручная настройка двух URL | Авто-генерация из конфига |
 | Field-level access control | Нет | YAML-конфигурируемый по ролям |
