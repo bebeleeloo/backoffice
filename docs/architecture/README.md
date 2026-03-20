@@ -1,6 +1,6 @@
 # Архитектурная документация: Broker Backoffice
 
-> Последнее обновление: 2026-03-19
+> Последнее обновление: 2026-03-20
 
 ## Навигация
 
@@ -16,6 +16,7 @@
 | [08. Безопасность](08-security.md) | JWT, RBAC, permissions, токены |
 | [09. Наблюдаемость](09-observability.md) | Логирование, health checks, correlation ID |
 | [10. API Gateway](10-api-gateway.md) | Config Service, gRPC proxy, field-level access control, YAML-конфигурация |
+| [11. Модульный фронтенд](11-frontend-modules.md) | pnpm monorepo, ui-kit, auth-module, динамический sidebar, независимый деплой |
 | [ADR](adr/) | Архитектурные решения (Architecture Decision Records) |
 
 ## Краткое описание
