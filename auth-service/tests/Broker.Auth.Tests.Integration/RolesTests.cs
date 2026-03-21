@@ -153,8 +153,9 @@ public class RolesTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         var roleId = created.GetProperty("id").GetString();
 
         // Set permissions
+        var rowVersion = created.GetProperty("rowVersion").GetUInt32();
         var resp = await _client.PutAsJsonAsync($"/api/v1/roles/{roleId}/permissions",
-            new[] { permId1, permId2 });
+            new { permissionIds = new[] { permId1, permId2 }, rowVersion });
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var updated = await resp.Content.ReadFromJsonAsync<JsonElement>();

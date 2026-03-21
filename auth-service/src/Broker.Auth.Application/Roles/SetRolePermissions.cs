@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Auth.Application.Roles;
 
-public sealed record SetRolePermissionsCommand(Guid RoleId, List<Guid> PermissionIds) : IRequest<RoleDto>;
+public sealed record SetRolePermissionsCommand(Guid RoleId, List<Guid> PermissionIds, uint RowVersion) : IRequest<RoleDto>;
 
 public sealed class SetRolePermissionsCommandValidator : AbstractValidator<SetRolePermissionsCommand>
 {
@@ -31,6 +31,20 @@ public sealed class SetRolePermissionsCommandHandler(
 
         if (role.IsSystem)
             throw new InvalidOperationException("Cannot modify permissions on a system role");
+
+        db.Roles.Entry(role).Property(r => r.RowVersion).OriginalValue = request.RowVersion;
+
+        // Validate all permission IDs exist
+        if (request.PermissionIds.Count > 0)
+        {
+            var existingPermIds = await db.Permissions
+                .Where(p => request.PermissionIds.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToListAsync(ct);
+            var invalidIds = request.PermissionIds.Except(existingPermIds).ToList();
+            if (invalidIds.Count > 0)
+                throw new KeyNotFoundException($"Permissions not found: {string.Join(", ", invalidIds)}");
+        }
 
         var before = JsonSerializer.Serialize(role.RolePermissions.Select(rp => rp.Permission.Code));
 

@@ -3,7 +3,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import CloudIcon from "@mui/icons-material/Cloud";
-import { PageContainer } from "@broker/ui-kit";
+import { PageContainer, useAppNavigation } from "@broker/ui-kit";
 import { useMenuRaw, useEntitiesRaw, useUpstreams, useReloadConfig } from "../api/hooks";
 
 export function ConfigDashboardPage() {
@@ -11,6 +11,7 @@ export function ConfigDashboardPage() {
   const { data: entities } = useEntitiesRaw();
   const { data: upstreams } = useUpstreams();
   const reloadConfig = useReloadConfig();
+  const { navigateTo } = useAppNavigation();
 
   const countMenuItems = (items: typeof menu): number => {
     if (!items) return 0;
@@ -42,7 +43,7 @@ export function ConfigDashboardPage() {
           <Card
             key={stat.label}
             sx={{ cursor: "pointer", "&:hover": { boxShadow: 4 }, transition: "box-shadow 0.2s" }}
-            onClick={() => (window.location.href = stat.path)}
+            onClick={() => navigateTo(stat.path)}
           >
             <CardContent sx={{ display: "flex", alignItems: "center", gap: 2, p: 3 }}>
               <Box sx={{ color: "primary.main" }}>{stat.icon}</Box>

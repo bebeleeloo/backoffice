@@ -10,11 +10,13 @@ public sealed class ConfigLoader
     private readonly ILogger<ConfigLoader> _logger;
     private readonly IDeserializer _yaml;
     private readonly ISerializer _yamlSerializer;
+    private readonly object _lock = new();
     private FileSystemWatcher? _watcher;
+    private CancellationTokenSource? _debounceCts;
 
-    private MenuConfig _menu = new();
-    private EntitiesConfig _entities = new();
-    private UpstreamsConfig _upstreams = new();
+    private volatile MenuConfig _menu = new();
+    private volatile EntitiesConfig _entities = new();
+    private volatile UpstreamsConfig _upstreams = new();
 
     public MenuConfig Menu => _menu;
     public EntitiesConfig Entities => _entities;
@@ -39,33 +41,45 @@ public sealed class ConfigLoader
 
     public void Load()
     {
-        _menu = LoadFile<MenuConfig>("menu.yaml") ?? new();
-        _entities = LoadFile<EntitiesConfig>("entities.yaml") ?? new();
-        _upstreams = LoadFile<UpstreamsConfig>("upstreams.yaml") ?? new();
-        _logger.LogInformation(
-            "Config loaded: {MenuItems} menu items, {Entities} entities, {Upstreams} upstreams",
-            _menu.Menu.Count, _entities.Entities.Count, _upstreams.Upstreams.Count);
+        lock (_lock)
+        {
+            _menu = LoadFile<MenuConfig>("menu.yaml") ?? new();
+            _entities = LoadFile<EntitiesConfig>("entities.yaml") ?? new();
+            _upstreams = LoadFile<UpstreamsConfig>("upstreams.yaml") ?? new();
+            _logger.LogInformation(
+                "Config loaded: {MenuItems} menu items, {Entities} entities, {Upstreams} upstreams",
+                _menu.Menu.Count, _entities.Entities.Count, _upstreams.Upstreams.Count);
+        }
     }
 
     public void SaveMenu(MenuConfig config)
     {
-        SaveFile("menu.yaml", config);
-        _menu = config;
-        _logger.LogInformation("Menu config saved: {Count} items", config.Menu.Count);
+        lock (_lock)
+        {
+            SaveFile("menu.yaml", config);
+            _menu = config;
+            _logger.LogInformation("Menu config saved: {Count} items", config.Menu.Count);
+        }
     }
 
     public void SaveEntities(EntitiesConfig config)
     {
-        SaveFile("entities.yaml", config);
-        _entities = config;
-        _logger.LogInformation("Entities config saved: {Count} entities", config.Entities.Count);
+        lock (_lock)
+        {
+            SaveFile("entities.yaml", config);
+            _entities = config;
+            _logger.LogInformation("Entities config saved: {Count} entities", config.Entities.Count);
+        }
     }
 
     public void SaveUpstreams(UpstreamsConfig config)
     {
-        SaveFile("upstreams.yaml", config);
-        _upstreams = config;
-        _logger.LogInformation("Upstreams config saved: {Count} upstreams", config.Upstreams.Count);
+        lock (_lock)
+        {
+            SaveFile("upstreams.yaml", config);
+            _upstreams = config;
+            _logger.LogInformation("Upstreams config saved: {Count} upstreams", config.Upstreams.Count);
+        }
     }
 
     private T? LoadFile<T>(string filename)
@@ -84,8 +98,24 @@ public sealed class ConfigLoader
     private void SaveFile<T>(string filename, T data)
     {
         var path = Path.Combine(_configDir, filename);
-        var content = _yamlSerializer.Serialize(data);
-        File.WriteAllText(path, content);
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                var backupPath = path + ".bak";
+                File.Copy(path, backupPath, overwrite: true);
+                _logger.LogDebug("Backup created: {BackupPath}", backupPath);
+            }
+
+            var content = _yamlSerializer.Serialize(data);
+            File.WriteAllText(path, content);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save config file: {Path}", path);
+            throw;
+        }
     }
 
     private void StartWatcher()
@@ -104,15 +134,22 @@ public sealed class ConfigLoader
     private void OnConfigChanged(object sender, FileSystemEventArgs e)
     {
         _logger.LogInformation("Config file changed: {File}, reloading...", e.Name);
-        try
+
+        // Debounce: file system may fire multiple events
+        _debounceCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _debounceCts = cts;
+
+        Task.Delay(300, cts.Token).ContinueWith(_ =>
         {
-            // Debounce: file system may fire multiple events
-            Thread.Sleep(200);
-            Load();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to reload config after change to {File}", e.Name);
-        }
+            try
+            {
+                Load();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reload config after change to {File}", e.Name);
+            }
+        }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
     }
 }

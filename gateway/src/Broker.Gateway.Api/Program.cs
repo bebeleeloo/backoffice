@@ -26,6 +26,19 @@ try
     builder.Services.AddSingleton<MenuService>();
     builder.Services.AddSingleton<EntityConfigService>();
 
+    // CORS (same pattern as backend/auth-service)
+    var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            if (corsOrigins?.Length > 0)
+                policy.WithOrigins(corsOrigins).AllowAnyMethod().AllowAnyHeader();
+            else
+                policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        });
+    });
+
     // JWT authentication (same config as backend/auth-service)
     var jwtSecret = builder.Configuration["Jwt:Secret"]
         ?? throw new InvalidOperationException("Jwt:Secret is not configured");
@@ -89,6 +102,7 @@ try
     app.UseSerilogRequestLogging();
     app.UseMiddleware<CorrelationIdMiddleware>();
 
+    app.UseCors();
     app.UseAuthentication();
     app.UseAuthorization();
 

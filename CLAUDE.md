@@ -58,11 +58,11 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - ESLint 9 (flat config, typescript-eslint, react-hooks, react-refresh)
 
 ### Infrastructure
-- Docker Compose (6 services: postgres, auth, api, web, n8n-db, n8n) with restart policies, resource limits, log rotation
+- Docker Compose (7 services: postgres, auth, api, gateway, web, n8n-db, n8n) with restart policies, resource limits, log rotation
 - PostgreSQL 16
 - n8n (workflow automation, separate PostgreSQL DB, connects to api/auth via internal Docker network)
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
-- GitHub Actions CI (6 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, permissions-sync, frontend tsc/eslint/vitest/build; NuGet/npm caching)
+- GitHub Actions CI (7 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, gateway build, permissions-sync, frontend tsc/eslint/vitest/build; NuGet/npm caching)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (PostgreSQL)

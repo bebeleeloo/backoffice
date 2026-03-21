@@ -12,7 +12,8 @@ namespace Broker.Gateway.Api.Controllers;
 public sealed class ConfigController(
     MenuService menuService,
     EntityConfigService entityConfigService,
-    ConfigLoader configLoader) : ControllerBase
+    ConfigLoader configLoader,
+    ILogger<ConfigController> logger) : ControllerBase
 {
     [HttpGet("menu")]
     public IActionResult GetMenu()
@@ -36,8 +37,31 @@ public sealed class ConfigController(
     [Authorize(Policy = "settings.manage")]
     public IActionResult SaveMenu([FromBody] MenuConfig config)
     {
-        configLoader.SaveMenu(config);
-        return Ok(new { message = "Menu config saved" });
+        if (config == null)
+            return BadRequest(new { type = "validation", title = "Validation error", detail = "Config body is required." });
+
+        if (config.Menu == null || config.Menu.Count == 0)
+            return BadRequest(new { type = "validation", title = "Validation error", detail = "Menu must contain at least one item." });
+
+        foreach (var item in config.Menu)
+        {
+            if (string.IsNullOrWhiteSpace(item.Id))
+                return BadRequest(new { type = "validation", title = "Validation error", detail = "All menu items must have a non-empty Id." });
+
+            if (string.IsNullOrWhiteSpace(item.Label))
+                return BadRequest(new { type = "validation", title = "Validation error", detail = $"Menu item '{item.Id}' must have a non-empty Label." });
+        }
+
+        try
+        {
+            configLoader.SaveMenu(config);
+            return Ok(new { message = "Menu config saved" });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save menu config");
+            return StatusCode(500, new { type = "error", title = "Internal error", detail = "Failed to save menu configuration." });
+        }
     }
 
     [HttpGet("entities")]
@@ -68,8 +92,22 @@ public sealed class ConfigController(
     [Authorize(Policy = "settings.manage")]
     public IActionResult SaveEntities([FromBody] EntitiesConfig config)
     {
-        configLoader.SaveEntities(config);
-        return Ok(new { message = "Entities config saved" });
+        if (config == null)
+            return BadRequest(new { type = "validation", title = "Validation error", detail = "Config body is required." });
+
+        if (config.Entities == null)
+            return BadRequest(new { type = "validation", title = "Validation error", detail = "Entities list is required." });
+
+        try
+        {
+            configLoader.SaveEntities(config);
+            return Ok(new { message = "Entities config saved" });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save entities config");
+            return StatusCode(500, new { type = "error", title = "Internal error", detail = "Failed to save entities configuration." });
+        }
     }
 
     [HttpGet("upstreams")]
@@ -83,8 +121,28 @@ public sealed class ConfigController(
     [Authorize(Policy = "settings.manage")]
     public IActionResult SaveUpstreams([FromBody] UpstreamsConfig config)
     {
-        configLoader.SaveUpstreams(config);
-        return Ok(new { message = "Upstreams config saved" });
+        if (config == null)
+            return BadRequest(new { type = "validation", title = "Validation error", detail = "Config body is required." });
+
+        if (config.Upstreams == null)
+            return BadRequest(new { type = "validation", title = "Validation error", detail = "Upstreams list is required." });
+
+        foreach (var (name, upstream) in config.Upstreams)
+        {
+            if (string.IsNullOrWhiteSpace(upstream.Address))
+                return BadRequest(new { type = "validation", title = "Validation error", detail = $"Upstream '{name}' must have a non-empty Address." });
+        }
+
+        try
+        {
+            configLoader.SaveUpstreams(config);
+            return Ok(new { message = "Upstreams config saved" });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save upstreams config");
+            return StatusCode(500, new { type = "error", title = "Internal error", detail = "Failed to save upstreams configuration." });
+        }
     }
 
     [HttpPost("reload")]
@@ -97,8 +155,17 @@ public sealed class ConfigController(
 
     private string GetUserRole()
     {
-        return User.FindFirst(ClaimTypes.Role)?.Value
-            ?? User.FindFirst("role")?.Value
-            ?? "Viewer";
+        var role = User.FindFirst(ClaimTypes.Role)?.Value
+            ?? User.FindFirst("role")?.Value;
+
+        if (role == null)
+        {
+            logger.LogWarning(
+                "No role claim found for user {UserId}, falling back to default role 'Viewer'",
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown");
+            return "Viewer";
+        }
+
+        return role;
     }
 }

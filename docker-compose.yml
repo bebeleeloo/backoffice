@@ -40,7 +40,7 @@ services:
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-Admin123!}"
       DEFAULT_DEMO_PASSWORD: "${DEFAULT_DEMO_PASSWORD:-Admin123!}"
       SEED_DEMO_DATA: "${SEED_DEMO_DATA:-false}"
-      Cors__Origins__0: "http://localhost:3000"
+      Cors__Origins__0: "${CORS_ORIGIN:-http://localhost:3000}"
     ports:
       - "8082:8082"
     depends_on:
@@ -76,7 +76,7 @@ services:
       DEFAULT_DEMO_PASSWORD: "${DEFAULT_DEMO_PASSWORD:-Admin123!}"
       SEED_DEMO_DATA: "${SEED_DEMO_DATA:-false}"
       AuthService__BaseUrl: "http://auth:8082"
-      Cors__Origins__0: "http://localhost:3000"
+      Cors__Origins__0: "${CORS_ORIGIN:-http://localhost:3000}"
     ports:
       - "5050:8080"
     depends_on:
@@ -110,6 +110,7 @@ services:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
       Jwt__Secret: "${JWT_SECRET:?Set JWT_SECRET in .env}"
       ConfigDir: "config"
+      Cors__Origins__0: "${CORS_ORIGIN:-http://localhost:3000}"
     ports:
       - "8090:8090"
     depends_on:
@@ -175,6 +176,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     deploy:
       resources:
         limits:
@@ -198,7 +200,7 @@ services:
       N8N_BASIC_AUTH_ACTIVE: "true"
       N8N_BASIC_AUTH_USER: admin
       N8N_BASIC_AUTH_PASSWORD: "${N8N_PASSWORD:-Admin123!}"
-      WEBHOOK_URL: "http://localhost:5678/"
+      WEBHOOK_URL: "${N8N_WEBHOOK_URL:-http://localhost:5678/}"
       GENERIC_TIMEZONE: "Europe/Moscow"
       N8N_SECURE_COOKIE: "false"
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"

@@ -68,7 +68,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
     }
 
     [HttpGet("photo")]
-    [AllowAnonymous]
+    [Authorize]
     public async Task<IActionResult> GetPhoto(CancellationToken ct)
     {
         if (!TryGetUserId(out var id)) return Unauthorized();

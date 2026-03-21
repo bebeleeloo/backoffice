@@ -21,6 +21,8 @@ public sealed class ChangePasswordCommandValidator : AbstractValidator<ChangePas
 public sealed class ChangePasswordCommandHandler(
     IAuthDbContext db,
     PasswordHasher<User> hasher,
+    IDateTimeProvider clock,
+    ICurrentUser currentUser,
     IAuditContext audit) : IRequestHandler<ChangePasswordCommand>
 {
     public async Task Handle(ChangePasswordCommand request, CancellationToken ct)
@@ -33,6 +35,8 @@ public sealed class ChangePasswordCommandHandler(
             throw new UnauthorizedAccessException("Current password is incorrect");
 
         user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
+        user.UpdatedAt = clock.UtcNow;
+        user.UpdatedBy = currentUser.UserName;
         await db.SaveChangesAsync(ct);
 
         audit.EntityType = "User";

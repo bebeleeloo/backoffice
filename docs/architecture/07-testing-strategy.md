@@ -52,7 +52,7 @@ Smoke-тесты страниц, компоненты, диалоги:
 | `order-pages.test.tsx` | 10 | TradeOrdersPage, NonTradeOrdersPage |
 | `transaction-pages.test.tsx` | 10 | TradeTransactionsPage, NonTradeTransactionsPage |
 
-> Тесты UsersPage и RolesPage перенесены в apps/auth.
+> Тесты UsersPage и RolesPage пока отсутствуют — будут добавлены в apps/auth или packages/auth-module.
 
 **Компоненты и диалоги (23 теста)**
 
@@ -162,13 +162,15 @@ Smoke-тесты страниц, компоненты, диалоги:
 
 ## CI Pipeline
 
-GitHub Actions: 5 параллельных job-ов на каждый push в main (~1.5 мин):
+GitHub Actions: 7 параллельных job-ов на каждый push в main (~1.5 мин):
 
 1. **backend** — build + NuGet audit + 273 unit-тестов (монолит)
 2. **backend-integration** — 145 интеграционных тестов (монолит, Testcontainers PostgreSQL)
 3. **auth-service** — build + NuGet audit + 44 unit-тестов
 4. **auth-service-integration** — 36 интеграционных тестов (Testcontainers PostgreSQL)
-5. **frontend** — tsc + eslint + 109 vitest-тестов (`pnpm turbo test`) + production build
+5. **gateway** — build + NuGet audit
+6. **permissions-sync** — проверка синхронизации Permissions.cs между backend и auth-service
+7. **frontend** — tsc + eslint + vitest-тесты (`pnpm turbo test`) + production build
 
 ---
 

@@ -56,12 +56,14 @@ public sealed class RolesController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
+    public sealed record SetPermissionsBody(List<Guid> PermissionIds, uint RowVersion);
+
     [HttpPut("{id:guid}/permissions")]
     [HasPermission(Permissions.RolesUpdate)]
     [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<ActionResult<RoleDto>> SetPermissions(
-        Guid id, [FromBody] List<Guid> permissionIds, CancellationToken ct)
+        Guid id, [FromBody] SetPermissionsBody body, CancellationToken ct)
     {
-        return Ok(await mediator.Send(new SetRolePermissionsCommand(id, permissionIds), ct));
+        return Ok(await mediator.Send(new SetRolePermissionsCommand(id, body.PermissionIds, body.RowVersion), ct));
     }
 }
