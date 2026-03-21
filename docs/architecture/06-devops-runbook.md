@@ -45,12 +45,12 @@ open http://localhost:3000
 
 | Сервис | Image | Порт | Зависит от |
 |--------|-------|------|-----------|
-| postgres | postgres:16-alpine | 5432 | - |
+| postgres | postgres:17-alpine | 5432 | - |
 | auth | Dockerfile.auth (multi-stage .NET 8) | 8082 -> 8080 | postgres (healthy) |
 | api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | postgres (healthy), auth (healthy) |
 | gateway | Dockerfile.gateway (.NET 8) | 8090 -> 8090 | api (healthy), auth (healthy) |
 | web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 8080 | gateway (healthy) |
-| n8n-db | postgres:16-alpine | (internal) | - |
+| n8n-db | postgres:17-alpine | (internal) | - |
 | n8n | n8nio/n8n:1.76.1 | 5678 -> 5678 | n8n-db (healthy), gateway (healthy) |
 
 ### Dockerfile.api

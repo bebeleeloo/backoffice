@@ -59,7 +59,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 
 ### Infrastructure
 - Docker Compose (7 services: postgres, auth, api, gateway, web, n8n-db, n8n) with restart policies, resource limits, log rotation
-- PostgreSQL 16
+- PostgreSQL 17
 - n8n (workflow automation, separate PostgreSQL DB, connects to api/auth via internal Docker network)
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
 - GitHub Actions CI (7 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, gateway build, permissions-sync, frontend tsc/eslint/vitest/build; NuGet/npm caching)
@@ -688,7 +688,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Roles (Create/Update, FullName MaxLength)
 
 ### Monolith Integration Tests (145 tests, ~10s)
-- Testcontainers (real PostgreSQL 16 in Docker)
+- Testcontainers (real PostgreSQL 17 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
 - `IntegrationTestBase` uses `TestJwtTokenHelper` to generate JWT tokens directly (no auth service dependency)
 - `[Collection("Integration")]` for shared fixture (on base class)

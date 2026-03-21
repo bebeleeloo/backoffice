@@ -85,7 +85,7 @@ new-back/
 | Логирование | Serilog | auto |
 | Аутентификация | JWT Bearer | built-in |
 | Хеширование паролей | ASP.NET Identity PasswordHasher | built-in |
-| БД | PostgreSQL | 16 |
+| БД | PostgreSQL | 17 |
 
 ### Frontend
 

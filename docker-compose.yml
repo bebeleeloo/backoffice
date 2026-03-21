@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: broker-postgres
     restart: unless-stopped
     environment:
@@ -162,7 +162,7 @@ services:
         max-file: "3"
 
   n8n-db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: broker-n8n-db
     restart: unless-stopped
     environment:

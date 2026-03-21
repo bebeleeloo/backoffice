@@ -31,5 +31,5 @@
 - Backend: .NET 8, ASP.NET Core, EF Core, MediatR, FluentValidation, Serilog
 - API Gateway: .NET 8, ASP.NET Core, YamlDotNet, REST proxy
 - Frontend: React 18, TypeScript, Vite, MUI 6, TanStack React Query, React Router 6, pnpm monorepo + Turborepo
-- БД: PostgreSQL 16
+- БД: PostgreSQL 17
 - Инфраструктура: Docker Compose, Nginx (3 SPA routing)

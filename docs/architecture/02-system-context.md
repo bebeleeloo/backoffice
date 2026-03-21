@@ -41,7 +41,7 @@ flowchart TB
         end
 
         subgraph db["broker-postgres :5432"]
-            postgres["PostgreSQL 16"]
+            postgres["PostgreSQL 17"]
         end
     end
 

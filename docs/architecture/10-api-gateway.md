@@ -48,7 +48,7 @@ API Gateway -- центральный сервис-прослойка между
                                 │               │
                                 ▼               ▼
                          ┌────────────────────────────┐
-                         │    PostgreSQL 16 (:5432)    │
+                         │    PostgreSQL 17 (:5432)    │
                          │  public.* │ auth.*          │
                          └────────────────────────────┘
 ```
@@ -1150,7 +1150,7 @@ n8n получает:
 ```yaml
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     # ... без изменений
 
   auth:

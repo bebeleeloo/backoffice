@@ -11,7 +11,7 @@ namespace Broker.Backoffice.Tests.Integration;
 public class CustomWebApplicationFactory : WebApplicationFactory<Broker.Backoffice.Api.Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _pgContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+        .WithImage("postgres:17-alpine")
         .Build();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

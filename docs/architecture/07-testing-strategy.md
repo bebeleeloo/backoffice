@@ -106,7 +106,7 @@ Smoke-тесты страниц, компоненты, диалоги:
 
 ## Monolith Integration-тесты (145 тестов)
 
-**Проект:** `Broker.Backoffice.Tests.Integration` — Testcontainers (реальный PostgreSQL 16 в Docker)
+**Проект:** `Broker.Backoffice.Tests.Integration` — Testcontainers (реальный PostgreSQL 17 в Docker)
 
 Все интеграционные тесты используют общий `[Collection("Integration")]` с `ICollectionFixture<CustomWebApplicationFactory>` — единый контейнер PostgreSQL на все тест-классы. Rate limiting отключён через `UseSetting`. JWT генерируется локально через `TestJwtTokenHelper` (без обращения к auth-service).
 
@@ -144,7 +144,7 @@ Smoke-тесты страниц, компоненты, диалоги:
 
 ## Auth Service Integration-тесты (36 тестов)
 
-**Проект:** `Broker.Auth.Tests.Integration` — Testcontainers (реальный PostgreSQL 16 в Docker)
+**Проект:** `Broker.Auth.Tests.Integration` — Testcontainers (реальный PostgreSQL 17 в Docker)
 
 | Сущность | Тестов | Что покрыто |
 |----------|--------|-------------|
