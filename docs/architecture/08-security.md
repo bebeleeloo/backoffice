@@ -51,6 +51,10 @@ sequenceDiagram
 
 **Reuse Detection:** если кто-то попытается использовать уже отозванный refresh token, система отзывает **все** активные токены пользователя (защита от кражи токена).
 
+### Очистка токенов
+
+`RefreshTokenCleanupService` (BackgroundService в auth-service) каждые 24 часа удаляет expired/revoked refresh-токены старше 30 дней. Предотвращает неограниченный рост таблицы `UserRefreshToken`.
+
 ### Хеширование паролей
 
 - `PasswordHasher<User>` из ASP.NET Identity (PBKDF2, автоматический salt)
@@ -106,7 +110,7 @@ flowchart LR
 | Transactions | `transactions.create` | Создание транзакций |
 | Transactions | `transactions.update` | Редактирование транзакций |
 | Transactions | `transactions.delete` | Удаление транзакций |
-| Settings | `settings.manage` | Управление справочниками (Clearers, Trade Platforms, Exchanges, Currencies) |
+| Settings | `settings.manage` | Управление справочниками и конфигурацией (Clearers, Trade Platforms, Exchanges, Currencies, Config Editor) |
 
 ### Механизм авторизации (Backend)
 

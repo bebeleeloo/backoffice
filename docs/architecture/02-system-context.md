@@ -70,6 +70,8 @@ flowchart TB
 | broker-auth | 8082 | 8082 | HTTP (Kestrel) |
 | broker-api | 5050 | 8080 | HTTP (Kestrel) |
 | broker-postgres | 5432 | 5432 | TCP (PostgreSQL) |
+| broker-n8n | 5678 | 5678 | HTTP (n8n) |
+| broker-n8n-db | — | 5432 | TCP (PostgreSQL, internal) |
 
 ### Nginx маршрутизация
 
@@ -85,11 +87,13 @@ flowchart TB
 
 | Контейнер | Механизм | Интервал |
 |-----------|----------|----------|
-| postgres | `pg_isready -U postgres` | 10s, 5 retries, start 10s |
-| auth | `wget http://127.0.0.1:8082/health/live` | 10s, 5 retries, start 20s |
-| api | `wget http://127.0.0.1:8080/health/live` | 10s, 5 retries, start 30s |
-| gateway | `wget http://127.0.0.1:8090/health/live` | 10s, 5 retries, start 15s |
+| postgres | `pg_isready -U postgres -d BrokerBackoffice` | 10s, 5 retries, start 10s |
+| auth | `curl -f http://127.0.0.1:8082/health/live` | 10s, 5 retries, start 20s |
+| api | `curl -f http://127.0.0.1:8080/health/live` | 10s, 5 retries, start 30s |
+| gateway | `curl -f http://127.0.0.1:8090/health/live` | 10s, 5 retries, start 15s |
 | web | `wget http://127.0.0.1:8080/` | 10s, 3 retries, start 5s |
+| n8n-db | `pg_isready -U n8n -d n8n` | 10s, 5 retries, start 10s |
+| n8n | `wget http://127.0.0.1:5678/healthz` | 10s, 5 retries, start 15s |
 
 ## C4 Level 3 -- Компоненты Backend (монолит)
 

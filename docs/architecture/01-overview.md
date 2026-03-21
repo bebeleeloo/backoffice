@@ -49,20 +49,26 @@ new-back/
       Broker.Auth.Tests.Unit/
       Broker.Auth.Tests.Integration/
 
-  frontend/
-    package.json               # React SPA
-    vite.config.ts             # Dev server + proxy /api -> localhost:5050
-    vitest.config.ts           # Unit-тесты (hooks/auth/lib/utils)
+  gateway/                     # API Gateway (.NET 8, YARP, YAML-конфигурация)
+    gateway.sln
     src/
-      main.tsx                 # Точка входа: провайдеры (QueryClient, Theme, Auth, Router)
-      router/                  # React Router v6 (protected routes)
-      api/                     # Axios client + React Query hooks
-      auth/                    # AuthContext, useAuth, usePermission, RequireAuth
-      pages/                   # Страницы (Dashboard, Login, Users, Roles, Clients, Accounts, TradeOrders, NonTradeOrders, Audit, Settings)
-      layouts/                 # MainLayout (sidebar + content area)
-      components/              # Переиспользуемые компоненты (PageContainer, grid/*, dialogs)
-      theme/                   # MUI theme + compact list variant
-      test/                    # Утилиты тестирования (factories, MSW handlers, renderWithProviders)
+      Broker.Gateway.Api/             # Controllers, Services (ConfigLoader, YARP), Middleware
+    config/
+      menu.yaml                      # Sidebar меню: структура, permissions
+      entities.yaml                  # Видимость полей сущностей по ролям
+      upstreams.yaml                 # Upstream-маршруты (api, auth)
+
+  frontend/                    # pnpm monorepo + Turborepo (3 SPA)
+    pnpm-workspace.yaml        # packages/* + apps/*
+    turbo.json                 # build, dev, test, lint
+    tsconfig.base.json         # Общий TS-конфиг
+    packages/
+      ui-kit/                  # @broker/ui-kit — компоненты, тема, auth, API client, навигация
+      auth-module/             # @broker/auth-module — LoginPage, UsersPage, RolesPage
+    apps/
+      backoffice/              # Основное SPA — клиенты, счета, инструменты, ордера, дашборд, аудит
+      auth/                    # Auth SPA — логин, пользователи, роли (порт 5174)
+      config/                  # Config SPA — конфигурация меню, сущностей, upstreams (порт 5175)
 ```
 
 ## Технологический стек
@@ -106,7 +112,7 @@ new-back/
 | Контейнеризация | Docker / Docker Compose |
 | Web-сервер (prod) | Nginx Alpine |
 | Node (сборка) | 20 Alpine (Docker), 22 (CI) |
-| CI/CD | GitHub Actions (5 параллельных job: backend unit, backend integration, auth-service unit, auth-service integration, frontend) |
+| CI/CD | GitHub Actions (7 параллельных job: backend unit, backend integration, auth-service unit, auth-service integration, gateway build, permissions-sync, frontend) |
 
 ## Архитектурный стиль
 
@@ -128,4 +134,4 @@ Domain (центр)  <-  Application  <-  Infrastructure  <-  API
 - **Монолит (backend)** -- JWT-валидация (локальная проверка claims, без обращения к auth-service), бизнес-операции. Использует схему `public.*` в БД. Вызывает auth-service через `IAuthServiceClient` только для получения статистики пользователей (dashboard).
 - **`Permissions.cs`** (строковые константы прав) дублируется в обоих сервисах.
 
-Frontend -- отдельный SPA, взаимодействует с backend через REST API `/api/v1/*`. Nginx маршрутизирует запросы к соответствующему сервису.
+Frontend -- 3 SPA (backoffice, auth, config) в pnpm monorepo, взаимодействуют с backend через REST API `/api/v1/*`. API Gateway (YARP) маршрутизирует запросы к соответствующему сервису. Nginx раздаёт 3 SPA по path.

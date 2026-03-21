@@ -24,10 +24,14 @@
 sequenceDiagram
     participant Browser
     participant Nginx
+    participant Gateway
     participant API
 
     Browser->>Nginx: Request + X-Correlation-Id: abc123
-    Nginx->>API: Proxy pass + X-Correlation-Id: abc123
+    Nginx->>Gateway: /api/ proxy + X-Correlation-Id: abc123
+    Gateway->>Gateway: CorrelationIdMiddleware
+    Note over Gateway: Читает или генерирует ID
+    Gateway->>API: YARP proxy + X-Correlation-Id: abc123
     API->>API: CorrelationIdMiddleware
     Note over API: Читает или генерирует ID
     Note over API: Pushes to Serilog LogContext
@@ -52,10 +56,13 @@ Frontend генерирует `X-Correlation-Id` (UUID без дефисов) в
 
 | Контейнер | Механизм | Параметры |
 |-----------|----------|-----------|
-| postgres | `pg_isready -U postgres` | interval: 10s, timeout: 5s, retries: 5, start: 10s |
-| auth | TCP check :8080 | interval: 10s, timeout: 5s, retries: 5, start: 20s |
-| api | TCP check :8080 | interval: 10s, timeout: 5s, retries: 5, start: 20s |
+| postgres | `pg_isready -U postgres -d BrokerBackoffice` | interval: 10s, timeout: 5s, retries: 5, start: 10s |
+| auth | `curl -f http://127.0.0.1:8082/health/live` | interval: 10s, timeout: 5s, retries: 5, start: 20s |
+| api | `curl -f http://127.0.0.1:8080/health/live` | interval: 10s, timeout: 5s, retries: 5, start: 30s |
+| gateway | `curl -f http://127.0.0.1:8090/health/live` | interval: 10s, timeout: 5s, retries: 5, start: 15s |
 | web | `wget http://127.0.0.1:8080/` | interval: 10s, timeout: 5s, retries: 3, start: 5s |
+| n8n-db | `pg_isready -U n8n -d n8n` | interval: 10s, timeout: 5s, retries: 5, start: 10s |
+| n8n | `wget http://127.0.0.1:5678/healthz` | interval: 10s, timeout: 5s, retries: 5, start: 15s |
 
 ## Аудит как наблюдаемость
 

@@ -37,6 +37,9 @@ open http://localhost:3000
 | `ADMIN_PASSWORD` | Пароль admin-пользователя | `Admin123!` |
 | `DEFAULT_DEMO_PASSWORD` | Пароль для demo-пользователей | `Admin123!` |
 | `SEED_DEMO_DATA` | Засеять тестовые данные | `false` |
+| `N8N_DB_PASSWORD` | Пароль PostgreSQL для n8n | `n8n_password` |
+| `N8N_PASSWORD` | Пароль Web UI n8n | `Admin123!` |
+| `N8N_SECURE_COOKIE` | Secure cookie для n8n (true в production с HTTPS) | `false` |
 
 ### Docker-сервисы
 
@@ -45,8 +48,10 @@ open http://localhost:3000
 | postgres | postgres:16-alpine | 5432 | - |
 | auth | Dockerfile.auth (multi-stage .NET 8) | 8082 -> 8080 | postgres (healthy) |
 | api | Dockerfile.api (multi-stage .NET 8) | 5050 -> 8080 | postgres (healthy), auth (healthy) |
-| gateway | Dockerfile.gateway (.NET 8) | 8090 -> 8090 | postgres (healthy) |
-| web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 8080 | api (healthy) |
+| gateway | Dockerfile.gateway (.NET 8) | 8090 -> 8090 | api (healthy), auth (healthy) |
+| web | Dockerfile.web (Node 20 build + Nginx) | 3000 -> 8080 | gateway (healthy) |
+| n8n-db | postgres:16-alpine | (internal) | - |
+| n8n | n8nio/n8n:1.76.1 | 5678 -> 5678 | n8n-db (healthy), gateway (healthy) |
 
 ### Dockerfile.api
 
@@ -135,15 +140,17 @@ pnpm turbo dev --filter=@broker/config
 
 ## CI/CD
 
-**GitHub Actions** (`.github/workflows/ci.yml`) — 5 параллельных job на каждый push/PR в main:
+**GitHub Actions** (`.github/workflows/ci.yml`) — 7 параллельных job на каждый push/PR в main:
 
 | Job | Шаги | Время |
 |-----|------|-------|
 | `backend` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 273 unit-тестов | ~30с |
 | `backend-integration` | checkout → .NET 8 SDK → NuGet cache → 145 интеграционных тестов (Testcontainers PostgreSQL) | ~1.5 мин |
-| `auth-service` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 25 unit-тестов | ~20с |
-| `auth-service-integration` | checkout → .NET 8 SDK → NuGet cache → 13 интеграционных тестов (Testcontainers PostgreSQL) | ~30с |
-| `frontend` | checkout → Node 22 → pnpm install → pnpm turbo build → pnpm turbo lint → 109 vitest-тестов | ~1 мин |
+| `auth-service` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit → 44 unit-тестов | ~20с |
+| `auth-service-integration` | checkout → .NET 8 SDK → NuGet cache → 36 интеграционных тестов (Testcontainers PostgreSQL) | ~30с |
+| `gateway` | checkout → .NET 8 SDK → NuGet cache → build → NuGet audit | ~15с |
+| `permissions-sync` | checkout → проверка синхронизации Permissions.cs между backend и auth-service | ~5с |
+| `frontend` | checkout → Node 22 → pnpm install → pnpm turbo build → pnpm turbo lint → vitest-тесты (`pnpm turbo test`) | ~1 мин |
 
 ## Troubleshooting
 

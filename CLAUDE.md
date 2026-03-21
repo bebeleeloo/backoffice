@@ -105,11 +105,12 @@ Frontend is a pnpm monorepo with 3 SPAs sharing `@broker/ui-kit` and `@broker/au
 - `Strict-Transport-Security`: max-age=63072000; includeSubDomains
 - `Permissions-Policy`: camera=(), microphone=(), geolocation=()
 - `server_tokens off` — hides nginx version
-- All 7 headers duplicated in `/assets/`, `/index.html`, and `/` location blocks (nginx `add_header` in child blocks overrides parent)
+- All 7 headers duplicated in every location block: `/logo.svg`, `/(backoffice|auth|config)/assets/`, `/login`, `/users`, `/roles`, `/config`, `/` (nginx `add_header` in child blocks overrides parent)
 
 **Cache control** (nginx):
-- `/assets/*` (Vite hashed files): `Cache-Control: public, immutable`, expires 1y
-- `/index.html` and `/`: `Cache-Control: no-cache` (SPA always gets fresh HTML)
+- `/(backoffice|auth|config)/assets/*` (Vite hashed files): `Cache-Control: public, immutable`, expires 1y
+- `/logo.svg`: `Cache-Control: public, max-age=86400`
+- SPA location blocks (`/login`, `/users`, `/roles`, `/config`, `/`): `Cache-Control: no-cache`
 
 **CORS:**
 - Configured via `Cors:Origins` in appsettings / env vars (`Cors__Origins__0`, etc.)
@@ -185,7 +186,8 @@ auth-service/
 │   ├── Broker.Auth.Domain/         # Entity, AuditableEntity, Identity/* (User, Role, Permission, etc.)
 │   ├── Broker.Auth.Application/    # Auth/, Users/, Roles/, Permissions/, AuditLogs/ handlers
 │   ├── Broker.Auth.Infrastructure/ # AuthDbContext (schema: auth), JWT, PasswordHasher, Seed, Configs
-│   └── Broker.Auth.Api/            # Controllers, Middleware, Program.cs (:8082)
+│   │   └── Services/RefreshTokenCleanupService.cs  # BackgroundService: cleanup expired tokens (24h interval)
+│   └── Broker.Auth.Api/            # Controllers, Middleware (BasicAuth, CorrelationId, ExceptionHandling), Program.cs (:8082)
 ├── tests/
 │   ├── Broker.Auth.Tests.Unit/
 │   └── Broker.Auth.Tests.Integration/
@@ -198,9 +200,15 @@ auth-service/
 gateway/
 ├── src/
 │   └── Broker.Gateway.Api/
-│       ├── Controllers/ConfigController.cs  # Menu, entities, upstreams endpoints + CRUD
-│       ├── Services/ConfigLoader.cs         # YAML loading + serialization (YamlDotNet)
-│       └── Program.cs                       # :8090
+│       ├── Controllers/ConfigController.cs    # Menu, entities, upstreams endpoints + CRUD
+│       ├── Services/
+│       │   ├── ConfigLoader.cs                # YAML loading/saving (YamlDotNet), FileSystemWatcher, debounce
+│       │   ├── YamlProxyConfigProvider.cs      # YARP IProxyConfigProvider — dynamic route/cluster config
+│       │   ├── MenuService.cs                 # Menu filtering by user permissions
+│       │   └── EntityConfigService.cs         # Entity field filtering by role
+│       ├── Config/                            # YAML model classes (MenuItemConfig, EntityConfig, UpstreamConfig)
+│       ├── Middleware/CorrelationIdMiddleware.cs
+│       └── Program.cs                         # :8090, YARP, CORS, JWT auth
 ├── config/
 │   ├── menu.yaml        # Sidebar menu structure + permissions
 │   ├── entities.yaml    # Entity field visibility by role
@@ -208,9 +216,10 @@ gateway/
 └── Dockerfile.gateway
 ```
 
-API Gateway serves config (menu, entities, upstreams), proxies REST to backend services, and provides CRUD endpoints for config editing (`settings.manage` permission).
+API Gateway serves config (menu, entities, upstreams), proxies REST via YARP to backend services, and provides CRUD endpoints for config editing (`settings.manage` permission). YARP routes reload dynamically when `upstreams.yaml` changes or `POST /reload` is called (`ConfigLoader.OnUpstreamsChanged` event → `YamlProxyConfigProvider.Update()`).
 
-Auth service owns: users, roles, permissions, authentication (login, refresh, change password, profile), user photos.
+Auth service owns: users, roles, permissions, authentication (login, refresh, change password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS).
+
 Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
 
 **Demo data seeding** (controlled by `SEED_DEMO_DATA=true` env var or `ASPNETCORE_ENVIRONMENT=Development`):
@@ -274,7 +283,8 @@ Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats
 **User photos:**
 - Stored as binary in DB (Photo byte[], PhotoContentType varchar(50))
 - Endpoints: `GET/PUT/DELETE /users/{id}/photo` and `GET/PUT/DELETE /auth/photo`
-- GET photo is `[AllowAnonymous]` — required because `<img src>` cannot send JWT Authorization headers
+- `GET /users/{id}/photo` is `[AllowAnonymous]` — required because `<img src>` cannot send JWT Authorization headers
+- `GET /auth/photo` is `[Authorize]` — own photo requires authentication
 - PUT photo accepts `IFormFile` multipart upload, max 2 MB, validates MIME type (jpeg/png/gif/webp)
 - PUT photo controllers validate `IFormFile` null/empty before processing (returns 400 ProblemDetails)
 - Returns raw image bytes with `Content-Type` header (not base64 in JSON)
@@ -550,7 +560,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 ### Mutation pattern
 1. Validate (automatic via pipeline, including business rules like Price required for Limit orders)
 2. Check existence (`?? throw new KeyNotFoundException`)
-3. Check FK references exist (`AnyAsync` for Account, Instrument, Currency etc. → `KeyNotFoundException`)
+3. Check FK references exist — **always** validate via `AnyAsync` (Account, Instrument, Currency etc. → `KeyNotFoundException`), even if value hasn't changed from existing entity
 4. Check cross-entity consistency (`throw new InvalidOperationException` if mismatch, e.g. trade transaction Side must match order Side)
 5. Check uniqueness (`throw new InvalidOperationException` if duplicate)
 6. Set audit context BeforeJson (for updates/deletes — capture state before modification)
