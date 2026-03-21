@@ -10,7 +10,10 @@
 | Monolith integration | 145 | ~10с | Testcontainers (PostgreSQL), WebApplicationFactory |
 | Auth service unit | 44 | ~1с | xUnit, FluentAssertions, NSubstitute |
 | Auth service integration | 36 | ~5с | Testcontainers (PostgreSQL), WebApplicationFactory |
-| Frontend | 109 | ~6с | Vitest, React Testing Library, MSW, faker |
+| Frontend (ui-kit) | 51 | ~3с | Vitest, React Testing Library, faker |
+| Frontend (backoffice) | 58 | ~6с | Vitest, React Testing Library, MSW, faker |
+
+> Тесты для `apps/auth` и `apps/config` пока отсутствуют — будут добавлены по мере стабилизации.
 
 ---
 

@@ -43,14 +43,9 @@ public sealed class ConfigController(
         if (config.Menu == null || config.Menu.Count == 0)
             return BadRequest(new { type = "validation", title = "Validation error", detail = "Menu must contain at least one item." });
 
-        foreach (var item in config.Menu)
-        {
-            if (string.IsNullOrWhiteSpace(item.Id))
-                return BadRequest(new { type = "validation", title = "Validation error", detail = "All menu items must have a non-empty Id." });
-
-            if (string.IsNullOrWhiteSpace(item.Label))
-                return BadRequest(new { type = "validation", title = "Validation error", detail = $"Menu item '{item.Id}' must have a non-empty Label." });
-        }
+        var validationError = ValidateMenuItems(config.Menu);
+        if (validationError != null)
+            return BadRequest(new { type = "validation", title = "Validation error", detail = validationError });
 
         try
         {
@@ -129,8 +124,23 @@ public sealed class ConfigController(
 
         foreach (var (name, upstream) in config.Upstreams)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest(new { type = "validation", title = "Validation error", detail = "All upstreams must have a non-empty name." });
+
             if (string.IsNullOrWhiteSpace(upstream.Address))
                 return BadRequest(new { type = "validation", title = "Validation error", detail = $"Upstream '{name}' must have a non-empty Address." });
+
+            if (!Uri.TryCreate(upstream.Address, UriKind.Absolute, out _))
+                return BadRequest(new { type = "validation", title = "Validation error", detail = $"Upstream '{name}' has an invalid Address URI: '{upstream.Address}'." });
+
+            if (upstream.Routes == null || upstream.Routes.Count == 0)
+                return BadRequest(new { type = "validation", title = "Validation error", detail = $"Upstream '{name}' must have at least one route." });
+
+            foreach (var route in upstream.Routes)
+            {
+                if (!route.StartsWith('/'))
+                    return BadRequest(new { type = "validation", title = "Validation error", detail = $"Upstream '{name}' route '{route}' must start with '/'." });
+            }
         }
 
         try
@@ -153,6 +163,11 @@ public sealed class ConfigController(
         return Ok(new { message = "Config reloaded" });
     }
 
+    /// <summary>
+    /// Extracts the user's role from JWT claims.
+    /// Checks both <see cref="ClaimTypes.Role"/> (standard) and "role" (custom) claim types.
+    /// Falls back to "Viewer" role if no role claim is found, logging a warning with the user ID.
+    /// </summary>
     private string GetUserRole()
     {
         var role = User.FindFirst(ClaimTypes.Role)?.Value
@@ -167,5 +182,22 @@ public sealed class ConfigController(
         }
 
         return role;
+    }
+
+    private static string? ValidateMenuItems(IReadOnlyList<MenuItemConfig> items)
+    {
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.Id))
+                return "All menu items must have a non-empty Id.";
+            if (string.IsNullOrWhiteSpace(item.Label))
+                return $"Menu item '{item.Id}' must have a non-empty Label.";
+            if (item.Children is { Count: > 0 })
+            {
+                var childError = ValidateMenuItems(item.Children);
+                if (childError != null) return childError;
+            }
+        }
+        return null;
     }
 }

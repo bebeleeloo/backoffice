@@ -18,6 +18,12 @@ public sealed class ConfigLoader
     private volatile EntitiesConfig _entities = new();
     private volatile UpstreamsConfig _upstreams = new();
 
+    /// <summary>
+    /// Raised after upstreams configuration changes (via <see cref="Load"/>, <see cref="SaveUpstreams"/>, or file watcher reload).
+    /// Subscribe to this event to trigger YARP proxy config reload.
+    /// </summary>
+    public event Action? OnUpstreamsChanged;
+
     public MenuConfig Menu => _menu;
     public EntitiesConfig Entities => _entities;
     public UpstreamsConfig Upstreams => _upstreams;
@@ -35,7 +41,18 @@ public sealed class ConfigLoader
             .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
             .Build();
 
-        Load();
+        try
+        {
+            Load();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load configuration on startup, using empty defaults");
+            _menu = new();
+            _entities = new();
+            _upstreams = new();
+        }
+
         StartWatcher();
     }
 
@@ -50,6 +67,8 @@ public sealed class ConfigLoader
                 "Config loaded: {MenuItems} menu items, {Entities} entities, {Upstreams} upstreams",
                 _menu.Menu.Count, _entities.Entities.Count, _upstreams.Upstreams.Count);
         }
+
+        OnUpstreamsChanged?.Invoke();
     }
 
     public void SaveMenu(MenuConfig config)
@@ -80,6 +99,8 @@ public sealed class ConfigLoader
             _upstreams = config;
             _logger.LogInformation("Upstreams config saved: {Count} upstreams", config.Upstreams.Count);
         }
+
+        OnUpstreamsChanged?.Invoke();
     }
 
     private T? LoadFile<T>(string filename)
@@ -98,21 +119,24 @@ public sealed class ConfigLoader
     private void SaveFile<T>(string filename, T data)
     {
         var path = Path.Combine(_configDir, filename);
+        var tempPath = path + ".tmp";
 
         try
         {
+            var content = _yamlSerializer.Serialize(data);
+            File.WriteAllText(tempPath, content);
+
             if (File.Exists(path))
             {
                 var backupPath = path + ".bak";
                 File.Copy(path, backupPath, overwrite: true);
-                _logger.LogDebug("Backup created: {BackupPath}", backupPath);
             }
 
-            var content = _yamlSerializer.Serialize(data);
-            File.WriteAllText(path, content);
+            File.Move(tempPath, path, overwrite: true);
         }
         catch (Exception ex)
         {
+            if (File.Exists(tempPath)) try { File.Delete(tempPath); } catch { }
             _logger.LogError(ex, "Failed to save config file: {Path}", path);
             throw;
         }

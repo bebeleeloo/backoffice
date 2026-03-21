@@ -70,9 +70,9 @@ public sealed class UpdateTradeOrderCommandHandler(
 
         var order = trade.Order!;
 
-        if (request.AccountId != order.AccountId && !await db.Accounts.AnyAsync(a => a.Id == request.AccountId, ct))
+        if (!await db.Accounts.AnyAsync(a => a.Id == request.AccountId, ct))
             throw new KeyNotFoundException($"Account {request.AccountId} not found");
-        if (request.InstrumentId != trade.InstrumentId && !await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId, ct))
+        if (!await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId, ct))
             throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
 
         var before = JsonSerializer.Serialize(new { order.Id, order.OrderNumber, order.Status });

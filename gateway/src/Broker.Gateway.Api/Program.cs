@@ -91,6 +91,14 @@ try
 
     var app = builder.Build();
 
+    // Wire up YARP config reload when upstreams change
+    var configLoader = app.Services.GetRequiredService<ConfigLoader>();
+    var proxyConfigProvider = app.Services.GetRequiredService<IProxyConfigProvider>() as YamlProxyConfigProvider;
+    if (proxyConfigProvider != null)
+    {
+        configLoader.OnUpstreamsChanged += proxyConfigProvider.Update;
+    }
+
     app.UseResponseCompression();
 
     if (app.Environment.IsDevelopment())

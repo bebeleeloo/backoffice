@@ -103,11 +103,11 @@ public sealed class UpdateClientCommandHandler(
         if (await db.Clients.AnyAsync(c => c.Email == request.Email && c.Id != request.Id, ct))
             throw new InvalidOperationException($"Client with email '{request.Email}' already exists");
 
-        if (request.ResidenceCountryId.HasValue && request.ResidenceCountryId != client.ResidenceCountryId
+        if (request.ResidenceCountryId.HasValue
             && !await db.Countries.AnyAsync(c => c.Id == request.ResidenceCountryId.Value, ct))
             throw new KeyNotFoundException($"Country {request.ResidenceCountryId} not found");
 
-        if (request.CitizenshipCountryId.HasValue && request.CitizenshipCountryId != client.CitizenshipCountryId
+        if (request.CitizenshipCountryId.HasValue
             && !await db.Countries.AnyAsync(c => c.Id == request.CitizenshipCountryId.Value, ct))
             throw new KeyNotFoundException($"Country {request.CitizenshipCountryId} not found");
 

@@ -14,6 +14,13 @@ public sealed class BasicAuthMiddleware(RequestDelegate next)
             var header = authHeader.ToString();
             if (header.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
             {
+                if (!context.Request.IsHttps)
+                {
+                    var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
+                    var middlewareLogger = loggerFactory.CreateLogger<BasicAuthMiddleware>();
+                    middlewareLogger.LogWarning("Basic authentication used over insecure HTTP connection from {RemoteIp}",
+                        context.Connection.RemoteIpAddress);
+                }
                 context.Request.EnableBuffering();
                 using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
                 var body = await reader.ReadToEndAsync();

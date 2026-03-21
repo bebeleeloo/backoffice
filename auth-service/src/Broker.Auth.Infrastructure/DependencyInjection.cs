@@ -56,6 +56,8 @@ public static class DependencyInjection
                 };
             });
 
+        services.AddHostedService<RefreshTokenCleanupService>();
+
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<IAuthorizationPolicyProvider>(sp =>
         {

@@ -67,7 +67,7 @@ public sealed class UpdateTradeTransactionCommandHandler(
                 throw new InvalidOperationException($"Transaction side must match the order side ({tradeOrder.Side})");
         }
 
-        if (request.InstrumentId != trade.InstrumentId && !await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId, ct))
+        if (!await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId, ct))
             throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
 
         var before = JsonSerializer.Serialize(new { transaction.Id, transaction.TransactionNumber, transaction.Status });

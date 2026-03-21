@@ -53,12 +53,12 @@ public sealed class UpdateNonTradeTransactionCommandHandler(
 
         var transaction = nonTrade.Transaction!;
 
-        if (request.OrderId.HasValue && request.OrderId != transaction.OrderId
+        if (request.OrderId.HasValue
             && !await db.Orders.AnyAsync(o => o.Id == request.OrderId.Value && o.Category == OrderCategory.NonTrade, ct))
             throw new KeyNotFoundException($"Non-trade order {request.OrderId} not found");
-        if (request.CurrencyId != nonTrade.CurrencyId && !await db.Currencies.AnyAsync(c => c.Id == request.CurrencyId, ct))
+        if (!await db.Currencies.AnyAsync(c => c.Id == request.CurrencyId, ct))
             throw new KeyNotFoundException($"Currency {request.CurrencyId} not found");
-        if (request.InstrumentId.HasValue && request.InstrumentId != nonTrade.InstrumentId
+        if (request.InstrumentId.HasValue
             && !await db.Instruments.AnyAsync(i => i.Id == request.InstrumentId.Value, ct))
             throw new KeyNotFoundException($"Instrument {request.InstrumentId} not found");
 

@@ -6,19 +6,36 @@ namespace Broker.Gateway.Api.Services;
 /// <summary>
 /// Builds YARP proxy configuration from upstreams.yaml.
 /// Each upstream route prefix becomes a YARP route + cluster.
+/// When upstreams change, <see cref="Update"/> rebuilds the config and signals YARP to reload.
 /// </summary>
 public sealed class YamlProxyConfigProvider : IProxyConfigProvider
 {
+    private readonly ConfigLoader _configLoader;
     private volatile YamlProxyConfig _config;
+    private CancellationTokenSource _cts = new();
 
     public YamlProxyConfigProvider(ConfigLoader configLoader)
     {
-        _config = BuildConfig(configLoader);
+        _configLoader = configLoader;
+        _config = BuildConfig(configLoader, _cts);
     }
 
     public IProxyConfig GetConfig() => _config;
 
-    private static YamlProxyConfig BuildConfig(ConfigLoader configLoader)
+    /// <summary>
+    /// Rebuilds proxy configuration from the current upstreams and signals YARP to pick up the changes.
+    /// </summary>
+    public void Update()
+    {
+        var oldCts = _cts;
+        var newCts = new CancellationTokenSource();
+        _config = BuildConfig(_configLoader, newCts);
+        _cts = newCts;
+        oldCts.Cancel();
+        oldCts.Dispose();
+    }
+
+    private static YamlProxyConfig BuildConfig(ConfigLoader configLoader, CancellationTokenSource cts)
     {
         var routes = new List<RouteConfig>();
         var clusters = new List<ClusterConfig>();
@@ -65,15 +82,16 @@ public sealed class YamlProxyConfigProvider : IProxyConfigProvider
             }
         }
 
-        return new YamlProxyConfig(routes, clusters);
+        return new YamlProxyConfig(routes, clusters, cts);
     }
 
     private sealed class YamlProxyConfig(
         IReadOnlyList<RouteConfig> routes,
-        IReadOnlyList<ClusterConfig> clusters) : IProxyConfig
+        IReadOnlyList<ClusterConfig> clusters,
+        CancellationTokenSource cts) : IProxyConfig
     {
         public IReadOnlyList<RouteConfig> Routes => routes;
         public IReadOnlyList<ClusterConfig> Clusters => clusters;
-        public IChangeToken ChangeToken { get; } = new CancellationChangeToken(CancellationToken.None);
+        public IChangeToken ChangeToken { get; } = new CancellationChangeToken(cts.Token);
     }
 }
