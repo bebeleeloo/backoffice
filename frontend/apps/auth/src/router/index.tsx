@@ -5,8 +5,8 @@ import { MainLayout, RequireAuth, RouteLoadingFallback, NavigationProvider } fro
 import { LoginPage } from "@broker/auth-module";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
-const UsersPage = React.lazy(() => import("@broker/auth-module").then((m) => ({ default: m.UsersPage })));
-const RolesPage = React.lazy(() => import("@broker/auth-module").then((m) => ({ default: m.RolesPage })));
+const UsersPage = React.lazy(() => import("@broker/auth-module").then((m) => ({ default: m.UsersTab })));
+const RolesPage = React.lazy(() => import("@broker/auth-module").then((m) => ({ default: m.RolesTab })));
 const RoleDetailsPage = React.lazy(() => import("@broker/auth-module").then((m) => ({ default: m.RoleDetailsPage })));
 
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {

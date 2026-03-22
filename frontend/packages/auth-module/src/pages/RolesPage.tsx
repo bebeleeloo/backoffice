@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
+import { Button, IconButton, Chip, Paper } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel, type GridSortDirection } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -8,6 +8,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useRoles, useDeleteRole } from "../api/hooks";
 import type { RoleDto } from "../api/types";
+import { Box, Tooltip } from "@mui/material";
 import { ConfirmDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineBooleanFilter, InlineTextFilter, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateRoleDialog, EditRoleDialog } from "./RoleDialogs";
@@ -32,7 +33,7 @@ function readParams(sp: URLSearchParams) {
   };
 }
 
-export function RolesPage() {
+export function RolesTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const params = readParams(searchParams);
@@ -187,11 +188,14 @@ export function RolesPage() {
   }, [params]);
 
   return (
-    <PageContainer
-      variant="list"
-      title="Roles"
-      actions={
-        <>
+    <PageContainer title="Roles" variant="list">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <GlobalSearchBar
+          placeholder="Search roles..."
+          value={params.q ?? ""}
+          onChange={(v) => setFilterParam("q", v || undefined)}
+        />
+        <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
           {hasActiveFilters && (
             <Tooltip title="Clear all filters">
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
@@ -199,20 +203,12 @@ export function RolesPage() {
           )}
           <ExportButton fetchData={fetchAllRoles} columns={exportColumns} filename="roles" />
           {canCreate && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)} sx={{ whiteSpace: "nowrap" }}>
               Create Role
             </Button>
           )}
-        </>
-      }
-      subheaderLeft={
-        <GlobalSearchBar
-          placeholder="Search roles..."
-          value={params.q ?? ""}
-          onChange={(v) => setFilterParam("q", v || undefined)}
-        />
-      }
-    >
+        </Box>
+      </Box>
       <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <FilteredDataGrid
           rows={data?.items ?? []}
@@ -231,7 +227,6 @@ export function RolesPage() {
           sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
-
       <CreateRoleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditRoleDialog open={!!editRole} onClose={() => setEditRole(null)} role={editRole} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteRole.isPending} />

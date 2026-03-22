@@ -53,6 +53,9 @@ public sealed class UpdateUserCommandHandler(
         var newRoleIds = request.RoleIds.Where(id => !currentRoleIds.Contains(id)).ToList();
         if (newRoleIds.Count > 0)
         {
+            var foundCount = await db.Roles.CountAsync(r => newRoleIds.Contains(r.Id), ct);
+            if (foundCount != newRoleIds.Count)
+                throw new KeyNotFoundException("One or more roles not found");
             await db.Roles.Where(r => newRoleIds.Contains(r.Id)).LoadAsync(ct);
         }
 
@@ -60,6 +63,7 @@ public sealed class UpdateUserCommandHandler(
         {
             var ur = new UserRole
             {
+                Id = Guid.NewGuid(),
                 UserId = user.Id, RoleId = roleId,
                 CreatedAt = clock.UtcNow, CreatedBy = currentUser.UserName
             };

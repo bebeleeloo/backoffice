@@ -91,24 +91,33 @@ try
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 5);
-        options.AddFixedWindowLimiter("login", limiter =>
-        {
-            limiter.PermitLimit = loginPermitLimit;
-            limiter.Window = TimeSpan.FromMinutes(1);
-            limiter.QueueLimit = 0;
-        });
-        options.AddFixedWindowLimiter("auth", limiter =>
-        {
-            limiter.PermitLimit = 20;
-            limiter.Window = TimeSpan.FromMinutes(1);
-            limiter.QueueLimit = 0;
-        });
-        options.AddFixedWindowLimiter("sensitive", limiter =>
-        {
-            limiter.PermitLimit = 5;
-            limiter.Window = TimeSpan.FromMinutes(5);
-            limiter.QueueLimit = 0;
-        });
+        options.AddPolicy("login", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = loginPermitLimit,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+        options.AddPolicy("auth", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 20,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+        options.AddPolicy("sensitive", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(5),
+                    QueueLimit = 0
+                }));
     });
 
     builder.Services.AddResponseCompression(options =>

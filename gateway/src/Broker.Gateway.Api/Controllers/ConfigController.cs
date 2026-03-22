@@ -62,8 +62,8 @@ public sealed class ConfigController(
     [HttpGet("entities")]
     public IActionResult GetEntities()
     {
-        var role = GetUserRole();
-        var entities = entityConfigService.GetEntitiesForRole(role);
+        var roles = GetUserRoles();
+        var entities = entityConfigService.GetEntitiesForRole(roles);
         return Ok(entities);
     }
 
@@ -77,8 +77,8 @@ public sealed class ConfigController(
     [HttpGet("entities/{name}")]
     public IActionResult GetEntity(string name)
     {
-        var role = GetUserRole();
-        var entity = entityConfigService.GetEntityForRole(name, role);
+        var roles = GetUserRoles();
+        var entity = entityConfigService.GetEntityForRole(name, roles);
         if (entity == null) return NotFound();
         return Ok(entity);
     }
@@ -163,25 +163,21 @@ public sealed class ConfigController(
         return Ok(new { message = "Config reloaded" });
     }
 
-    /// <summary>
-    /// Extracts the user's role from JWT claims.
-    /// Checks both <see cref="ClaimTypes.Role"/> (standard) and "role" (custom) claim types.
-    /// Falls back to "Viewer" role if no role claim is found, logging a warning with the user ID.
-    /// </summary>
-    private string GetUserRole()
+    private IReadOnlyList<string> GetUserRoles()
     {
-        var role = User.FindFirst(ClaimTypes.Role)?.Value
-            ?? User.FindFirst("role")?.Value;
+        var roles = User.FindAll(ClaimTypes.Role)
+            .Select(c => c.Value)
+            .ToList();
 
-        if (role == null)
+        if (roles.Count == 0)
         {
             logger.LogWarning(
-                "No role claim found for user {UserId}, falling back to default role 'Viewer'",
+                "No role claims found for user {UserId}, falling back to default role 'Viewer'",
                 User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown");
-            return "Viewer";
+            return ["Viewer"];
         }
 
-        return role;
+        return roles;
     }
 
     private static string? ValidateMenuItems(IReadOnlyList<MenuItemConfig> items)

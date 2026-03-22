@@ -9,6 +9,8 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
+
+
 import { PageContainer } from "@broker/ui-kit";
 import { useEntitiesRaw, useSaveEntities } from "../api/hooks";
 import type { EntityConfig, EntityFieldConfig } from "../api/types";
@@ -98,10 +100,8 @@ export function EntityFieldsPage() {
   }
 
   return (
-    <PageContainer
-      title="Entity Fields"
-      breadcrumbs={[{ label: "Configuration", to: "/config" }, { label: "Entity Fields" }]}
-      actions={
+    <PageContainer title="Entity Fields">
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1.5 }}>
         <Button
           variant="contained"
           startIcon={saveEntities.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
@@ -110,8 +110,7 @@ export function EntityFieldsPage() {
         >
           Save
         </Button>
-      }
-    >
+      </Box>
       {currentEntities.map((entity, entityIdx) => (
         <Accordion key={entity.name} defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>

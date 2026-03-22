@@ -4,7 +4,6 @@ import { createBrowserRouter } from "react-router-dom";
 import { MainLayout, RequireAuth, RouteLoadingFallback, NavigationProvider } from "@broker/ui-kit";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
-const ConfigDashboardPage = React.lazy(() => import("../pages/ConfigDashboardPage").then((m) => ({ default: m.ConfigDashboardPage })));
 const MenuEditorPage = React.lazy(() => import("../pages/MenuEditorPage").then((m) => ({ default: m.MenuEditorPage })));
 const EntityFieldsPage = React.lazy(() => import("../pages/EntityFieldsPage").then((m) => ({ default: m.EntityFieldsPage })));
 const UpstreamsPage = React.lazy(() => import("../pages/UpstreamsPage").then((m) => ({ default: m.UpstreamsPage })));
@@ -30,7 +29,7 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { path: "config", element: withSuspense(ConfigDashboardPage) },
+      { path: "config", element: withSuspense(MenuEditorPage) },
       { path: "config/menu", element: withSuspense(MenuEditorPage) },
       { path: "config/entities", element: withSuspense(EntityFieldsPage) },
       { path: "config/upstreams", element: withSuspense(UpstreamsPage) },

@@ -25,6 +25,16 @@ entities:
         roles: [Manager]
       - name: dateOfBirth
         roles: [Manager, Operator]
+      - name: pepStatus
+        roles: [Manager]
+      - name: riskLevel
+        roles: [Manager, Operator]
+      - name: externalId
+        roles: [Manager]
+      - name: residenceCountryName
+        roles: ["*"]
+      - name: citizenshipCountryName
+        roles: ["*"]
 
   - name: Account
     fields:
@@ -38,10 +48,187 @@ entities:
         roles: ["*"]
       - name: marginType
         roles: ["*"]
+      - name: optionLevel
+        roles: ["*"]
+      - name: tariff
+        roles: [Manager, Operator]
+      - name: deliveryType
+        roles: ["*"]
       - name: clearerName
         roles: ["*"]
       - name: tradePlatformName
         roles: ["*"]
+      - name: openedAt
+        roles: ["*"]
+      - name: closedAt
+        roles: ["*"]
+      - name: externalId
+        roles: [Manager]
+      - name: holderCount
+        roles: ["*"]
+
+  - name: Instrument
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: symbol
+        roles: ["*"]
+      - name: name
+        roles: ["*"]
+      - name: isin
+        roles: ["*"]
+      - name: cusip
+        roles: [Manager, Operator]
+      - name: type
+        roles: ["*"]
+      - name: assetClass
+        roles: ["*"]
+      - name: status
+        roles: ["*"]
+      - name: exchangeCode
+        roles: ["*"]
+      - name: exchangeName
+        roles: ["*"]
+      - name: currencyCode
+        roles: ["*"]
+      - name: countryName
+        roles: ["*"]
+      - name: sector
+        roles: ["*"]
+      - name: lotSize
+        roles: ["*"]
+      - name: isMarginEligible
+        roles: ["*"]
+      - name: externalId
+        roles: [Manager]
+
+  - name: TradeOrder
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: orderNumber
+        roles: ["*"]
+      - name: accountNumber
+        roles: ["*"]
+      - name: status
+        roles: ["*"]
+      - name: orderDate
+        roles: ["*"]
+      - name: instrumentSymbol
+        roles: ["*"]
+      - name: instrumentName
+        roles: ["*"]
+      - name: side
+        roles: ["*"]
+      - name: orderType
+        roles: ["*"]
+      - name: timeInForce
+        roles: ["*"]
+      - name: quantity
+        roles: ["*"]
+      - name: price
+        roles: ["*"]
+      - name: executedQuantity
+        roles: ["*"]
+      - name: averagePrice
+        roles: [Manager, Operator]
+      - name: commission
+        roles: [Manager]
+      - name: executedAt
+        roles: ["*"]
+      - name: externalId
+        roles: [Manager]
+
+  - name: NonTradeOrder
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: orderNumber
+        roles: ["*"]
+      - name: accountNumber
+        roles: ["*"]
+      - name: status
+        roles: ["*"]
+      - name: orderDate
+        roles: ["*"]
+      - name: nonTradeType
+        roles: ["*"]
+      - name: amount
+        roles: ["*"]
+      - name: currencyCode
+        roles: ["*"]
+      - name: instrumentSymbol
+        roles: ["*"]
+      - name: instrumentName
+        roles: ["*"]
+      - name: referenceNumber
+        roles: [Manager, Operator]
+      - name: processedAt
+        roles: ["*"]
+      - name: externalId
+        roles: [Manager]
+
+  - name: TradeTransaction
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: transactionNumber
+        roles: ["*"]
+      - name: orderNumber
+        roles: ["*"]
+      - name: accountNumber
+        roles: ["*"]
+      - name: status
+        roles: ["*"]
+      - name: transactionDate
+        roles: ["*"]
+      - name: instrumentSymbol
+        roles: ["*"]
+      - name: instrumentName
+        roles: ["*"]
+      - name: side
+        roles: ["*"]
+      - name: quantity
+        roles: ["*"]
+      - name: price
+        roles: ["*"]
+      - name: commission
+        roles: [Manager]
+      - name: settlementDate
+        roles: ["*"]
+      - name: venue
+        roles: ["*"]
+      - name: externalId
+        roles: [Manager]
+
+  - name: NonTradeTransaction
+    fields:
+      - name: id
+        roles: ["*"]
+      - name: transactionNumber
+        roles: ["*"]
+      - name: orderNumber
+        roles: ["*"]
+      - name: accountNumber
+        roles: ["*"]
+      - name: status
+        roles: ["*"]
+      - name: transactionDate
+        roles: ["*"]
+      - name: amount
+        roles: ["*"]
+      - name: currencyCode
+        roles: ["*"]
+      - name: instrumentSymbol
+        roles: ["*"]
+      - name: instrumentName
+        roles: ["*"]
+      - name: referenceNumber
+        roles: [Manager, Operator]
+      - name: processedAt
+        roles: ["*"]
+      - name: externalId
+        roles: [Manager]
 
   - name: User
     fields:

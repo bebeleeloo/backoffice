@@ -91,6 +91,10 @@ export interface UpdateProfileRequest {
   email: string;
 }
 
+export interface ResetPasswordRequest {
+  newPassword: string;
+}
+
 export interface SetRolePermissionsRequest {
   roleId: string;
   permissionIds: string[];

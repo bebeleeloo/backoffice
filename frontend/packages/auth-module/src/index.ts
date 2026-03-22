@@ -11,6 +11,7 @@ export type {
   RolesParams,
   ChangePasswordRequest,
   UpdateProfileRequest,
+  ResetPasswordRequest,
   SetRolePermissionsRequest,
 } from "./api/types";
 
@@ -23,6 +24,7 @@ export {
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
+  useResetUserPassword,
   useRoles,
   useRole,
   useCreateRole,
@@ -40,9 +42,9 @@ export {
 
 // Pages
 export { LoginPage } from "./pages/LoginPage";
-export { UsersPage } from "./pages/UsersPage";
-export { CreateUserDialog, EditUserDialog } from "./pages/UserDialogs";
-export { RolesPage } from "./pages/RolesPage";
+export { UsersTab } from "./pages/UsersPage";
+export { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from "./pages/UserDialogs";
+export { RolesTab } from "./pages/RolesPage";
 export { RoleDetailsPage } from "./pages/RoleDetailsPage";
 export { CreateRoleDialog, EditRoleDialog } from "./pages/RoleDialogs";
 export { ProfileTab } from "./pages/ProfileTab";

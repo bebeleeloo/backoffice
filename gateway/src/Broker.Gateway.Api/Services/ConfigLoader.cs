@@ -4,7 +4,7 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace Broker.Gateway.Api.Services;
 
-public sealed class ConfigLoader
+public sealed class ConfigLoader : IDisposable
 {
     private readonly string _configDir;
     private readonly ILogger<ConfigLoader> _logger;
@@ -153,6 +153,12 @@ public sealed class ConfigLoader
         _watcher.Changed += OnConfigChanged;
         _watcher.Created += OnConfigChanged;
         _watcher.EnableRaisingEvents = true;
+    }
+
+    public void Dispose()
+    {
+        _watcher?.Dispose();
+        _debounceCts?.Dispose();
     }
 
     private void OnConfigChanged(object sender, FileSystemEventArgs e)

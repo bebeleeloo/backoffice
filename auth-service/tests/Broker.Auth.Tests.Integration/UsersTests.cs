@@ -364,6 +364,56 @@ public class UsersTests(CustomWebApplicationFactory factory) : IntegrationTestBa
         resp.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    [Fact]
+    public async Task ResetUserPassword_WithValidData_Returns204()
+    {
+        await AuthenticateAsync();
+
+        // Create a user
+        var username = $"rp_{Guid.NewGuid():N}"[..20];
+        var password = "OldPass123!";
+        var createResp = await _client.PostAsJsonAsync("/api/v1/users", new
+        {
+            Username = username,
+            Email = $"{username}@test.com",
+            Password = password,
+            FullName = "Reset Password User",
+            IsActive = true,
+            RoleIds = Array.Empty<Guid>()
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = created.GetProperty("id").GetString();
+
+        // Reset password
+        var newPassword = "NewPass456!";
+        var resp = await _client.PostAsJsonAsync($"/api/v1/users/{userId}/reset-password", new
+        {
+            NewPassword = newPassword
+        });
+        resp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify login with new password
+        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            Username = username,
+            Password = newPassword
+        });
+        loginResp.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ResetUserPassword_NonExistentUser_Returns404()
+    {
+        await AuthenticateAsync();
+
+        var resp = await _client.PostAsJsonAsync($"/api/v1/users/{Guid.NewGuid()}/reset-password", new
+        {
+            NewPassword = "NewPass456!"
+        });
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     /// <summary>
     /// Creates a minimal valid JPEG byte array for testing photo upload.
     /// </summary>

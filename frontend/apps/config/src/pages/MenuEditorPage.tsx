@@ -11,7 +11,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import SaveIcon from "@mui/icons-material/Save";
-import { PageContainer, iconMap, FallbackIcon, ConfirmDialog, useConfirm } from "@broker/ui-kit";
+import { iconMap, FallbackIcon, ConfirmDialog, PageContainer, useConfirm } from "@broker/ui-kit";
 import { useMenuRaw, useSaveMenu } from "../api/hooks";
 import type { MenuItemConfig } from "../api/types";
 
@@ -205,25 +205,20 @@ export function MenuEditorPage() {
   }
 
   return (
-    <PageContainer
-      title="Menu Editor"
-      breadcrumbs={[{ label: "Configuration", to: "/config" }, { label: "Menu Editor" }]}
-      actions={
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleAddItem()}>
-            Add Item
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={saveMenu.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-            onClick={handleSave}
-            disabled={!hasChanges || saveMenu.isPending}
-          >
-            Save
-          </Button>
-        </Box>
-      }
-    >
+    <PageContainer title="Menu Editor">
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1.5 }}>
+        <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleAddItem()}>
+          Add Item
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={saveMenu.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+          onClick={handleSave}
+          disabled={!hasChanges || saveMenu.isPending}
+        >
+          Save
+        </Button>
+      </Box>
       <Card>
         <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
           <List>
@@ -231,13 +226,14 @@ export function MenuEditorPage() {
           </List>
         </CardContent>
       </Card>
-
-      <MenuItemDialog
-        open={editDialog.open}
-        item={editDialog.item}
-        onClose={() => setEditDialog({ open: false, item: null })}
-        onSave={handleDialogSave}
-      />
+      {editDialog.open && (
+        <MenuItemDialog
+          open
+          item={editDialog.item}
+          onClose={() => setEditDialog({ open: false, item: null })}
+          onSave={handleDialogSave}
+        />
+      )}
       <ConfirmDialog {...confirmDialogProps} />
     </PageContainer>
   );

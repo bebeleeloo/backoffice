@@ -33,7 +33,10 @@ public sealed class RefreshTokenCommandHandler(
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, ct)
             ?? throw new UnauthorizedAccessException("Invalid refresh token");
 
-        if (!stored.IsActive)
+        if (stored.IsExpired)
+            throw new UnauthorizedAccessException("Refresh token expired");
+
+        if (stored.IsRevoked)
         {
             var family = await db.UserRefreshTokens
                 .Where(t => t.UserId == stored.UserId && t.RevokedAt == null)

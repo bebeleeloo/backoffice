@@ -12,7 +12,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo");
+  const rawReturnTo = searchParams.get("returnTo");
+  const returnTo = rawReturnTo && rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : null;
   const from = returnTo || (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {

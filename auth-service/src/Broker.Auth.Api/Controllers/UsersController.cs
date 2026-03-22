@@ -58,6 +58,18 @@ public sealed class UsersController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
+    public sealed record ResetPasswordBody(string NewPassword);
+
+    [HttpPost("{id:guid}/reset-password")]
+    [HasPermission(Permissions.UsersResetPassword)]
+    [EnableRateLimiting("sensitive")]
+    [ServiceFilter(typeof(AuditActionFilter))]
+    public async Task<IActionResult> ResetPassword(Guid id, ResetPasswordBody body, CancellationToken ct)
+    {
+        await mediator.Send(new ResetUserPasswordCommand(id, body.NewPassword), ct);
+        return NoContent();
+    }
+
     [HttpGet("{id:guid}/photo")]
     [AllowAnonymous]
     public async Task<IActionResult> GetPhoto(Guid id, CancellationToken ct)

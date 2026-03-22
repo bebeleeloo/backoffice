@@ -6,6 +6,7 @@ public static class Permissions
     public const string UsersCreate = "users.create";
     public const string UsersUpdate = "users.update";
     public const string UsersDelete = "users.delete";
+    public const string UsersResetPassword = "users.reset-password";
 
     public const string RolesRead = "roles.read";
     public const string RolesCreate = "roles.create";
@@ -49,6 +50,7 @@ public static class Permissions
         (UsersCreate, "Create users", "Users"),
         (UsersUpdate, "Update users", "Users"),
         (UsersDelete, "Delete users", "Users"),
+        (UsersResetPassword, "Reset user password", "Users"),
         (RolesRead, "View roles", "Roles"),
         (RolesCreate, "Create roles", "Roles"),
         (RolesUpdate, "Update roles", "Roles"),

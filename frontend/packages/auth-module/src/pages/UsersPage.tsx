@@ -1,16 +1,18 @@
 import { useState, useCallback, useMemo, type ReactNode } from "react";
-import { Button, IconButton, Chip, Paper, Tooltip } from "@mui/material";
+import { Button, IconButton, Chip, Paper } from "@mui/material";
 import { type GridColDef, type GridPaginationModel, type GridSortModel, type GridSortDirection } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import HistoryIcon from "@mui/icons-material/History";
+import LockResetIcon from "@mui/icons-material/LockReset";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useUsers, useDeleteUser } from "../api/hooks";
 import type { UserDto } from "../api/types";
+import { Box, Tooltip } from "@mui/material";
 import { ConfirmDialog, EntityHistoryDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineBooleanFilter, InlineTextFilter, PageContainer, UserAvatar, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
-import { CreateUserDialog, EditUserDialog } from "./UserDialogs";
+import { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from "./UserDialogs";
 import { useSearchParams } from "react-router-dom";
 import type { PagedResult } from "@broker/ui-kit";
 
@@ -33,17 +35,19 @@ function readParams(sp: URLSearchParams) {
   };
 }
 
-export function UsersPage() {
+export function UsersTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = readParams(searchParams);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserDto | null>(null);
   const [historyUserId, setHistoryUserId] = useState<string | null>(null);
+  const [resetUser, setResetUser] = useState<UserDto | null>(null);
 
   const canCreate = useHasPermission("users.create");
   const canUpdate = useHasPermission("users.update");
   const canDelete = useHasPermission("users.delete");
+  const canResetPassword = useHasPermission("users.reset-password");
   const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useUsers(params);
@@ -127,13 +131,20 @@ export function UsersPage() {
       renderCell: ({ value }) => (value as string[]).map((r) => <Chip key={r} label={r} size="small" sx={{ mr: 0.5 }} />),
     },
     {
-      field: "actions", headerName: "", width: 130, sortable: false, filterable: false,
+      field: "actions", headerName: "", width: 165, sortable: false, filterable: false,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           {canAudit && (
             <IconButton size="small" onClick={() => setHistoryUserId(row.id)}>
               <HistoryIcon fontSize="small" />
             </IconButton>
+          )}
+          {canResetPassword && (
+            <Tooltip title="Reset password">
+              <IconButton size="small" onClick={() => setResetUser(row)}>
+                <LockResetIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditUser(row)} data-testid={`action-edit-${row.id}`}>
@@ -209,11 +220,14 @@ export function UsersPage() {
   }, [params]);
 
   return (
-    <PageContainer
-      variant="list"
-      title="Users"
-      actions={
-        <>
+    <PageContainer title="Users" variant="list">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <GlobalSearchBar
+          value={params.q ?? ""}
+          onChange={(v) => setFilterParam("q", v || undefined)}
+          placeholder="Search users..."
+        />
+        <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
           {hasActiveFilters && (
             <Tooltip title="Clear all filters">
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
@@ -221,20 +235,12 @@ export function UsersPage() {
           )}
           <ExportButton fetchData={fetchAllUsers} columns={exportColumns} filename="users" />
           {canCreate && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)} sx={{ whiteSpace: "nowrap" }}>
               Create User
             </Button>
           )}
-        </>
-      }
-      subheaderLeft={
-        <GlobalSearchBar
-          value={params.q ?? ""}
-          onChange={(v) => setFilterParam("q", v || undefined)}
-          placeholder="Search users..."
-        />
-      }
-    >
+        </Box>
+      </Box>
       <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <FilteredDataGrid
           rows={data?.items ?? []}
@@ -253,9 +259,9 @@ export function UsersPage() {
           sx={{ height: "100%", border: "none", "& .MuiDataGrid-row": { cursor: "pointer" } }}
         />
       </Paper>
-
       <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditUserDialog open={!!editUser} onClose={() => setEditUser(null)} user={editUser} />
+      <ResetPasswordDialog open={!!resetUser} onClose={() => setResetUser(null)} user={resetUser} />
       <EntityHistoryDialog entityType="User" entityId={historyUserId ?? ""} open={!!historyUserId} onClose={() => setHistoryUserId(null)} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteUser.isPending} />
     </PageContainer>

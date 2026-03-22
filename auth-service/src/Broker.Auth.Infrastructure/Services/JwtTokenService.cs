@@ -31,6 +31,9 @@ public sealed class JwtTokenService(IConfiguration config) : IJwtTokenService
         foreach (var p in permissions)
             claims.Add(new Claim("permission", p));
 
+        foreach (var ur in user.UserRoles)
+            claims.Add(new Claim(ClaimTypes.Role, ur.Role.Name));
+
         var token = new JwtSecurityToken(
             issuer: config["Jwt:Issuer"],
             audience: config["Jwt:Audience"],

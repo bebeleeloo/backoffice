@@ -55,7 +55,7 @@ public sealed class ExceptionHandlingMiddleware(
         catch (DbUpdateException ex)
         {
             logger.LogWarning(ex, "Database update failed");
-            var detail = ex.InnerException?.Message?.Contains("REFERENCE constraint", StringComparison.OrdinalIgnoreCase) == true
+            var detail = ex.InnerException?.Message?.Contains("foreign key constraint", StringComparison.OrdinalIgnoreCase) == true
                 ? "Cannot delete this record because it is referenced by other records."
                 : "A database error occurred. Please try again.";
             await WriteProblemDetails(context, StatusCodes.Status409Conflict,

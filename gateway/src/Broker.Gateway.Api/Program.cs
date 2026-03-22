@@ -27,15 +27,17 @@ try
     builder.Services.AddSingleton<EntityConfigService>();
 
     // CORS (same pattern as backend/auth-service)
-    var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
+    var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
     builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy =>
         {
-            if (corsOrigins?.Length > 0)
+            if (corsOrigins.Length > 0)
                 policy.WithOrigins(corsOrigins).AllowAnyMethod().AllowAnyHeader();
-            else
+            else if (builder.Environment.IsDevelopment())
                 policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+            else
+                throw new InvalidOperationException("Cors:Origins must be configured in non-Development environments");
         });
     });
 

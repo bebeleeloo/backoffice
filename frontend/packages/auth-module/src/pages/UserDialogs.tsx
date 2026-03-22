@@ -5,7 +5,7 @@ import {
 } from "@mui/material";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useCreateUser, useUpdateUser, useRoles, useUploadUserPhoto, useDeleteUserPhoto } from "../api/hooks";
+import { useCreateUser, useUpdateUser, useResetUserPassword, useRoles, useUploadUserPhoto, useDeleteUserPhoto } from "../api/hooks";
 import { UserAvatar, validateEmail, validateRequired } from "@broker/ui-kit";
 import type { FieldErrors } from "@broker/ui-kit";
 import type { UserDto } from "../api/types";
@@ -61,6 +61,65 @@ export function CreateUserDialog({ open, onClose }: CreateProps) {
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleSubmit} variant="contained" disabled={create.isPending}>Create</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+interface ResetPasswordProps { open: boolean; onClose: () => void; user: UserDto | null }
+
+export function ResetPasswordDialog({ open, onClose, user }: ResetPasswordProps) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const resetPassword = useResetUserPassword();
+
+  const handleClose = () => {
+    setNewPassword("");
+    setConfirmPassword("");
+    setErrors({});
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (!user) return;
+    const errs: FieldErrors = {
+      newPassword: validateRequired(newPassword) || (newPassword.length < 6 ? "Password must be at least 6 characters" : undefined),
+      confirmPassword: validateRequired(confirmPassword) || (newPassword !== confirmPassword ? "Passwords do not match" : undefined),
+    };
+    if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
+    try {
+      await resetPassword.mutateAsync({ id: user.id, newPassword });
+      handleClose();
+    } catch { /* handled by MutationCache */ }
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+      <DialogTitle>Reset Password: {user?.username}</DialogTitle>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
+        <TextField
+          label="New Password"
+          type="password"
+          value={newPassword}
+          onChange={(e) => { setNewPassword(e.target.value); setErrors((prev) => ({ ...prev, newPassword: undefined })); }}
+          required
+          error={!!errors.newPassword}
+          helperText={errors.newPassword}
+        />
+        <TextField
+          label="Confirm Password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => { setConfirmPassword(e.target.value); setErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
+          required
+          error={!!errors.confirmPassword}
+          helperText={errors.confirmPassword}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={resetPassword.isPending}>Reset Password</Button>
       </DialogActions>
     </Dialog>
   );

@@ -9,7 +9,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import CloudIcon from "@mui/icons-material/Cloud";
-import { PageContainer, ConfirmDialog, useConfirm } from "@broker/ui-kit";
+import { ConfirmDialog, PageContainer, useConfirm } from "@broker/ui-kit";
 import { useUpstreams, useSaveUpstreams } from "../api/hooks";
 import type { UpstreamEntry, UpstreamsMap } from "../api/types";
 
@@ -129,25 +129,20 @@ export function UpstreamsPage() {
   }
 
   return (
-    <PageContainer
-      title="Upstreams"
-      breadcrumbs={[{ label: "Configuration", to: "/config" }, { label: "Upstreams" }]}
-      actions={
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddUpstream}>
-            Add Upstream
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={saveUpstreams.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-            onClick={handleSave}
-            disabled={!hasChanges || saveUpstreams.isPending}
-          >
-            Save
-          </Button>
-        </Box>
-      }
-    >
+    <PageContainer title="Upstreams">
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1.5 }}>
+        <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddUpstream}>
+          Add Upstream
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={saveUpstreams.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+          onClick={handleSave}
+          disabled={!hasChanges || saveUpstreams.isPending}
+        >
+          Save
+        </Button>
+      </Box>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 3 }}>
         {Object.entries(currentUpstreams).map(([name, entry]) => (
           <Card key={name}>
@@ -179,13 +174,15 @@ export function UpstreamsPage() {
         ))}
       </Box>
 
-      <UpstreamDialog
-        open={editDialog.open}
-        name={editDialog.name}
-        entry={editDialog.entry}
-        onClose={() => setEditDialog({ open: false, name: "", entry: null })}
-        onSave={handleDialogSave}
-      />
+      {editDialog.open && (
+        <UpstreamDialog
+          open
+          name={editDialog.name}
+          entry={editDialog.entry}
+          onClose={() => setEditDialog({ open: false, name: "", entry: null })}
+          onSave={handleDialogSave}
+        />
+      )}
       <ConfirmDialog {...confirmDialogProps} />
     </PageContainer>
   );

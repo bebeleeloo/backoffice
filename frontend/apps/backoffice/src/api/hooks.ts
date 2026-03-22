@@ -118,7 +118,7 @@ export const useSetAccountHolders = () => {
       qc.invalidateQueries({ queryKey: ["accounts", vars.accountId] });
       qc.invalidateQueries({ queryKey: ["client-accounts"] });
     },
-    meta: {},
+    meta: { successMessage: "Account holders updated" },
   });
 };
 
@@ -139,7 +139,7 @@ export const useSetClientAccounts = () => {
       qc.invalidateQueries({ queryKey: ["client-accounts", vars.clientId] });
       qc.invalidateQueries({ queryKey: ["accounts"] });
     },
-    meta: {},
+    meta: { successMessage: "Client accounts updated" },
   });
 };
 

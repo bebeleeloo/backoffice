@@ -53,6 +53,8 @@ public sealed class CreateUserCommandHandler(
         if (request.RoleIds.Count > 0)
         {
             var roles = await db.Roles.Where(r => request.RoleIds.Contains(r.Id)).ToListAsync(ct);
+            if (roles.Count != request.RoleIds.Distinct().Count())
+                throw new KeyNotFoundException("One or more roles not found");
             foreach (var role in roles)
                 user.UserRoles.Add(new UserRole
                 {

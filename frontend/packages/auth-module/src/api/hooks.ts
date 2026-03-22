@@ -70,6 +70,16 @@ export const useDeleteUser = () => {
   });
 };
 
+export const useResetUserPassword = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, newPassword }: { id: string; newPassword: string }) =>
+      apiClient.post(`/users/${id}/reset-password`, { newPassword }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    meta: { successMessage: "Password reset successfully" },
+  });
+};
+
 // Roles
 export const useRoles = (params: RolesParams) =>
   useQuery({

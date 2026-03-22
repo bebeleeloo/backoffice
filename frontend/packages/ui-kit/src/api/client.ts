@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
+        window.location.href = "/login?returnTo=" + encodeURIComponent(window.location.pathname);
         return Promise.reject(error);
       }
       try {
@@ -63,7 +63,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
+        window.location.href = "/login?returnTo=" + encodeURIComponent(window.location.pathname);
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
