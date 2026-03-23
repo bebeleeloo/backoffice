@@ -63,7 +63,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - PostgreSQL 17
 - n8n (workflow automation, separate PostgreSQL DB, connects to api/auth via internal Docker network)
 - nginx (frontend reverse proxy + SPA fallback + gzip + security headers + HSTS + cache control)
-- GitHub Actions CI (7 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, gateway build, permissions-sync, frontend tsc/eslint/vitest/build; NuGet/npm caching)
+- GitHub Actions CI (7 jobs: backend build/unit, backend integration, auth-service build/unit, auth-service integration, gateway build/integration, permissions-sync, frontend lint/vitest/build; NuGet/npm caching)
 
 ### Testing
 - Backend: xUnit, FluentAssertions, NSubstitute, Testcontainers (PostgreSQL)
@@ -219,9 +219,9 @@ gateway/
 └── Dockerfile.gateway
 ```
 
-API Gateway serves config (menu, entities, upstreams), proxies REST via YARP to backend services, and provides CRUD endpoints for config editing (`settings.manage` permission). YARP routes reload dynamically when `upstreams.yaml` changes or `POST /reload` is called (`ConfigLoader.OnUpstreamsChanged` event → `YamlProxyConfigProvider.Update()`).
+API Gateway serves config (menu, entities, upstreams), proxies REST via YARP to backend services, and provides CRUD endpoints for config editing (`settings.manage` permission). YARP routes reload dynamically when `upstreams.yaml` changes or `POST /reload` is called (`ConfigLoader.OnUpstreamsChanged` event → `YamlProxyConfigProvider.Update()`). Menu PUT validates recursion depth (max 3 levels). `ConfigLoader.OnUpstreamsChanged` is invoked outside lock to prevent deadlocks. Middleware order: CorrelationId → ExceptionHandling → routing.
 
-Auth service owns: users, roles, permissions, authentication (login, refresh, logout, change password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS). Logout endpoint (`POST /auth/logout`) hashes the refresh token, finds and revokes it.
+Auth service owns: users, roles, permissions, authentication (login, refresh, logout, change password, reset password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS). Logout endpoint (`POST /auth/logout`) hashes the refresh token, finds and revokes it. Password change, reset, and user deactivation all revoke active refresh tokens.
 
 Core validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
 
@@ -282,6 +282,22 @@ Core validates JWT locally (no roundtrip to auth). Dashboard gets user stats via
 - Applied via `[EnableRateLimiting("policy")]` on AuthController methods
 - Returns 429 Too Many Requests when exceeded
 - Integration tests override limit to 10000 via `UseSetting`
+
+**Password policy:**
+- Minimum 8 characters, must contain: uppercase letter, lowercase letter, digit, special character
+- Enforced in FluentValidation on: CreateUser, ChangePassword, ResetUserPassword
+- On password change/reset: all user's refresh tokens are revoked (`RevokedAt = utcNow`)
+- On user deactivation (UpdateUser, `IsActive` true→false): all refresh tokens are revoked
+
+**Pre-delete referential integrity checks:**
+- DeleteAccount: rejects if account has linked Orders (`InvalidOperationException` → 409)
+- DeleteInstrument: rejects if instrument has linked TradeOrders, TradeTransactions, or NonTradeTransactions
+- DeleteTradeOrder / DeleteNonTradeOrder: rejects if order has linked Transactions
+- DeleteClient: rejects if client has linked Accounts (via AccountHolder)
+
+**Swagger:**
+- Enabled only in Development environment (`app.Environment.IsDevelopment()`)
+- Disabled in production for all 3 services (backend, auth-service, gateway)
 
 **User photos:**
 - Stored as binary in DB (Photo byte[], PhotoContentType varchar(50))
@@ -419,6 +435,12 @@ frontend/
 - On TextFields: `error={!!errors.fieldName}` + `helperText={errors.fieldName}`
 - On change: `setErrors(prev => ({ ...prev, fieldName: undefined }))` clears error for that field
 - No Zod/Yup — simple inline validation with MUI error/helperText props
+
+**Dialog state reset pattern (prevOpen):**
+- Dialogs reset form state when `open` transitions from false → true
+- Uses render-time state comparison (NOT `useEffect`) to avoid ESLint `react-hooks/set-state-in-effect` rule
+- Pattern: `const [prevOpen, setPrevOpen] = useState(open); if (open && !prevOpen) { setForm(empty()); setErrors({}); } if (open !== prevOpen) setPrevOpen(open);`
+- Applied in all Create/Edit dialogs across Clients, Accounts, Instruments, Orders, Transactions
 
 **Route lazy loading:**
 - Page components loaded via `React.lazy()` with `.then(m => ({ default: m.PageName }))` for named exports
@@ -568,12 +590,13 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 3. Check FK references exist — **always** validate via `AnyAsync` (Account, Instrument, Currency etc. → `KeyNotFoundException`), even if value hasn't changed from existing entity
 4. Check cross-entity consistency (`throw new InvalidOperationException` if mismatch, e.g. trade transaction Side must match order Side)
 5. Check uniqueness (`throw new InvalidOperationException` if duplicate)
-6. Set audit context BeforeJson (for updates/deletes — capture state before modification)
-7. Modify entity
-8. SaveChangesAsync (triggers change tracking)
-9. Set audit context EntityType, EntityId, AfterJson (for creates/updates — capture state after save)
-10. Re-fetch via `mediator.Send(new GetXxxByIdQuery(...), ct)` — never instantiate handlers directly
-11. Return DTO
+6. For deletes: check no child entities reference this aggregate (`throw new InvalidOperationException` → 409)
+7. Set audit context BeforeJson (for updates/deletes — capture state before modification)
+8. Modify entity
+9. SaveChangesAsync (triggers change tracking)
+10. Set audit context EntityType, EntityId, AfterJson (for creates/updates — capture state after save)
+11. Re-fetch via `mediator.Send(new GetXxxByIdQuery(...), ct)` — never instantiate handlers directly
+12. Return DTO
 
 Note: All mutation handlers (aggregates, reference data, photo, profile) must inject `IAuditContext` and set at minimum EntityType + EntityId. Reference data handlers set BeforeJson/AfterJson directly since they have no field-level change tracking.
 
@@ -692,7 +715,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Location: `auth-service/tests/Broker.Auth.Tests.Unit/`
 - Validators covered: Auth (Login, Logout, ChangePassword, UpdateProfile), Users (Create/Update), Roles (Create/Update, FullName MaxLength)
 
-### Core Integration Tests (145 tests, ~10s)
+### Core Integration Tests (156 tests, ~10s)
 - Testcontainers (real PostgreSQL 17 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
 - `IntegrationTestBase` uses `TestJwtTokenHelper` to generate JWT tokens directly (no auth service dependency)
@@ -701,12 +724,12 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - `IAuthServiceClient` mocked in factory (returns TotalUsers=5, ActiveUsers=4)
 - Requires `backend/global.json` pinning SDK to 8.0 (avoids .NET 10 SDK incompatibility)
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
-- Coverage: Health, Swagger, Clients (CRUD + Update + GetAccounts + SetClientAccounts + InvalidAccountId + Filters + DateFilter + SortByDisplayName + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + SetAccountHolders + InvalidClientId + Filters + SortByClearerName + DuplicateNumber + RouteBodyIdMismatch), Instruments (CRUD + Update + Filters + DuplicateSymbol + RouteBodyIdMismatch), TradeOrders (CRUD + Update + Filters + SortByInstrumentSymbol + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + Filters + InvalidCurrencyId + InvalidAccountId + RouteBodyIdMismatch), TradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (CRUD + DuplicateName), Dashboard (stats), Audit (list + getById + Filters), EntityChanges (list + listAll + Filters), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion)
+- Coverage: Health, Swagger, Clients (CRUD + Update + GetAccounts + SetClientAccounts + InvalidAccountId + Filters + DateFilter + SortByDisplayName + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + SetAccountHolders + InvalidClientId + Filters + SortByClearerName + DuplicateNumber + DeleteLinkedToOrders + RouteBodyIdMismatch), Instruments (CRUD + Update + Filters + DuplicateSymbol + DeleteLinkedToOrders + DeleteLinkedToTransactions + RouteBodyIdMismatch), TradeOrders (CRUD + Update + Filters + SortByInstrumentSymbol + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + DeleteLinkedToTransactions + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + Filters + InvalidCurrencyId + InvalidAccountId + DeleteLinkedToTransactions + RouteBodyIdMismatch), TradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (CRUD + DuplicateName), Dashboard (stats), Audit (list + getById + Filters), EntityChanges (list + listAll + Filters), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion)
 
-### Auth Service Integration Tests (38 tests, ~5s)
+### Auth Service Integration Tests (45 tests, ~5s)
 - Same Testcontainers pattern as core
 - Location: `auth-service/tests/Broker.Auth.Tests.Integration/`
-- Coverage: Health, Auth (login, refresh, me, change-password, update-profile, logout, photo CRUD + unauth + cache-control), Users (CRUD + GetById + Update + Delete + duplicate-username/email + photo + route mismatch), Roles (CRUD + GetById + Update + Delete + duplicate-name + set-permissions + system-role-protection), Permissions (list), BasicAuth (login via Basic header)
+- Coverage: Health, Auth (login, refresh, me, change-password, update-profile, logout, photo CRUD + unauth + cache-control), Users (CRUD + GetById + Update + Delete + duplicate-username/email + photo + route mismatch + reset-password), Roles (CRUD + GetById + Update + Delete + duplicate-name + set-permissions + system-role-protection), Permissions (list), BasicAuth (login via Basic header)
 
 ### Integration test patterns
 - All update tests must include `Id` in the request body (controllers check `id != command.Id`)
@@ -722,7 +745,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Location: `gateway/tests/Broker.Gateway.Tests.Integration/`
 - Coverage: Health (live, ready), Menu (GET filtered/raw, PUT valid/invalid, auth 401, perm 403), Entities (GET filtered/raw, PUT valid/invalid, GET by name, 404), Upstreams (GET, PUT valid/invalid URI/empty routes, perm 403, reload), EntityChanges (GET by entityType/all, filters, pagination, sort, changeType), Audit (PUT creates audit, before/after JSON)
 
-### Frontend Tests (167 tests, ~10s)
+### Frontend Tests (167 tests, ~6s)
 - Vitest with jsdom environment
 - React Testing Library + user-event
 - MSW for network-level API mocking
@@ -889,3 +912,6 @@ dotnet run
 - Use `AllowAnyOrigin()` in CORS without checking configured origins first
 - Add sortable DataGrid columns whose `field` names don't match entity properties without adding them to `ApplySort()` — sorting will silently fail
 - Use the old `-field` sort format in new code — use `"field asc"`/`"field desc"` format
+- Use `useEffect` with `setState` for dialog reset — use render-time `prevOpen` pattern (ESLint `react-hooks/set-state-in-effect` rule)
+- Delete aggregates without checking for linked child entities — add pre-delete `AnyAsync` checks
+- Skip refresh token revocation on password change/reset/deactivation
