@@ -33,12 +33,17 @@ public sealed class LoginCommandHandler(
             .FirstOrDefaultAsync(u => u.Username == request.Username, ct)
             ?? throw new UnauthorizedAccessException("Invalid credentials");
 
+        if (!user.IsActive)
+            throw new UnauthorizedAccessException("Invalid credentials");
+
         var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Invalid credentials");
 
-        if (!user.IsActive)
-            throw new UnauthorizedAccessException("Account is disabled");
+        if (result == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            user.PasswordHash = hasher.HashPassword(user, request.Password);
+        }
 
         var permissions = EffectivePermissionsResolver.GetEffectivePermissions(user);
         var tokens = jwt.GenerateTokens(user, permissions);

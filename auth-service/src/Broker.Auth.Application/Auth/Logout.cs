@@ -18,7 +18,8 @@ public sealed class LogoutCommandValidator : AbstractValidator<LogoutCommand>
 internal sealed class LogoutCommandHandler(
     IAuthDbContext db,
     IJwtTokenService jwt,
-    IDateTimeProvider clock) : IRequestHandler<LogoutCommand>
+    IDateTimeProvider clock,
+    IAuditContext audit) : IRequestHandler<LogoutCommand>
 {
     public async Task Handle(LogoutCommand request, CancellationToken ct)
     {
@@ -27,6 +28,9 @@ internal sealed class LogoutCommandHandler(
         var stored = await db.UserRefreshTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, ct)
             ?? throw new UnauthorizedAccessException("Invalid refresh token");
+
+        audit.EntityType = "RefreshToken";
+        audit.EntityId = stored.UserId.ToString();
 
         if (stored.RevokedAt == null)
         {

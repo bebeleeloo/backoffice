@@ -308,8 +308,8 @@ public class TradeTransactionsTests(CustomWebApplicationFactory factory) : Integ
         var created = await createResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
         var staleRowVersion = created!.RowVersion;
 
-        // First update succeeds
-        await _client.PutAsJsonAsync($"/api/v1/trade-transactions/{created.Id}", new
+        // First update succeeds — changes RowVersion
+        var update1 = await _client.PutAsJsonAsync($"/api/v1/trade-transactions/{created.Id}", new
         {
             Id = created.Id,
             OrderId = orderId,
@@ -321,6 +321,7 @@ public class TradeTransactionsTests(CustomWebApplicationFactory factory) : Integ
             Price = 55.00m,
             RowVersion = staleRowVersion,
         });
+        update1.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Second update with stale RowVersion — should fail
         var response = await _client.PutAsJsonAsync($"/api/v1/trade-transactions/{created.Id}", new

@@ -13,8 +13,11 @@ public sealed class JwtTokenService(IConfiguration config) : IJwtTokenService
 {
     public TokenPair GenerateTokens(User user, IReadOnlyList<string> permissions)
     {
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(config["Jwt:Secret"]!));
+        var secret = config["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret is not configured");
+        if (secret.Length < 32)
+            throw new InvalidOperationException("Jwt:Secret must be at least 32 characters");
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiresMin = int.Parse(config["Jwt:AccessTokenExpirationMinutes"] ?? "30");
         var expires = DateTime.UtcNow.AddMinutes(expiresMin);

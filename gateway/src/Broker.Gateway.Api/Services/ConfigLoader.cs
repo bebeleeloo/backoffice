@@ -129,6 +129,8 @@ public sealed class ConfigLoader : IDisposable
         var path = Path.Combine(_configDir, filename);
         var tempPath = path + ".tmp";
 
+        // Suppress FSW during save to avoid self-triggered reloads
+        if (_watcher != null) _watcher.EnableRaisingEvents = false;
         try
         {
             var content = _yamlSerializer.Serialize(data);
@@ -148,6 +150,10 @@ public sealed class ConfigLoader : IDisposable
             _logger.LogError(ex, "Failed to save config file: {Path}", path);
             throw;
         }
+        finally
+        {
+            if (_watcher != null) _watcher.EnableRaisingEvents = true;
+        }
     }
 
     private void StartWatcher()
@@ -166,19 +172,26 @@ public sealed class ConfigLoader : IDisposable
     public void Dispose()
     {
         _watcher?.Dispose();
-        _debounceCts?.Dispose();
+        lock (_lock)
+        {
+            _debounceCts?.Cancel();
+            _debounceCts?.Dispose();
+        }
     }
 
     private void OnConfigChanged(object sender, FileSystemEventArgs e)
     {
         _logger.LogInformation("Config file changed: {File}, reloading...", e.Name);
 
-        // Debounce: file system may fire multiple events
-        var oldCts = _debounceCts;
-        oldCts?.Cancel();
-        var cts = new CancellationTokenSource();
-        _debounceCts = cts;
-        oldCts?.Dispose();
+        CancellationTokenSource cts;
+        lock (_lock)
+        {
+            // Debounce: file system may fire multiple events
+            _debounceCts?.Cancel();
+            _debounceCts?.Dispose();
+            cts = new CancellationTokenSource();
+            _debounceCts = cts;
+        }
 
         Task.Delay(300, cts.Token).ContinueWith(_ =>
         {

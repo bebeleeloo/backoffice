@@ -121,11 +121,14 @@ try
     }
 
     // ForwardedHeaders (nginx → gateway)
-    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
                          | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
-    });
+    };
+    forwardedHeadersOptions.KnownProxies.Clear();
+    forwardedHeadersOptions.KnownNetworks.Clear();
+    app.UseForwardedHeaders(forwardedHeadersOptions);
 
     // Wire up YARP config reload when upstreams change
     var configLoader = app.Services.GetRequiredService<ConfigLoader>();

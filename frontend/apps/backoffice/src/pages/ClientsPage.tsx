@@ -176,13 +176,13 @@ export function ClientsPage() {
 
   /* ── Pagination / sort ── */
 
-  const handlePagination = (model: GridPaginationModel) => {
+  const handlePagination = useCallback((model: GridPaginationModel) => {
     setParam({ page: String(model.page + 1), pageSize: String(model.pageSize) });
-  };
-  const handleSort = (model: GridSortModel) => {
+  }, [setParam]);
+  const handleSort = useCallback((model: GridSortModel) => {
     const s = model[0];
     setParam({ sort: s ? `${s.field} ${s.sort}` : undefined, page: "1" });
-  };
+  }, [setParam]);
   const sortModel: GridSortModel = useMemo(() => {
     if (!params.sort) return [];
     const [field, dir] = params.sort.split(" ");

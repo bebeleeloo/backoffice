@@ -52,15 +52,16 @@ public sealed class RefreshTokenCommandHandler(
 
         var permissions = EffectivePermissionsResolver.GetEffectivePermissions(stored.User);
         var tokens = jwt.GenerateTokens(stored.User, permissions);
+        var newTokenHash = jwt.HashToken(tokens.RefreshToken);
 
         stored.RevokedAt = clock.UtcNow;
-        stored.ReplacedByTokenHash = jwt.HashToken(tokens.RefreshToken);
+        stored.ReplacedByTokenHash = newTokenHash;
 
         db.UserRefreshTokens.Add(new UserRefreshToken
         {
             Id = Guid.NewGuid(),
             UserId = stored.UserId,
-            TokenHash = jwt.HashToken(tokens.RefreshToken),
+            TokenHash = newTokenHash,
             ExpiresAt = clock.UtcNow.AddDays(7),
             CreatedAt = clock.UtcNow
         });

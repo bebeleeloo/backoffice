@@ -272,7 +272,7 @@ public class NonTradeOrdersTests(CustomWebApplicationFactory factory) : Integrat
         var staleRowVersion = created!.RowVersion;
 
         // First update succeeds — changes RowVersion
-        await _client.PutAsJsonAsync($"/api/v1/non-trade-orders/{created.Id}", new
+        var update1 = await _client.PutAsJsonAsync($"/api/v1/non-trade-orders/{created.Id}", new
         {
             Id = created.Id,
             AccountId = accountId,
@@ -283,6 +283,7 @@ public class NonTradeOrdersTests(CustomWebApplicationFactory factory) : Integrat
             CurrencyId = currencyId,
             RowVersion = staleRowVersion,
         });
+        update1.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Second update with stale RowVersion — should fail
         var response = await _client.PutAsJsonAsync($"/api/v1/non-trade-orders/{created.Id}", new

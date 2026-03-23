@@ -206,8 +206,12 @@ public sealed class ConfigController(
         pageSize = Math.Clamp(pageSize, 1, 10000);
 
         var query = db.AuditLogs
-            .Where(a => a.EntityType == entityType && a.IsSuccess)
-            .OrderByDescending(a => a.CreatedAt);
+            .Where(a => a.EntityType == entityType && a.IsSuccess);
+
+        if (!string.IsNullOrWhiteSpace(entityId))
+            query = query.Where(a => a.EntityId == entityId);
+
+        query = query.OrderByDescending(a => a.CreatedAt);
 
         var totalCount = await query.CountAsync(ct);
 
@@ -279,8 +283,9 @@ public sealed class ConfigController(
 
         if (!string.IsNullOrWhiteSpace(changeType))
         {
-            // changeType is computed in-memory, so load all matching logs and filter/paginate manually
-            var allLogs = await query.ToListAsync(ct);
+            // changeType is computed in-memory, so load matching logs and filter/paginate manually
+            // Safety limit to prevent unbounded memory usage
+            var allLogs = await query.Take(10000).ToListAsync(ct);
             var allItems = allLogs
                 .Select(a => new GlobalOperationDto(
                     a.Id.ToString(),
@@ -368,7 +373,7 @@ public sealed class ConfigController(
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown";
             logger.LogWarning("No role claims found for user {UserId}", userId);
-            throw new UnauthorizedAccessException("No role claims found in token");
+            throw new UnauthorizedAccessException("Forbidden: No role claims found in token");
         }
 
         return roles;

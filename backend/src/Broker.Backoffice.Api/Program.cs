@@ -157,11 +157,14 @@ try
     var app = builder.Build();
 
     // ForwardedHeaders (nginx → gateway → api)
-    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
                          | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
-    });
+    };
+    forwardedHeadersOptions.KnownProxies.Clear();
+    forwardedHeadersOptions.KnownNetworks.Clear();
+    app.UseForwardedHeaders(forwardedHeadersOptions);
 
     // Middleware pipeline
     app.UseMiddleware<CorrelationIdMiddleware>();

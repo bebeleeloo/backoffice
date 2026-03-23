@@ -51,7 +51,7 @@ public sealed class AuditActionFilter(
             };
 
             db.AuditLogs.Add(entry);
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(context.HttpContext.RequestAborted);
         }
         catch (Exception ex)
         {

@@ -274,7 +274,7 @@ public class InstrumentsTests(CustomWebApplicationFactory factory) : Integration
         var staleRowVersion = created!.RowVersion;
 
         // First update succeeds — changes RowVersion
-        await _client.PutAsJsonAsync($"/api/v1/instruments/{created.Id}", new
+        var update1 = await _client.PutAsJsonAsync($"/api/v1/instruments/{created.Id}", new
         {
             Id = created.Id,
             Symbol = symbol,
@@ -286,6 +286,7 @@ public class InstrumentsTests(CustomWebApplicationFactory factory) : Integration
             IsMarginEligible = false,
             RowVersion = staleRowVersion,
         });
+        update1.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Second update with stale RowVersion — should fail
         var response = await _client.PutAsJsonAsync($"/api/v1/instruments/{created.Id}", new

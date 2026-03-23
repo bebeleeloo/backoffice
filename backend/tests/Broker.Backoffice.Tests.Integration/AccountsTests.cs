@@ -347,7 +347,7 @@ public class AccountsTests(CustomWebApplicationFactory factory) : IntegrationTes
         var staleRowVersion = created!.RowVersion;
 
         // First update succeeds — changes RowVersion
-        await _client.PutAsJsonAsync($"/api/v1/accounts/{created.Id}", new
+        var update1 = await _client.PutAsJsonAsync($"/api/v1/accounts/{created.Id}", new
         {
             Id = created.Id,
             Number = number,
@@ -358,6 +358,7 @@ public class AccountsTests(CustomWebApplicationFactory factory) : IntegrationTes
             Tariff = "Basic",
             RowVersion = staleRowVersion,
         });
+        update1.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Second update with stale RowVersion — should fail
         var response = await _client.PutAsJsonAsync($"/api/v1/accounts/{created.Id}", new

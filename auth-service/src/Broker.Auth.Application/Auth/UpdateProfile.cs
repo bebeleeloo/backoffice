@@ -18,7 +18,11 @@ public sealed class UpdateProfileCommandValidator : AbstractValidator<UpdateProf
     }
 }
 
-public sealed class UpdateProfileCommandHandler(IAuthDbContext db, IAuditContext audit)
+public sealed class UpdateProfileCommandHandler(
+    IAuthDbContext db,
+    IAuditContext audit,
+    IDateTimeProvider clock,
+    ICurrentUser currentUser)
     : IRequestHandler<UpdateProfileCommand, UserProfileResponse>
 {
     public async Task<UserProfileResponse> Handle(UpdateProfileCommand request, CancellationToken ct)
@@ -40,6 +44,8 @@ public sealed class UpdateProfileCommandHandler(IAuthDbContext db, IAuditContext
 
         user.FullName = request.FullName;
         user.Email = request.Email;
+        user.UpdatedAt = clock.UtcNow;
+        user.UpdatedBy = currentUser.UserId?.ToString();
         await db.SaveChangesAsync(ct);
 
         audit.AfterJson = JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName });

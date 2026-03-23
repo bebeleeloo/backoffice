@@ -11,6 +11,7 @@ namespace Broker.Gateway.Api.Services;
 public sealed class YamlProxyConfigProvider : IProxyConfigProvider
 {
     private readonly ConfigLoader _configLoader;
+    private readonly object _lock = new();
     private volatile YamlProxyConfig _config;
     private CancellationTokenSource _cts = new();
 
@@ -27,11 +28,17 @@ public sealed class YamlProxyConfigProvider : IProxyConfigProvider
     /// </summary>
     public void Update()
     {
-        var oldCts = _cts;
         var newCts = new CancellationTokenSource();
         var newConfig = BuildConfig(_configLoader, newCts);
-        _cts = newCts;
-        _config = newConfig;
+
+        CancellationTokenSource oldCts;
+        lock (_lock)
+        {
+            oldCts = _cts;
+            _cts = newCts;
+            _config = newConfig;
+        }
+
         try
         {
             oldCts.Cancel();

@@ -6,17 +6,17 @@ public static class EffectivePermissionsResolver
 {
     public static List<string> GetEffectivePermissions(User user)
     {
-        var rolePerms = user.UserRoles
-            .SelectMany(ur => ur.Role.RolePermissions)
+        var rolePerms = (user.UserRoles ?? [])
+            .SelectMany(ur => ur.Role?.RolePermissions ?? [])
             .Select(rp => rp.Permission.Code)
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var ov in user.PermissionOverrides)
+        foreach (var ov in user.PermissionOverrides ?? [])
         {
             if (ov.IsAllowed) rolePerms.Add(ov.Permission.Code);
             else rolePerms.Remove(ov.Permission.Code);
         }
 
-        return rolePerms.ToList();
+        return rolePerms.Order(StringComparer.OrdinalIgnoreCase).ToList();
     }
 }

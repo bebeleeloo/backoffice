@@ -14,9 +14,19 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (UnauthorizedAccessException ex)
         {
-            logger.LogWarning(ex, "Unauthorized");
-            await WriteProblemDetails(context, StatusCodes.Status401Unauthorized,
-                "Unauthorized", ex.Message);
+            // Use "Forbidden:" prefix to distinguish 403 from 401
+            if (ex.Message.StartsWith("Forbidden:", StringComparison.Ordinal))
+            {
+                logger.LogWarning(ex, "Forbidden");
+                await WriteProblemDetails(context, StatusCodes.Status403Forbidden,
+                    "Forbidden", ex.Message["Forbidden:".Length..].TrimStart());
+            }
+            else
+            {
+                logger.LogWarning(ex, "Unauthorized");
+                await WriteProblemDetails(context, StatusCodes.Status401Unauthorized,
+                    "Unauthorized", ex.Message);
+            }
         }
         catch (KeyNotFoundException ex)
         {

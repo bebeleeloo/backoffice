@@ -64,10 +64,12 @@ public sealed class ConfigDiffService(ILogger<ConfigDiffService> logger)
 
     public string DetermineChangeType(string? beforeJson, string? afterJson)
     {
-        if (string.IsNullOrEmpty(beforeJson) && !string.IsNullOrEmpty(afterJson))
-            return "Created";
-        if (!string.IsNullOrEmpty(beforeJson) && string.IsNullOrEmpty(afterJson))
-            return "Deleted";
+        var hasBefore = !string.IsNullOrEmpty(beforeJson);
+        var hasAfter = !string.IsNullOrEmpty(afterJson);
+
+        if (!hasBefore && hasAfter) return "Created";
+        if (hasBefore && !hasAfter) return "Deleted";
+        if (!hasBefore && !hasAfter) return "Unknown";
         return "Modified";
     }
 
@@ -167,8 +169,8 @@ public sealed class ConfigDiffService(ILogger<ConfigDiffService> logger)
 
     private List<EntityChangeGroupDto> DiffEntities(string? beforeJson, string? afterJson)
     {
-        var before = (Deserialize<List<EntityConfig>>(beforeJson) ?? []).ToDictionary(e => e.Name);
-        var after = (Deserialize<List<EntityConfig>>(afterJson) ?? []).ToDictionary(e => e.Name);
+        var before = ToDictionaryLast(Deserialize<List<EntityConfig>>(beforeJson) ?? [], e => e.Name);
+        var after = ToDictionaryLast(Deserialize<List<EntityConfig>>(afterJson) ?? [], e => e.Name);
 
         var changes = new List<EntityChangeGroupDto>();
         var allNames = new HashSet<string>(before.Keys);
@@ -204,8 +206,8 @@ public sealed class ConfigDiffService(ILogger<ConfigDiffService> logger)
 
     private static List<FieldChangeDto> DiffEntityFields(EntityConfig before, EntityConfig after)
     {
-        var bFields = before.Fields.ToDictionary(f => f.Name);
-        var aFields = after.Fields.ToDictionary(f => f.Name);
+        var bFields = ToDictionaryLast(before.Fields, f => f.Name);
+        var aFields = ToDictionaryLast(after.Fields, f => f.Name);
 
         var changes = new List<FieldChangeDto>();
         var allNames = new HashSet<string>(bFields.Keys);
@@ -278,6 +280,15 @@ public sealed class ConfigDiffService(ILogger<ConfigDiffService> logger)
             if (!a.Fields[i].Roles.SequenceEqual(b.Fields[i].Roles)) return false;
         }
         return true;
+    }
+
+    private static Dictionary<TKey, T> ToDictionaryLast<T, TKey>(IEnumerable<T> source, Func<T, TKey> keySelector)
+        where TKey : notnull
+    {
+        var dict = new Dictionary<TKey, T>();
+        foreach (var item in source)
+            dict[keySelector(item)] = item;
+        return dict;
     }
 
     private T? Deserialize<T>(string? json) where T : class

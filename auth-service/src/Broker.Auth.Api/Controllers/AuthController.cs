@@ -35,6 +35,7 @@ public sealed class AuthController(ISender mediator) : ControllerBase
 
     [HttpPost("logout")]
     [Authorize]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public async Task<IActionResult> Logout(LogoutCommand command, CancellationToken ct)
     {
         await mediator.Send(command, ct);

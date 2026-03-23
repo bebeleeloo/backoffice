@@ -259,8 +259,8 @@ public class NonTradeTransactionsTests(CustomWebApplicationFactory factory) : In
         var created = await createResp.Content.ReadFromJsonAsync<NonTradeTransactionDto>();
         var staleRowVersion = created!.RowVersion;
 
-        // First update succeeds
-        await _client.PutAsJsonAsync($"/api/v1/non-trade-transactions/{created.Id}", new
+        // First update succeeds — changes RowVersion
+        var update1 = await _client.PutAsJsonAsync($"/api/v1/non-trade-transactions/{created.Id}", new
         {
             Id = created.Id,
             OrderId = orderId,
@@ -270,6 +270,7 @@ public class NonTradeTransactionsTests(CustomWebApplicationFactory factory) : In
             CurrencyId = currencyId,
             RowVersion = staleRowVersion,
         });
+        update1.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Second update with stale RowVersion — should fail
         var response = await _client.PutAsJsonAsync($"/api/v1/non-trade-transactions/{created.Id}", new
