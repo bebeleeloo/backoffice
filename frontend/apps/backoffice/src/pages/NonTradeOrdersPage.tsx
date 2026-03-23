@@ -189,11 +189,11 @@ export function NonTradeOrdersPage() {
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete Non-Trade Order", message: "Are you sure you want to delete this non-trade order?" });
     if (!ok) return;
     try { await deleteOrder.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteOrder]);
 
   const columns: GridColDef<NonTradeOrderListItemDto>[] = useMemo(() => [
     { field: "orderNumber", headerName: "Order #", flex: 1, minWidth: 130 },

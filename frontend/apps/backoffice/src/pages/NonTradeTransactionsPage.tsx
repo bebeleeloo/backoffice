@@ -155,11 +155,11 @@ export function NonTradeTransactionsPage() {
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete Non-Trade Transaction", message: "Are you sure you want to delete this non-trade transaction?" });
     if (!ok) return;
     try { await deleteTransaction.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteTransaction]);
 
   const columns: GridColDef<NonTradeTransactionListItemDto>[] = useMemo(() => [
     { field: "transactionNumber", headerName: "Transaction #", flex: 1, minWidth: 150 },

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, MenuItem, Box, Typography, Switch, FormControlLabel, Divider,
@@ -60,17 +60,17 @@ export function CreateClientDialog({ open, onClose }: CreateProps) {
   const [showInvestmentProfile, setShowInvestmentProfile] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  useEffect(() => {
-    if (open) {
-      setForm({
-        clientType: "Individual", status: "Active", email: "",
-        pepStatus: false, kycStatus: "NotStarted",
-        addresses: [],
-      });
-      setShowInvestmentProfile(false);
-      setErrors({});
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setForm({
+      clientType: "Individual", status: "Active", email: "",
+      pepStatus: false, kycStatus: "NotStarted",
+      addresses: [],
+    });
+    setShowInvestmentProfile(false);
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   const set = <K extends keyof CreateClientRequest>(k: K, v: CreateClientRequest[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -260,16 +260,16 @@ export function EditClientDialog({ open, onClose, clientId }: EditProps) {
   const [populated, setPopulated] = useState(false);
   const [accountsPopulated, setAccountsPopulated] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setPopulated(false);
-      setAccountsPopulated(false);
-      setForm(emptyClientForm());
-      setShowInvestmentProfile(false);
-      setAccounts([]);
-      setErrors({});
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setPopulated(false);
+    setAccountsPopulated(false);
+    setForm(emptyClientForm());
+    setShowInvestmentProfile(false);
+    setAccounts([]);
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   if (open && !populated && client) {
     setPopulated(true);

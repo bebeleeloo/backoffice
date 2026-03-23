@@ -102,11 +102,11 @@ export function RolesPage() {
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete Role", message: "Are you sure you want to delete this role?" });
     if (!ok) return;
     try { await deleteRole.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteRole]);
 
   const columns: GridColDef<RoleDto>[] = useMemo(() => [
     { field: "name", headerName: "Name", flex: 1, minWidth: 150 },

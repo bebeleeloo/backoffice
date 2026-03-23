@@ -158,11 +158,11 @@ export function AccountsPage() {
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete Account", message: "Are you sure you want to delete this account?" });
     if (!ok) return;
     try { await deleteAccount.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteAccount]);
 
   const columns: GridColDef<AccountListItemDto>[] = useMemo(() => [
     { field: "number", headerName: "Number", flex: 1, minWidth: 120 },

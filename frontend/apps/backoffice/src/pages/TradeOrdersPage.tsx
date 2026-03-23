@@ -206,11 +206,11 @@ export function TradeOrdersPage() {
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete Trade Order", message: "Are you sure you want to delete this trade order?" });
     if (!ok) return;
     try { await deleteTradeOrder.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteTradeOrder]);
 
   const columns: GridColDef<TradeOrderListItemDto>[] = useMemo(() => [
     { field: "orderNumber", headerName: "Order #", flex: 1, minWidth: 130 },

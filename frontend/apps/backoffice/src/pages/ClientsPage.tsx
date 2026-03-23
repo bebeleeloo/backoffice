@@ -188,11 +188,11 @@ export function ClientsPage() {
     const [field, dir] = params.sort.split(" ");
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete Client", message: "Are you sure you want to delete this client?" });
     if (!ok) return;
     try { await deleteClient.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteClient]);
 
   /* ── Filter definitions: field → render fn ── */
 

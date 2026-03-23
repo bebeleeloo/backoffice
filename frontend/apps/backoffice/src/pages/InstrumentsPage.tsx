@@ -174,11 +174,11 @@ export function InstrumentsPage() {
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete Instrument", message: "Are you sure you want to delete this instrument?" });
     if (!ok) return;
     try { await deleteInstrument.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteInstrument]);
 
   const columns: GridColDef<InstrumentListItemDto>[] = useMemo(() => [
     { field: "symbol", headerName: "Symbol", width: 110 },

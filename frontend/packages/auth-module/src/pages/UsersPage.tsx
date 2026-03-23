@@ -104,11 +104,11 @@ export function UsersPage() {
     return [{ field, sort: dir as GridSortDirection }];
   }, [params.sort]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({ title: "Delete User", message: "Are you sure you want to delete this user?" });
     if (!ok) return;
     try { await deleteUser.mutateAsync(id); } catch { /* handled by MutationCache */ }
-  };
+  }, [confirm, deleteUser]);
 
   const columns: GridColDef<UserDto>[] = useMemo(() => [
     {
