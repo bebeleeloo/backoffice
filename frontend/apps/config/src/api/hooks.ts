@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@broker/ui-kit";
-import type { MenuItemConfig, MenuConfig, EntityConfig, EntitiesConfig, UpstreamsMap, UpstreamsConfig } from "./types";
+import type { MenuItemConfig, MenuConfig, EntityConfig, EntitiesConfig, EntityMetadataDto, UpstreamsMap, UpstreamsConfig, PermissionDto } from "./types";
 
 export function useMenuRaw() {
   return useQuery<MenuItemConfig[]>({
@@ -50,6 +50,20 @@ export function useSaveEntities() {
   });
 }
 
+export function useEntityMetadata() {
+  return useQuery<EntityMetadataDto[]>({
+    queryKey: ["entity-metadata"],
+    queryFn: async () => {
+      const [core, auth] = await Promise.all([
+        apiClient.get<EntityMetadataDto[]>("/entity-metadata").then((r) => r.data),
+        apiClient.get<EntityMetadataDto[]>("/auth/entity-metadata").then((r) => r.data),
+      ]);
+      return [...core, ...auth];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 export function useUpstreams() {
   return useQuery<UpstreamsMap>({
     queryKey: ["config", "upstreams"],
@@ -74,6 +88,17 @@ export function useSaveUpstreams() {
   });
 }
 
+export function usePermissions() {
+  return useQuery<PermissionDto[]>({
+    queryKey: ["permissions"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<PermissionDto[]>("/permissions");
+      return data;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 export function useReloadConfig() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -87,3 +112,4 @@ export function useReloadConfig() {
     meta: { successMessage: "Configuration reloaded" },
   });
 }
+

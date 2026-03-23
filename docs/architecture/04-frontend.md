@@ -240,13 +240,15 @@ Request interceptor:
 - **Permission-based UI** -- кнопки/действия скрываются через `useHasPermission()`
 - **Debounced search** -- глобальный поиск 300ms задержка
 - **Row click** -- клик по строке DataGrid открывает карточку просмотра (Clients, Accounts, Instruments, Roles → navigate на detail page; Users → открытие EditDialog). Кнопки действий используют `e.stopPropagation()` чтобы не триггерить row click
+- **Page-level History** -- кнопка History (outlined, HistoryIcon) в actions PageContainer, навигация на `/audit?entityType=...` (gated by `audit.read`)
+- **Per-row History** -- иконка HistoryIcon в колонке actions DataGrid, открывает `EntityHistoryDialog` для конкретной записи (gated by `audit.read`)
 
 ### Компоненты таблиц
 
 `FilteredDataGrid` -- обёртка над MUI X DataGrid:
 - Встроенная строка фильтров (`FilterRowProvider` + контекст)
 - Синхронизация скролла фильтров с таблицей
-- Inline-фильтры: `InlineTextFilter`, `CompactMultiSelect`, `CompactCountrySelect`, `DateRangePopover`, `InlineBooleanFilter`
+- Inline-фильтры: `InlineTextFilter`, `CompactMultiSelect`, `CompactCountrySelect`, `DateRangePopover`, `NumericRangePopover`, `InlineBooleanFilter`
 - `CustomNoRowsOverlay` — пустое состояние с иконкой SearchOff и текстом "No results found" / "Try adjusting your filters"
 
 ### Кнопка «Очистить фильтры»
@@ -254,7 +256,7 @@ Request interceptor:
 Все страницы-списки содержат кнопку `FilterListOffIcon` (clear all filters), отображаемую при наличии активных фильтров:
 - `clearAllFilters = useCallback(() => setSearchParams(new URLSearchParams()), [setSearchParams])`
 - `hasActiveFilters` — вычисляется на основе текущих параметров URL (q, status, type, accountId и т.д.)
-- Страницы: ClientsPage, AccountsPage, InstrumentsPage, TradeOrdersPage, NonTradeOrdersPage, TradeTransactionsPage, NonTradeTransactionsPage, UsersPage, RolesPage, AuditPage
+- Страницы: ClientsPage, AccountsPage, InstrumentsPage, TradeOrdersPage, NonTradeOrdersPage, TradeTransactionsPage, NonTradeTransactionsPage, UsersPage, RolesPage, AuditPage, EntityFieldsPage
 
 ### DetailField
 
@@ -316,19 +318,33 @@ if (open && !populated && fullData) {
 
 ### Config-страницы (apps/config)
 
+Все config-страницы используют **авто-сохранение**: каждое действие (add/edit/delete) немедленно вызывает API, нет кнопки Save. Мутация инвалидирует React Query кеш, данные обновляются автоматически. Кнопки disabled при `isPending` для защиты от двойного клика.
+
 **ConfigDashboardPage** — 3 stat-карточки (количество элементов меню, сущностей, upstreams) + кнопка "Reload Config" для перезагрузки конфигурации из API.
 
-**MenuEditorPage** — древовидный редактор меню sidebar. Поддерживает добавление, редактирование и удаление пунктов меню. Иконки отображаются через `iconMap` (маппинг строковых имён на MUI-иконки).
+**MenuEditorPage** — древовидный редактор меню sidebar. Авто-сохранение при add/edit/delete. Per-item History кнопка (EntityHistoryDialog с `filterRelatedEntityId`). Кнопка History на уровне страницы (EntityHistoryDialog для всего конфига). Иконки отображаются через `iconMap`.
 
-**EntityFieldsPage** — конфигурация видимости полей сущностей по ролям. Каждая сущность отображается как Accordion, внутри — чекбокс-матрица (поле x роль).
+**EntityFieldsPage** — стандартный list page паттерн с `FilteredDataGrid`. Колонки: Name, Total Fields, Used Fields. Фильтры: `CompactMultiSelect` для имени сущности, `NumericRangePopover` для числовых колонок. ExportButton. Row click → `EntityFieldsViewDialog` (read-only). Edit button → `EntityFieldsDialog` (авто-сохранение при toggle checkbox). Кнопка History на уровне страницы.
 
-**UpstreamsPage** — управление upstream-маршрутами. Каждый upstream отображается как Card с route chips (список маршрутов). Поддерживает добавление, редактирование и удаление upstreams.
+**UpstreamsPage** — управление upstream-маршрутами. Каждый upstream отображается как Card с route chips. Авто-сохранение при add/edit/delete. Per-upstream History кнопка. Кнопка History на уровне страницы (EntityHistoryDialog для всего конфига).
 
 ### EntityHistoryDialog
 
-Переиспользуемый компонент `EntityHistoryDialog` для просмотра поле-уровневой истории изменений сущности. Интегрирован в:
-- `ClientDetailsPage`, `AccountDetailsPage`, `InstrumentDetailsPage`, `TradeOrderDetailsPage`, `NonTradeOrderDetailsPage`, `TradeTransactionDetailsPage`, `NonTradeTransactionDetailsPage`, `RoleDetailsPage` — кнопка "History"
-- `UsersPage` — иконка History в строке DataGrid
+Переиспользуемый компонент `EntityHistoryDialog` для просмотра поле-уровневой истории изменений сущности.
+
+**Per-row History (иконка в actions column DataGrid)** — открывает EntityHistoryDialog для конкретной записи (gated by `audit.read`):
+- Все бизнес-гриды: `ClientsPage`, `AccountsPage`, `InstrumentsPage`, `TradeOrdersPage`, `NonTradeOrdersPage`, `TradeTransactionsPage`, `NonTradeTransactionsPage`
+- Auth-гриды: `UsersPage`, `RolesPage`
+
+**Page-level History (кнопка в PageContainer actions)** — навигация на `/audit?entityType=...` с предустановленным фильтром (gated by `audit.read`):
+- Все бизнес-гриды и `RolesPage` (cross-SPA через `window.location.href`)
+
+**Detail page History** — кнопка на страницах деталей:
+- `ClientDetailsPage`, `AccountDetailsPage`, `InstrumentDetailsPage`, `TradeOrderDetailsPage`, `NonTradeOrderDetailsPage`, `TradeTransactionDetailsPage`, `NonTradeTransactionDetailsPage`, `RoleDetailsPage`
+
+**Config page History** — `EntityHistoryDialog` в config SPA:
+- `MenuEditorPage`, `UpstreamsPage` — page-level + per-item History
+- `EntityFieldsPage` — page-level History
 
 ### AuditPage (глобальная лента изменений)
 

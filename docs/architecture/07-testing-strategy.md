@@ -6,8 +6,8 @@
 
 | Набор | Тестов | Время | Технологии |
 |-------|--------|-------|------------|
-| Monolith unit | 273 | ~2с | xUnit, FluentAssertions, NSubstitute |
-| Monolith integration | 145 | ~10с | Testcontainers (PostgreSQL), WebApplicationFactory |
+| Core unit | 273 | ~2с | xUnit, FluentAssertions, NSubstitute |
+| Core integration | 145 | ~10с | Testcontainers (PostgreSQL), WebApplicationFactory |
 | Auth service unit | 44 | ~1с | xUnit, FluentAssertions, NSubstitute |
 | Auth service integration | 36 | ~5с | Testcontainers (PostgreSQL), WebApplicationFactory |
 | Frontend (ui-kit) | 51 | ~3с | Vitest, React Testing Library, faker |
@@ -85,7 +85,7 @@ Smoke-тесты страниц, компоненты, диалоги:
 
 ---
 
-## Monolith Unit-тесты (273 тестов)
+## Core Unit-тесты (273 тестов)
 
 **Проект:** `Broker.Backoffice.Tests.Unit` — xUnit + FluentAssertions + NSubstitute
 
@@ -104,7 +104,7 @@ Smoke-тесты страниц, компоненты, диалоги:
 
 ---
 
-## Monolith Integration-тесты (145 тестов)
+## Core Integration-тесты (145 тестов)
 
 **Проект:** `Broker.Backoffice.Tests.Integration` — Testcontainers (реальный PostgreSQL 17 в Docker)
 

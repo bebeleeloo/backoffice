@@ -1,8 +1,13 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Broker.Gateway.Api.Config;
+using Broker.Gateway.Api.Domain;
+using Broker.Gateway.Api.Filters;
+using Broker.Gateway.Api.Persistence;
 using Broker.Gateway.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Gateway.Api.Controllers;
 
@@ -13,8 +18,13 @@ public sealed class ConfigController(
     MenuService menuService,
     EntityConfigService entityConfigService,
     ConfigLoader configLoader,
+    ConfigDiffService diffService,
+    GatewayDbContext db,
+    IAuditContext auditContext,
     ILogger<ConfigController> logger) : ControllerBase
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
+
     [HttpGet("menu")]
     public IActionResult GetMenu()
     {
@@ -35,6 +45,7 @@ public sealed class ConfigController(
 
     [HttpPut("menu")]
     [Authorize(Policy = "settings.manage")]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public IActionResult SaveMenu([FromBody] MenuConfig config)
     {
         if (config == null)
@@ -47,16 +58,14 @@ public sealed class ConfigController(
         if (validationError != null)
             return BadRequest(new { type = "validation", title = "Validation error", detail = validationError });
 
-        try
-        {
-            configLoader.SaveMenu(config);
-            return Ok(new { message = "Menu config saved" });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save menu config");
-            return StatusCode(500, new { type = "error", title = "Internal error", detail = "Failed to save menu configuration." });
-        }
+        auditContext.EntityType = "MenuConfig";
+        auditContext.EntityId = "config";
+        auditContext.BeforeJson = JsonSerializer.Serialize(configLoader.Menu.Menu, JsonOptions);
+
+        configLoader.SaveMenu(config);
+
+        auditContext.AfterJson = JsonSerializer.Serialize(config.Menu, JsonOptions);
+        return Ok(new { message = "Menu config saved" });
     }
 
     [HttpGet("entities")]
@@ -85,6 +94,7 @@ public sealed class ConfigController(
 
     [HttpPut("entities")]
     [Authorize(Policy = "settings.manage")]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public IActionResult SaveEntities([FromBody] EntitiesConfig config)
     {
         if (config == null)
@@ -93,16 +103,14 @@ public sealed class ConfigController(
         if (config.Entities == null)
             return BadRequest(new { type = "validation", title = "Validation error", detail = "Entities list is required." });
 
-        try
-        {
-            configLoader.SaveEntities(config);
-            return Ok(new { message = "Entities config saved" });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save entities config");
-            return StatusCode(500, new { type = "error", title = "Internal error", detail = "Failed to save entities configuration." });
-        }
+        auditContext.EntityType = "EntitiesConfig";
+        auditContext.EntityId = "config";
+        auditContext.BeforeJson = JsonSerializer.Serialize(configLoader.Entities.Entities, JsonOptions);
+
+        configLoader.SaveEntities(config);
+
+        auditContext.AfterJson = JsonSerializer.Serialize(config.Entities, JsonOptions);
+        return Ok(new { message = "Entities config saved" });
     }
 
     [HttpGet("upstreams")]
@@ -114,6 +122,7 @@ public sealed class ConfigController(
 
     [HttpPut("upstreams")]
     [Authorize(Policy = "settings.manage")]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public IActionResult SaveUpstreams([FromBody] UpstreamsConfig config)
     {
         if (config == null)
@@ -143,24 +152,181 @@ public sealed class ConfigController(
             }
         }
 
-        try
-        {
-            configLoader.SaveUpstreams(config);
-            return Ok(new { message = "Upstreams config saved" });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save upstreams config");
-            return StatusCode(500, new { type = "error", title = "Internal error", detail = "Failed to save upstreams configuration." });
-        }
+        auditContext.EntityType = "UpstreamsConfig";
+        auditContext.EntityId = "config";
+        auditContext.BeforeJson = JsonSerializer.Serialize(configLoader.Upstreams.Upstreams, JsonOptions);
+
+        configLoader.SaveUpstreams(config);
+
+        auditContext.AfterJson = JsonSerializer.Serialize(config.Upstreams, JsonOptions);
+        return Ok(new { message = "Upstreams config saved" });
     }
 
     [HttpPost("reload")]
     [Authorize(Policy = "settings.manage")]
+    [ServiceFilter(typeof(AuditActionFilter))]
     public IActionResult Reload()
     {
+        auditContext.EntityType = "Config";
+        auditContext.EntityId = "reload";
+
         configLoader.Load();
         return Ok(new { message = "Config reloaded" });
+    }
+
+    [HttpGet("entity-changes")]
+    [Authorize(Policy = "settings.manage")]
+    public async Task<IActionResult> GetEntityChanges(
+        [FromQuery] string entityType,
+        [FromQuery] string entityId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 10000);
+
+        var query = db.AuditLogs
+            .Where(a => a.EntityType == entityType && a.IsSuccess)
+            .OrderByDescending(a => a.CreatedAt);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var logs = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var items = logs.Select(a => new OperationDto(
+            a.Id.ToString(),
+            a.CreatedAt,
+            a.UserId,
+            a.UserName,
+            a.EntityType switch
+            {
+                "MenuConfig" => "Menu Configuration",
+                "EntitiesConfig" => "Entity Fields",
+                "UpstreamsConfig" => "Upstreams",
+                _ => a.EntityType ?? "Configuration",
+            },
+            diffService.DetermineChangeType(a.BeforeJson, a.AfterJson),
+            diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson)
+        )).ToList();
+
+        return Ok(new
+        {
+            items,
+            totalCount,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+        });
+    }
+
+    [HttpGet("entity-changes/all")]
+    [Authorize(Policy = "settings.manage")]
+    public async Task<IActionResult> GetAllEntityChanges(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null,
+        [FromQuery] string? entityType = null,
+        [FromQuery] string? changeType = null,
+        [FromQuery(Name = "userName")] string[]? userName = null,
+        [FromQuery] string? q = null,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 10000);
+
+        IQueryable<AuditLog> query = db.AuditLogs.Where(a => a.IsSuccess);
+
+        if (DateTime.TryParse(from, out var fromDate))
+            query = query.Where(a => a.CreatedAt >= fromDate);
+
+        if (DateTime.TryParse(to, out var toDate))
+            query = query.Where(a => a.CreatedAt < toDate.AddDays(1));
+
+        if (!string.IsNullOrWhiteSpace(entityType))
+            query = query.Where(a => a.EntityType == entityType);
+
+        if (userName is { Length: > 0 })
+            query = query.Where(a => a.UserName != null && userName.Contains(a.UserName));
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var pattern = $"%{q.Replace("%", "\\%").Replace("_", "\\_")}%";
+            query = query.Where(a =>
+                EF.Functions.ILike(a.UserName!, pattern) ||
+                EF.Functions.ILike(a.EntityType!, pattern));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        query = ApplySort(query, sort);
+
+        var logs = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var items = logs
+            .Select(a =>
+            {
+                var ct2 = diffService.DetermineChangeType(a.BeforeJson, a.AfterJson);
+                return new GlobalOperationDto(
+                    a.Id.ToString(),
+                    a.CreatedAt,
+                    a.UserId,
+                    a.UserName,
+                    a.EntityType ?? "Config",
+                    a.EntityId ?? "config",
+                    a.EntityType switch
+                    {
+                        "MenuConfig" => "Menu Configuration",
+                        "EntitiesConfig" => "Entity Fields",
+                        "UpstreamsConfig" => "Upstreams",
+                        _ => "Configuration",
+                    },
+                    ct2,
+                    diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson));
+            })
+            .Where(op => string.IsNullOrWhiteSpace(changeType) || op.ChangeType == changeType)
+            .ToList();
+
+        // Adjust totalCount if changeType filter applied in-memory
+        if (!string.IsNullOrWhiteSpace(changeType))
+        {
+            totalCount = items.Count;
+        }
+
+        return Ok(new
+        {
+            items,
+            totalCount,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+        });
+    }
+
+    private static IQueryable<AuditLog> ApplySort(IQueryable<AuditLog> query, string? sort)
+    {
+        if (string.IsNullOrWhiteSpace(sort))
+            return query.OrderByDescending(a => a.CreatedAt);
+
+        var parts = sort.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var field = parts[0];
+        var desc = parts.Length > 1 && string.Equals(parts[1], "desc", StringComparison.OrdinalIgnoreCase);
+
+        return field.ToLowerInvariant() switch
+        {
+            "timestamp" => desc ? query.OrderByDescending(a => a.CreatedAt) : query.OrderBy(a => a.CreatedAt),
+            "username" => desc ? query.OrderByDescending(a => a.UserName) : query.OrderBy(a => a.UserName),
+            "entitytype" => desc ? query.OrderByDescending(a => a.EntityType) : query.OrderBy(a => a.EntityType),
+            _ => query.OrderByDescending(a => a.CreatedAt),
+        };
     }
 
     private IReadOnlyList<string> GetUserRoles()

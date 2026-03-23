@@ -5,10 +5,11 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useAccounts, useDeleteAccount } from "../api/hooks";
 import type { AccountListItemDto, AccountStatus, AccountType, MarginType, Tariff } from "../api/types";
-import { CompactMultiSelect, ConfirmDialog, DateRangePopover, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
+import { CompactMultiSelect, ConfirmDialog, DateRangePopover, EntityHistoryDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateAccountDialog, EditAccountDialog } from "./AccountDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -82,10 +83,12 @@ export function AccountsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<AccountListItemDto | null>(null);
+  const [historyEntityId, setHistoryEntityId] = useState<string | null>(null);
 
   const canCreate = useHasPermission("accounts.create");
   const canUpdate = useHasPermission("accounts.update");
   const canDelete = useHasPermission("accounts.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useAccounts(params);
   const deleteAccount = useDeleteAccount();
@@ -188,12 +191,17 @@ export function AccountsPage() {
       renderCell: ({ value }) => new Date(value as string).toLocaleString(),
     },
     {
-      field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
+      field: "actions", headerName: "", width: 150, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/accounts/${row.id}`)} data-testid={`action-view-${row.id}`}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryEntityId(row.id)}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditAccount(row)} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
@@ -314,6 +322,11 @@ export function AccountsPage() {
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
           )}
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/audit?entityType=Account")}>
+              History
+            </Button>
+          )}
           <ExportButton fetchData={fetchAllAccounts} columns={exportColumns} filename="accounts" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
@@ -361,6 +374,7 @@ export function AccountsPage() {
       <CreateAccountDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditAccountDialog open={!!editAccount} onClose={() => setEditAccount(null)} account={editAccount} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteAccount.isPending} />
+      <EntityHistoryDialog entityType="Account" entityId={historyEntityId ?? ""} open={historyEntityId !== null} onClose={() => setHistoryEntityId(null)} />
     </PageContainer>
   );
 }

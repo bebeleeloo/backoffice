@@ -68,7 +68,7 @@ menu:
         path: /users
       - id: roles
         label: Roles
-        icon: Shield
+        icon: AdminPanelSettings
         path: /roles
 
   - id: audit
@@ -85,7 +85,7 @@ menu:
 
   - id: gateway
     label: Gateway
-    icon: AdminPanelSettings
+    icon: Router
     permissions:
       - settings.manage
     children:
@@ -95,9 +95,9 @@ menu:
         path: /config/menu
       - id: entity-fields
         label: Entity Fields
-        icon: TableChart
+        icon: ViewColumn
         path: /config/entities
       - id: upstreams
         label: Upstreams
-        icon: Cloud
+        icon: CloudSync
         path: /config/upstreams

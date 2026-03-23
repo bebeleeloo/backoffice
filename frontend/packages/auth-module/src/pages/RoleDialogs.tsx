@@ -48,25 +48,19 @@ export function CreateRoleDialog({ open, onClose }: CreateProps) {
   );
 }
 
-interface EditProps { open: boolean; onClose: () => void; role: RoleDto | null }
+interface EditProps { open: boolean; onClose: () => void; role: RoleDto }
 
 export function EditRoleDialog({ open, onClose, role }: EditProps) {
-  const [form, setForm] = useState({ name: "", description: "" });
+  const [form, setForm] = useState({ name: role.name, description: role.description ?? "" });
   const [selectedPermIds, setSelectedPermIds] = useState<Set<string>>(new Set());
+  const [permSynced, setPermSynced] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateRole();
   const permissions = usePermissions();
   const setPerms = useSetRolePermissions();
 
-  const [prevRole, setPrevRole] = useState(role);
-  if (role && role !== prevRole) {
-    setPrevRole(role);
-    setForm({ name: role.name, description: role.description ?? "" });
-  }
-
-  const [prevPermData, setPrevPermData] = useState(permissions.data);
-  if (role && permissions.data && (role !== prevRole || permissions.data !== prevPermData)) {
-    setPrevPermData(permissions.data);
+  if (!permSynced && permissions.data) {
+    setPermSynced(true);
     const rolePermIds = permissions.data
       .filter((p) => role.permissions.includes(p.code))
       .map((p) => p.id);
@@ -87,12 +81,12 @@ export function EditRoleDialog({ open, onClose, role }: EditProps) {
     const errs: FieldErrors = { name: validateRequired(form.name) };
     if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
     try {
-      await update.mutateAsync({
+      const updated = await update.mutateAsync({
         id: role.id, ...form,
         description: form.description || undefined,
         rowVersion: role.rowVersion,
       });
-      await setPerms.mutateAsync({ roleId: role.id, permissionIds: [...selectedPermIds] });
+      await setPerms.mutateAsync({ roleId: role.id, permissionIds: [...selectedPermIds], rowVersion: updated.rowVersion });
       onClose();
     } catch { /* handled by MutationCache */ }
   };

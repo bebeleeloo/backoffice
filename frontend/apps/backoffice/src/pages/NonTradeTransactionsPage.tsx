@@ -5,10 +5,11 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useNonTradeTransactions, useDeleteNonTradeTransaction, useAccounts, useInstruments } from "../api/hooks";
 import type { NonTradeTransactionListItemDto, TransactionStatus } from "../api/types";
-import { CompactMultiSelect, ConfirmDialog, DateRangePopover, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, NumericRangePopover, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
+import { CompactMultiSelect, ConfirmDialog, DateRangePopover, EntityHistoryDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, NumericRangePopover, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateNonTradeTransactionDialog, EditNonTradeTransactionDialog } from "./NonTradeTransactionDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -65,10 +66,12 @@ export function NonTradeTransactionsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<{ id: string } | null>(null);
+  const [historyEntityId, setHistoryEntityId] = useState<string | null>(null);
 
   const canCreate = useHasPermission("transactions.create");
   const canUpdate = useHasPermission("transactions.update");
   const canDelete = useHasPermission("transactions.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useNonTradeTransactions(params);
   const { data: accountsData } = useAccounts({ page: 1, pageSize: 200 });
@@ -193,12 +196,17 @@ export function NonTradeTransactionsPage() {
       renderCell: ({ value }) => new Date(value as string).toLocaleString(),
     },
     {
-      field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
+      field: "actions", headerName: "", width: 150, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/non-trade-transactions/${row.id}`)} data-testid={`action-view-${row.id}`}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryEntityId(row.id)}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditTransaction({ id: row.id })} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
@@ -349,6 +357,11 @@ export function NonTradeTransactionsPage() {
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
           )}
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/audit?entityType=Transaction")}>
+              History
+            </Button>
+          )}
           <ExportButton fetchData={fetchAllTransactions} columns={exportColumns} filename="non-trade-transactions" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
@@ -396,6 +409,7 @@ export function NonTradeTransactionsPage() {
       <CreateNonTradeTransactionDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditNonTradeTransactionDialog onClose={() => setEditTransaction(null)} transaction={editTransaction} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteTransaction.isPending} />
+      <EntityHistoryDialog entityType="Transaction" entityId={historyEntityId ?? ""} open={historyEntityId !== null} onClose={() => setHistoryEntityId(null)} />
     </PageContainer>
   );
 }

@@ -1,5 +1,5 @@
 upstreams:
-  monolith:
+  core:
     address: http://broker-api:8080
     routes:
       - /api/v1/clients
@@ -17,6 +17,7 @@ upstreams:
       - /api/v1/currencies
       - /api/v1/exchanges
       - /api/v1/trade-platforms
+      - /api/v1/entity-metadata
 
   auth:
     address: http://broker-auth:8082

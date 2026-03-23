@@ -23,6 +23,9 @@ const ENTITY_TYPE_OPTIONS = [
   { value: "Instrument", label: "Instrument" },
   { value: "User", label: "User" },
   { value: "Role", label: "Role" },
+  { value: "MenuConfig", label: "Menu Configuration" },
+  { value: "EntitiesConfig", label: "Entity Fields" },
+  { value: "UpstreamsConfig", label: "Upstreams" },
 ];
 
 const CHANGE_TYPE_OPTIONS = [
@@ -211,10 +214,31 @@ export function AuditPage() {
 
   const fetchAllAudit = useCallback(async () => {
     const { page: _, pageSize: __, ...filters } = params;
-    const resp = await apiClient.get<PagedResult<GlobalOperationDto>>("/entity-changes/all", {
-      params: { ...filters, page: 1, pageSize: 10000 },
-    });
-    return resp.data.items;
+    const exportParams = { ...filters, page: 1, pageSize: 10000 };
+    const authTypes = new Set(["User", "Role"]);
+    const gatewayTypes = new Set(["MenuConfig", "EntitiesConfig", "UpstreamsConfig", "Config"]);
+
+    if (params.entityType && authTypes.has(params.entityType)) {
+      const resp = await apiClient.get<PagedResult<GlobalOperationDto>>("/auth/entity-changes/all", { params: exportParams });
+      return resp.data.items;
+    }
+    if (params.entityType && gatewayTypes.has(params.entityType)) {
+      const resp = await apiClient.get<PagedResult<GlobalOperationDto>>("/config/entity-changes/all", { params: exportParams });
+      return resp.data.items;
+    }
+    if (params.entityType) {
+      const resp = await apiClient.get<PagedResult<GlobalOperationDto>>("/entity-changes/all", { params: exportParams });
+      return resp.data.items;
+    }
+
+    // No entityType filter — fetch from all three and merge
+    const [core, auth, gateway] = await Promise.all([
+      apiClient.get<PagedResult<GlobalOperationDto>>("/entity-changes/all", { params: exportParams }).then((r) => r.data),
+      apiClient.get<PagedResult<GlobalOperationDto>>("/auth/entity-changes/all", { params: exportParams }).then((r) => r.data),
+      apiClient.get<PagedResult<GlobalOperationDto>>("/config/entity-changes/all", { params: exportParams }).then((r) => r.data),
+    ]);
+    return [...core.items, ...auth.items, ...gateway.items]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [params]);
 
   return (

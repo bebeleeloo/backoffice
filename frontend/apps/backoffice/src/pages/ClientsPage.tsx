@@ -12,6 +12,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useClients, useDeleteClient, useCountries } from "../api/hooks";
 import type {
@@ -21,7 +22,7 @@ import type {
   KycStatus,
   RiskLevel,
 } from "../api/types";
-import { ConfirmDialog, ExportButton, GlobalSearchBar, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
+import { ConfirmDialog, EntityHistoryDialog, ExportButton, GlobalSearchBar, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateClientDialog, EditClientDialog } from "./ClientDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -116,10 +117,12 @@ export function ClientsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editClientId, setEditClientId] = useState<string | null>(null);
+  const [historyEntityId, setHistoryEntityId] = useState<string | null>(null);
 
   const canCreate = useHasPermission("clients.create");
   const canUpdate = useHasPermission("clients.update");
   const canDelete = useHasPermission("clients.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useClients(params);
   const deleteClient = useDeleteClient();
@@ -310,13 +313,18 @@ export function ClientsPage() {
     { field: "residenceCountryName", headerName: "Res. Country Name", width: 170 },
     { field: "citizenshipCountryName", headerName: "Citizenship Name", width: 170 },
     {
-      field: "actions", headerName: "", width: 120,
+      field: "actions", headerName: "", width: 150,
       sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/clients/${row.id}`)} data-testid={`action-view-${row.id}`}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryEntityId(row.id)}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditClientId(row.id)} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
@@ -382,6 +390,11 @@ export function ClientsPage() {
               </IconButton>
             </Tooltip>
           )}
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/audit?entityType=Client")}>
+              History
+            </Button>
+          )}
           <ExportButton fetchData={fetchAllClients} columns={exportColumns} filename="clients" />
           {canCreate && (
             <Button
@@ -429,6 +442,7 @@ export function ClientsPage() {
         clientId={editClientId}
       />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteClient.isPending} />
+      <EntityHistoryDialog entityType="Client" entityId={historyEntityId ?? ""} open={historyEntityId !== null} onClose={() => setHistoryEntityId(null)} />
     </PageContainer>
   );
 }

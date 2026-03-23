@@ -73,6 +73,10 @@ export function getEntityTypeLabel(type: string | null): string {
     AccountHolder: "Account Holder",
     UserRole: "User Role",
     RolePermission: "Permission",
+    MenuConfig: "Menu Configuration",
+    EntitiesConfig: "Entity Fields",
+    UpstreamsConfig: "Upstreams",
+    Config: "Configuration Reload",
   };
   return labels[type] ?? type;
 }

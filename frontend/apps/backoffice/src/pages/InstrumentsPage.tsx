@@ -5,12 +5,13 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useInstruments, useDeleteInstrument } from "../api/hooks";
 import type {
   InstrumentListItemDto, InstrumentType, AssetClass, InstrumentStatus, Sector,
 } from "../api/types";
-import { CompactMultiSelect, ConfirmDialog, DateRangePopover, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
+import { CompactMultiSelect, ConfirmDialog, DateRangePopover, EntityHistoryDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateInstrumentDialog, EditInstrumentDialog } from "./InstrumentDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -98,10 +99,12 @@ export function InstrumentsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editInstrument, setEditInstrument] = useState<InstrumentListItemDto | null>(null);
+  const [historyEntityId, setHistoryEntityId] = useState<string | null>(null);
 
   const canCreate = useHasPermission("instruments.create");
   const canUpdate = useHasPermission("instruments.update");
   const canDelete = useHasPermission("instruments.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useInstruments(params);
   const deleteInstrument = useDeleteInstrument();
@@ -214,12 +217,17 @@ export function InstrumentsPage() {
       renderCell: ({ value }) => new Date(value as string).toLocaleString(),
     },
     {
-      field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
+      field: "actions", headerName: "", width: 150, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/instruments/${row.id}`)}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryEntityId(row.id)}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditInstrument(row)}>
               <EditIcon fontSize="small" />
@@ -344,6 +352,11 @@ export function InstrumentsPage() {
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
           )}
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/audit?entityType=Instrument")}>
+              History
+            </Button>
+          )}
           <ExportButton fetchData={fetchAllInstruments} columns={exportColumns} filename="instruments" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
@@ -394,6 +407,7 @@ export function InstrumentsPage() {
       <CreateInstrumentDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditInstrumentDialog open={!!editInstrument} onClose={() => setEditInstrument(null)} instrument={editInstrument} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteInstrument.isPending} />
+      <EntityHistoryDialog entityType="Instrument" entityId={historyEntityId ?? ""} open={historyEntityId !== null} onClose={() => setHistoryEntityId(null)} />
     </PageContainer>
   );
 }

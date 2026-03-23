@@ -1,7 +1,10 @@
 using System.Text;
+using Broker.Gateway.Api.Filters;
 using Broker.Gateway.Api.Middleware;
+using Broker.Gateway.Api.Persistence;
 using Broker.Gateway.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Yarp.ReverseProxy.Configuration;
@@ -25,6 +28,19 @@ try
     builder.Services.AddSingleton<ConfigLoader>();
     builder.Services.AddSingleton<MenuService>();
     builder.Services.AddSingleton<EntityConfigService>();
+    builder.Services.AddSingleton<ConfigDiffService>();
+
+    // PostgreSQL (gateway schema)
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured");
+
+    builder.Services.AddDbContext<GatewayDbContext>(options =>
+        options.UseNpgsql(connectionString));
+
+    // Audit services
+    builder.Services.AddScoped<IAuditContext, AuditContext>();
+    builder.Services.AddScoped<ICorrelationIdAccessor, CorrelationIdAccessor>();
+    builder.Services.AddScoped<AuditActionFilter>();
 
     // CORS (same pattern as backend/auth-service)
     var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
@@ -83,7 +99,9 @@ try
     });
 
     // Health checks
-    builder.Services.AddHealthChecks();
+    builder.Services.AddHealthChecks()
+        .AddCheck<Broker.Gateway.Api.HealthChecks.PostgresHealthCheck>(
+            "postgres", tags: new[] { "ready" });
 
     // Response compression
     builder.Services.AddResponseCompression(options =>
@@ -92,6 +110,13 @@ try
     });
 
     var app = builder.Build();
+
+    // Apply migrations
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<GatewayDbContext>();
+        db.Database.Migrate();
+    }
 
     // Wire up YARP config reload when upstreams change
     var configLoader = app.Services.GetRequiredService<ConfigLoader>();
@@ -110,6 +135,7 @@ try
     }
 
     app.UseSerilogRequestLogging();
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.UseMiddleware<CorrelationIdMiddleware>();
 
     app.UseCors();

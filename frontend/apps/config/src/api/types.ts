@@ -25,6 +25,11 @@ export interface EntitiesConfig {
   entities: EntityConfig[];
 }
 
+export interface EntityMetadataDto {
+  name: string;
+  fields: string[];
+}
+
 export interface UpstreamEntry {
   address: string;
   routes: string[];
@@ -35,3 +40,11 @@ export type UpstreamsMap = Record<string, UpstreamEntry>;
 export interface UpstreamsConfig {
   upstreams: UpstreamsMap;
 }
+
+export interface PermissionDto {
+  id: string;
+  code: string;
+  name: string;
+  group: string;
+}
+

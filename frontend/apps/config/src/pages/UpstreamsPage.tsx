@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Box, Button, Card, CardContent, Typography, IconButton,
   TextField, Chip, CircularProgress,
@@ -7,11 +7,11 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import SaveIcon from "@mui/icons-material/Save";
 import CloudIcon from "@mui/icons-material/Cloud";
-import { ConfirmDialog, PageContainer, useConfirm } from "@broker/ui-kit";
+import HistoryIcon from "@mui/icons-material/History";
+import { ConfirmDialog, PageContainer, useConfirm, EntityHistoryDialog, useHasPermission } from "@broker/ui-kit";
 import { useUpstreams, useSaveUpstreams } from "../api/hooks";
-import type { UpstreamEntry, UpstreamsMap } from "../api/types";
+import type { UpstreamEntry } from "../api/types";
 
 interface UpstreamDialogProps {
   open: boolean;
@@ -79,18 +79,13 @@ function UpstreamDialog({ open, name: initialName, entry, onClose, onSave }: Ups
 export function UpstreamsPage() {
   const { data: rawUpstreams, isLoading } = useUpstreams();
   const saveUpstreams = useSaveUpstreams();
-  const [upstreams, setUpstreams] = useState<UpstreamsMap | null>(null);
   const [editDialog, setEditDialog] = useState<{ open: boolean; name: string; entry: UpstreamEntry | null }>({ open: false, name: "", entry: null });
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyUpstream, setHistoryUpstream] = useState<string | null>(null);
+  const canAudit = useHasPermission("audit.read");
   const { confirm, confirmDialogProps } = useConfirm();
 
-  const currentUpstreams = useMemo(() => upstreams ?? rawUpstreams ?? {}, [upstreams, rawUpstreams]);
-
-  const handleSave = useCallback(async () => {
-    try {
-      await saveUpstreams.mutateAsync({ upstreams: currentUpstreams });
-      setUpstreams(null);
-    } catch { /* error toast via MutationCache */ }
-  }, [currentUpstreams, saveUpstreams]);
+  const currentUpstreams = useMemo(() => rawUpstreams ?? {}, [rawUpstreams]);
 
   const handleAddUpstream = () => {
     setEditDialog({ open: true, name: "", entry: null });
@@ -104,21 +99,19 @@ export function UpstreamsPage() {
     const confirmed = await confirm({ title: "Delete Upstream", message: `Are you sure you want to delete upstream "${name}"?` });
     if (!confirmed) return;
 
-    setUpstreams((prev) => {
-      const map = { ...(prev ?? rawUpstreams ?? {}) };
-      delete map[name];
-      return map;
-    });
+    const map = { ...currentUpstreams };
+    delete map[name];
+    try {
+      await saveUpstreams.mutateAsync({ upstreams: map });
+    } catch { /* error toast via MutationCache */ }
   };
 
-  const handleDialogSave = (name: string, entry: UpstreamEntry) => {
-    setUpstreams((prev) => ({
-      ...(prev ?? rawUpstreams ?? {}),
-      [name]: entry,
-    }));
+  const handleDialogSave = async (name: string, entry: UpstreamEntry) => {
+    const map = { ...currentUpstreams, [name]: entry };
+    try {
+      await saveUpstreams.mutateAsync({ upstreams: map });
+    } catch { /* error toast via MutationCache */ }
   };
-
-  const hasChanges = upstreams !== null;
 
   if (isLoading) {
     return (
@@ -129,20 +122,21 @@ export function UpstreamsPage() {
   }
 
   return (
-    <PageContainer title="Upstreams">
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1.5 }}>
-        <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddUpstream}>
-          Add Upstream
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={saveUpstreams.isPending ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-          onClick={handleSave}
-          disabled={!hasChanges || saveUpstreams.isPending}
-        >
-          Save
-        </Button>
-      </Box>
+    <PageContainer
+      title="Upstreams"
+      actions={
+        <>
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => setHistoryOpen(true)}>
+              History
+            </Button>
+          )}
+          <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddUpstream} disabled={saveUpstreams.isPending}>
+            Add Upstream
+          </Button>
+        </>
+      }
+    >
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 3 }}>
         {Object.entries(currentUpstreams).map(([name, entry]) => (
           <Card key={name}>
@@ -153,10 +147,15 @@ export function UpstreamsPage() {
                   <Typography variant="h6" fontWeight={600}>{name}</Typography>
                 </Box>
                 <Box>
-                  <IconButton size="small" onClick={() => handleEditUpstream(name)}>
+                  {canAudit && (
+                    <IconButton size="small" onClick={() => setHistoryUpstream(name)} disabled={saveUpstreams.isPending}>
+                      <HistoryIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                  <IconButton size="small" onClick={() => handleEditUpstream(name)} disabled={saveUpstreams.isPending}>
                     <EditIcon fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" color="error" onClick={() => handleDeleteUpstream(name)}>
+                  <IconButton size="small" color="error" onClick={() => handleDeleteUpstream(name)} disabled={saveUpstreams.isPending}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>
@@ -184,6 +183,8 @@ export function UpstreamsPage() {
         />
       )}
       <ConfirmDialog {...confirmDialogProps} />
+      <EntityHistoryDialog entityType="UpstreamsConfig" entityId="config" open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <EntityHistoryDialog entityType="UpstreamsConfig" entityId="config" open={historyUpstream !== null} onClose={() => setHistoryUpstream(null)} filterRelatedEntityId={historyUpstream ?? undefined} />
     </PageContainer>
   );
 }

@@ -55,9 +55,12 @@ public sealed class ExceptionHandlingMiddleware(
         catch (DbUpdateException ex)
         {
             logger.LogWarning(ex, "Database update failed");
-            var detail = ex.InnerException?.Message?.Contains("foreign key constraint", StringComparison.OrdinalIgnoreCase) == true
+            var inner = ex.InnerException?.Message;
+            var detail = inner?.Contains("foreign key constraint", StringComparison.OrdinalIgnoreCase) == true
                 ? "Cannot delete this record because it is referenced by other records."
-                : "A database error occurred. Please try again.";
+                : inner?.Contains("unique constraint", StringComparison.OrdinalIgnoreCase) == true
+                    ? "A record with the same value already exists."
+                    : "A database error occurred. Please try again.";
             await WriteProblemDetails(context, StatusCodes.Status409Conflict,
                 "Conflict", detail);
         }

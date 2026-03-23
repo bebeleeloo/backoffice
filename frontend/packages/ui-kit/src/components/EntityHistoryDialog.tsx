@@ -15,6 +15,7 @@ interface Props {
   entityId: string;
   open: boolean;
   onClose: () => void;
+  filterRelatedEntityId?: string;
 }
 
 function OperationItem({ op, entityType }: { op: OperationDto; entityType: string }) {
@@ -59,7 +60,7 @@ function OperationItem({ op, entityType }: { op: OperationDto; entityType: strin
   );
 }
 
-export function EntityHistoryDialog({ entityType, entityId, open, onClose }: Props) {
+export function EntityHistoryDialog({ entityType, entityId, open, onClose, filterRelatedEntityId }: Props) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
@@ -67,6 +68,15 @@ export function EntityHistoryDialog({ entityType, entityId, open, onClose }: Pro
     { entityType, entityId, page, pageSize },
     open && !!entityId,
   );
+
+  const filteredItems = data?.items
+    .map((op) => {
+      if (!filterRelatedEntityId) return op;
+      const filtered = op.changes.filter((c) => c.relatedEntityId === filterRelatedEntityId);
+      if (filtered.length === 0) return null;
+      return { ...op, changes: filtered };
+    })
+    .filter((op): op is OperationDto => op !== null);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -76,11 +86,11 @@ export function EntityHistoryDialog({ entityType, entityId, open, onClose }: Pro
           <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
             <CircularProgress />
           </Box>
-        ) : !data || data.items.length === 0 ? (
+        ) : !filteredItems || filteredItems.length === 0 ? (
           <Typography color="text.secondary" sx={{ mt: 2 }}>No changes recorded.</Typography>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            {data.items.map((op) => (
+            {filteredItems.map((op) => (
               <OperationItem key={op.operationId} op={op} entityType={entityType} />
             ))}
           </Box>

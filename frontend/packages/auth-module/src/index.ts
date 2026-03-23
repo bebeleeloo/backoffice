@@ -42,9 +42,9 @@ export {
 
 // Pages
 export { LoginPage } from "./pages/LoginPage";
-export { UsersTab } from "./pages/UsersPage";
+export { UsersPage } from "./pages/UsersPage";
 export { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from "./pages/UserDialogs";
-export { RolesTab } from "./pages/RolesPage";
+export { RolesPage } from "./pages/RolesPage";
 export { RoleDetailsPage } from "./pages/RoleDetailsPage";
 export { CreateRoleDialog, EditRoleDialog } from "./pages/RoleDialogs";
 export { ProfileTab } from "./pages/ProfileTab";

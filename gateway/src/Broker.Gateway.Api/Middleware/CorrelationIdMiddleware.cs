@@ -1,31 +1,26 @@
+using Broker.Gateway.Api.Services;
+
 namespace Broker.Gateway.Api.Middleware;
 
-public sealed class CorrelationIdMiddleware
+public sealed class CorrelationIdMiddleware(RequestDelegate next)
 {
-    private const string HeaderName = "X-Correlation-Id";
-    private readonly RequestDelegate _next;
+    private const string Header = "X-Correlation-Id";
 
-    public CorrelationIdMiddleware(RequestDelegate next)
+    public async Task InvokeAsync(HttpContext context, ICorrelationIdAccessor accessor)
     {
-        _next = next;
-    }
+        var correlationId = context.Request.Headers[Header].FirstOrDefault()
+                            ?? Guid.NewGuid().ToString("N");
 
-    public async Task InvokeAsync(HttpContext context)
-    {
-        if (!context.Request.Headers.ContainsKey(HeaderName))
-        {
-            context.Request.Headers[HeaderName] = Guid.NewGuid().ToString();
-        }
-
+        accessor.CorrelationId = correlationId;
         context.Response.OnStarting(() =>
         {
-            if (context.Request.Headers.TryGetValue(HeaderName, out var correlationId))
-            {
-                context.Response.Headers[HeaderName] = correlationId.ToString();
-            }
+            context.Response.Headers[Header] = correlationId;
             return Task.CompletedTask;
         });
 
-        await _next(context);
+        using (Serilog.Context.LogContext.PushProperty("CorrelationId", correlationId))
+        {
+            await next(context);
+        }
     }
 }

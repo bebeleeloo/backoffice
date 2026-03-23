@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check Permissions.cs sync between monolith and auth-service
+      - name: Check Permissions.cs sync between core and auth-service
         run: |
           diff \
             <(sed '/^namespace /d' backend/src/Broker.Backoffice.Domain/Identity/Permissions.cs) \

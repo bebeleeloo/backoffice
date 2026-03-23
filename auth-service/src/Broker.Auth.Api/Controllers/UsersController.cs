@@ -105,7 +105,7 @@ public sealed class UsersController(ISender mediator) : ControllerBase
     }
 
     [HttpGet("stats")]
-    [AllowAnonymous] // Internal service-to-service call from monolith (no external port exposure)
+    [AllowAnonymous] // Internal service-to-service call from core (no external port exposure)
     public async Task<ActionResult<UserStatsDto>> Stats(CancellationToken ct)
     {
         return Ok(await mediator.Send(new GetUserStatsQuery(), ct));

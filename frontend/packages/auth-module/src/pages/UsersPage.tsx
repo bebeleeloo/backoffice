@@ -9,7 +9,7 @@ import LockResetIcon from "@mui/icons-material/LockReset";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useUsers, useDeleteUser } from "../api/hooks";
 import type { UserDto } from "../api/types";
-import { Box, Tooltip } from "@mui/material";
+import { Tooltip } from "@mui/material";
 import { ConfirmDialog, EntityHistoryDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineBooleanFilter, InlineTextFilter, PageContainer, UserAvatar, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from "./UserDialogs";
@@ -35,7 +35,7 @@ function readParams(sp: URLSearchParams) {
   };
 }
 
-export function UsersTab() {
+export function UsersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = readParams(searchParams);
 
@@ -220,14 +220,11 @@ export function UsersTab() {
   }, [params]);
 
   return (
-    <PageContainer title="Users" variant="list">
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-        <GlobalSearchBar
-          value={params.q ?? ""}
-          onChange={(v) => setFilterParam("q", v || undefined)}
-          placeholder="Search users..."
-        />
-        <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
+    <PageContainer
+      variant="list"
+      title="Users"
+      actions={
+        <>
           {hasActiveFilters && (
             <Tooltip title="Clear all filters">
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
@@ -239,8 +236,16 @@ export function UsersTab() {
               Create User
             </Button>
           )}
-        </Box>
-      </Box>
+        </>
+      }
+      subheaderLeft={
+        <GlobalSearchBar
+          value={params.q ?? ""}
+          onChange={(v) => setFilterParam("q", v || undefined)}
+          placeholder="Search users..."
+        />
+      }
+    >
       <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <FilteredDataGrid
           rows={data?.items ?? []}
@@ -260,8 +265,12 @@ export function UsersTab() {
         />
       </Paper>
       <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <EditUserDialog open={!!editUser} onClose={() => setEditUser(null)} user={editUser} />
-      <ResetPasswordDialog open={!!resetUser} onClose={() => setResetUser(null)} user={resetUser} />
+      {editUser && (
+        <EditUserDialog open onClose={() => setEditUser(null)} user={editUser} />
+      )}
+      {resetUser && (
+        <ResetPasswordDialog open onClose={() => setResetUser(null)} user={resetUser} />
+      )}
       <EntityHistoryDialog entityType="User" entityId={historyUserId ?? ""} open={!!historyUserId} onClose={() => setHistoryUserId(null)} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteUser.isPending} />
     </PageContainer>

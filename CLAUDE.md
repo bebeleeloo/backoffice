@@ -7,7 +7,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 **Repository structure:**
 ```
 /
-├── backend/          # .NET 8 Monolith API (Clean Architecture + CQRS) — business logic
+├── backend/          # .NET 8 Core API (Clean Architecture + CQRS) — business logic
 ├── auth-service/     # .NET 8 Auth Service (separate microservice) — users, roles, permissions, auth
 ├── gateway/          # .NET 8 API Gateway — config, REST proxy, field-level access control
 ├── frontend/         # pnpm monorepo + Turborepo
@@ -22,7 +22,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ├── scripts/          # Test, deployment, and data migration scripts
 ├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
 ├── docker-compose.yml         # Services: postgres, auth, api, gateway, web, n8n-db, n8n
-├── Dockerfile.api    # Multi-stage .NET build (monolith, port 8080)
+├── Dockerfile.api    # Multi-stage .NET build (core, port 8080)
 ├── Dockerfile.auth   # Multi-stage .NET build (auth service, port 8082)
 ├── Dockerfile.gateway # Multi-stage .NET build (gateway, port 8090)
 ├── Dockerfile.web    # Multi-stage pnpm + nginx build (3 SPAs, non-root, port 8080)
@@ -73,7 +73,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 ```
 ┌─────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  3 React SPAs    │────▶│  nginx:8080  │────▶│ Gateway:8090 │────▶│  API:8080    │──▶ PostgreSQL
-│  backoffice     │     │  SPA routing  │     │  Config, Proxy│     │  Monolith    │   :5432 (public.*)
+│  backoffice     │     │  SPA routing  │     │  Config, Proxy│     │  Core    │   :5432 (public.*)
 │  auth           │     │  /api/ proxy │     │  .NET 8      │     │  .NET 8      │
 │  config         │     └──────────────┘     └──────────────┘     └──────────────┘
 └─────────────────┘          │                      │
@@ -83,12 +83,12 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
                              │                                     └──────────────┘
 ```
 
-**Three services, one database, separate schemas:** Auth service uses `auth.*` schema, monolith uses `public.*` (default). API Gateway reads YAML configs and proxies REST requests.
+**Three services, one database, separate schemas:** Auth service uses `auth.*` schema, core uses `public.*` (default). API Gateway reads YAML configs and proxies REST requests.
 
 **nginx routes 3 SPAs + API:**
 - `/login`, `/users*`, `/roles*` → Auth SPA (`auth/index.html`)
 - `/config*` → Config SPA (`config/index.html`)
-- `/api/` → Gateway (:8090) → routes to monolith or auth-service
+- `/api/` → Gateway (:8090) → routes to core or auth-service
 - Everything else → Backoffice SPA (`backoffice/index.html`)
 
 Backend follows Clean Architecture with 4 layers:
@@ -220,11 +220,11 @@ API Gateway serves config (menu, entities, upstreams), proxies REST via YARP to 
 
 Auth service owns: users, roles, permissions, authentication (login, refresh, change password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS).
 
-Monolith validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
+Core validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
 
 **Demo data seeding** (controlled by `SEED_DEMO_DATA=true` env var or `ASPNETCORE_ENVIRONMENT=Development`):
 - Auth service seeds: 10 demo users (3 Managers, 3 Viewers, 4 Operators), 3 demo roles, portrait photos from randomuser.me
-- Monolith seeds: 100 clients, 150 accounts, 891 instruments, 2001 orders, transactions
+- Core seeds: 100 clients, 150 accounts, 891 instruments, 2001 orders, transactions
 
 ### Key Backend Conventions
 
@@ -376,6 +376,8 @@ frontend/
 - `FilteredDataGrid` shows `CustomNoRowsOverlay` (SearchOffIcon + "No results found") when grid is empty
 - All list pages have a "Clear all filters" icon button (FilterListOffIcon) when any filter is active
 - Clear filters resets URL search params: `setSearchParams(new URLSearchParams())`
+- **Page-level History button** (outlined, HistoryIcon) in PageContainer actions — navigates to `/audit?entityType=...` (gated by `audit.read`). Present on: Clients, Accounts, Instruments, TradeOrders, NonTradeOrders, TradeTransactions, NonTradeTransactions, Roles
+- **Per-row History button** (HistoryIcon) in actions column — opens `EntityHistoryDialog` for specific entity (gated by `audit.read`). Present on all list pages including Users
 
 **API client:**
 - Base URL: `VITE_API_URL` env var, defaults to `/api/v1`
@@ -673,7 +675,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 
 ## 12. Testing Strategy
 
-### Monolith Unit Tests (273 tests, ~2s)
+### Core Unit Tests (273 tests, ~2s)
 
 - xUnit with `[Fact]` and `[Theory]`/`[InlineData]`
 - FluentValidation.TestHelper for validators
@@ -687,7 +689,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Location: `auth-service/tests/Broker.Auth.Tests.Unit/`
 - Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Roles (Create/Update, FullName MaxLength)
 
-### Monolith Integration Tests (145 tests, ~10s)
+### Core Integration Tests (145 tests, ~10s)
 - Testcontainers (real PostgreSQL 17 in Docker)
 - `CustomWebApplicationFactory` extends `WebApplicationFactory<Program>`
 - `IntegrationTestBase` uses `TestJwtTokenHelper` to generate JWT tokens directly (no auth service dependency)
@@ -699,7 +701,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Coverage: Health, Swagger, Clients (CRUD + Update + GetAccounts + SetClientAccounts + InvalidAccountId + Filters + DateFilter + SortByDisplayName + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + SetAccountHolders + InvalidClientId + Filters + SortByClearerName + DuplicateNumber + RouteBodyIdMismatch), Instruments (CRUD + Update + Filters + DuplicateSymbol + RouteBodyIdMismatch), TradeOrders (CRUD + Update + Filters + SortByInstrumentSymbol + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + Filters + InvalidCurrencyId + InvalidAccountId + RouteBodyIdMismatch), TradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (CRUD + DuplicateName), Dashboard (stats), Audit (list + getById + Filters), EntityChanges (list + listAll + Filters), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion)
 
 ### Auth Service Integration Tests (36 tests, ~5s)
-- Same Testcontainers pattern as monolith
+- Same Testcontainers pattern as core
 - Location: `auth-service/tests/Broker.Auth.Tests.Integration/`
 - Coverage: Health, Auth (login, refresh, me, change-password, update-profile, photo CRUD + unauth + cache-control), Users (CRUD + GetById + Update + Delete + duplicate-username/email + photo + route mismatch), Roles (CRUD + GetById + Update + Delete + duplicate-name + set-permissions + system-role-protection), Permissions (list)
 
@@ -709,7 +711,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Aggregate CRUD (Clients, Accounts, Instruments, Orders, Transactions, Users, Roles) Create returns 201 Created
 - Currency `Code` column is 3 chars max (ISO 4217); test codes must be ≤ 3 chars
 - Prerequisites helper methods (e.g., `CreatePrerequisitesAsync()`) create Account + Instrument/Currency for Order/Transaction tests
-- Monolith integration tests use `TestJwtTokenHelper.GenerateAdminToken()` (all 31 permissions) or `AuthenticateWithPermissions()` for limited permission tests
+- Core integration tests use `TestJwtTokenHelper.GenerateAdminToken()` (all 31 permissions) or `AuthenticateWithPermissions()` for limited permission tests
 
 ### Frontend Tests (109 tests, ~6s)
 - Vitest with jsdom environment
@@ -819,6 +821,9 @@ dotnet run
 - Dialog `handleSubmit`: wrap `mutateAsync` in `try/catch` (error toast via MutationCache)
 - Detail pages: use `PageContainer` with `breadcrumbs` prop, no Back button, `<Card>` without `variant="outlined"` (uses theme shadow)
 - Dialog forms: add inline validation with `FieldErrors` state + `validateRequired`/`validateEmail` from `utils/validateFields.ts`
+- Add **page-level History button** in PageContainer actions: `{canAudit && <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/audit?entityType=EntityName")}>History</Button>}`
+- Add **per-row History button** in actions column: `{canAudit && <IconButton size="small" onClick={() => setHistoryEntityId(row.id)}><HistoryIcon fontSize="small" /></IconButton>}` + `<EntityHistoryDialog entityType="..." entityId={historyEntityId ?? ""} open={historyEntityId !== null} onClose={() => setHistoryEntityId(null)} />`
+- Actions column width: 150 (4 buttons: view, history, edit, delete)
 
 ### When modifying existing code:
 - Preserve file organization pattern (command + validator + handler in one file)

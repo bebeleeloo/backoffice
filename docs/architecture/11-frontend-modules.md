@@ -207,7 +207,7 @@ frontend/
 
 | Категория | Экспорты |
 |-----------|----------|
-| Компоненты | `PageContainer`, `FilteredDataGrid`, `ConfirmDialog`, `UserAvatar`, `Breadcrumbs`, `DetailField`, `ExportButton`, `GlobalSearchBar`, `ErrorBoundary`, `RouteLoadingFallback`, `EntityHistoryDialog`, `AuditDetailDialog` |
+| Компоненты | `PageContainer`, `FilteredDataGrid`, `ConfirmDialog`, `UserAvatar`, `Breadcrumbs`, `DetailField`, `ExportButton`, `GlobalSearchBar`, `ErrorBoundary`, `RouteLoadingFallback`, `EntityHistoryDialog`, `AuditDetailDialog`, `CompactMultiSelect`, `NumericRangePopover`, `InlineTextFilter`, `DateRangePopover`, `InlineBooleanFilter`, `CompactCountrySelect` |
 | Layout | `MainLayout`, `SidebarItem`, `NavigationProvider`, `useAppNavigation` |
 | Тема | `createAppTheme`, `createAppListTheme`, `AppThemeProvider`, `useThemeMode`, `useListTheme`, `SIDEBAR_COLORS`, `STAT_GRADIENTS` |
 | Auth | `AuthProvider`, `useAuth`, `useHasPermission`, `RequireAuth` |

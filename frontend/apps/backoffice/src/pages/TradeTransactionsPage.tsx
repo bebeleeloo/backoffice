@@ -5,6 +5,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useTradeTransactions, useDeleteTradeTransaction, useAccounts, useInstruments } from "../api/hooks";
 import type { TradeTransactionListItemDto, TransactionStatus, TradeSide } from "../api/types";
@@ -87,6 +88,7 @@ export function TradeTransactionsPage() {
   const canCreate = useHasPermission("transactions.create");
   const canUpdate = useHasPermission("transactions.update");
   const canDelete = useHasPermission("transactions.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useTradeTransactions(params);
   const { data: accountsData } = useAccounts({ page: 1, pageSize: 200 });
@@ -222,12 +224,17 @@ export function TradeTransactionsPage() {
       renderCell: ({ value }) => new Date(value as string).toLocaleString(),
     },
     {
-      field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
+      field: "actions", headerName: "", width: 150, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/trade-transactions/${row.id}`)} data-testid={`action-view-${row.id}`}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryEntity({ id: row.id })}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditTransaction({ id: row.id })} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
@@ -388,6 +395,11 @@ export function TradeTransactionsPage() {
             <Tooltip title="Clear all filters">
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
+          )}
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/audit?entityType=Transaction")}>
+              History
+            </Button>
           )}
           <ExportButton fetchData={fetchAllTradeTransactions} columns={exportColumns} filename="trade-transactions" />
           {canCreate && (

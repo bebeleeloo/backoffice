@@ -21,20 +21,30 @@ import type {
 } from "./types";
 
 // Audit
-export const useAuditLogs = (params: AuditParams) =>
-  useQuery({
+const AUTH_ENTITY_TYPES = new Set(["User", "Role"]);
+
+export const useAuditLogs = (params: AuditParams) => {
+  const basePath = params.entityType && AUTH_ENTITY_TYPES.has(params.entityType)
+    ? "/auth/audit"
+    : "/audit";
+  return useQuery({
     queryKey: ["audit", params],
     queryFn: () =>
-      apiClient.get<PagedResult<AuditLogDto>>("/audit", { params }).then((r) => r.data),
+      apiClient.get<PagedResult<AuditLogDto>>(basePath, { params }).then((r) => r.data),
     placeholderData: keepPreviousData,
   });
+};
 
-export const useAuditLog = (id: string) =>
-  useQuery({
+export const useAuditLog = (id: string, entityType?: string) => {
+  const basePath = entityType && AUTH_ENTITY_TYPES.has(entityType)
+    ? "/auth/audit"
+    : "/audit";
+  return useQuery({
     queryKey: ["audit", id],
-    queryFn: () => apiClient.get<AuditLogDto>(`/audit/${id}`).then((r) => r.data),
+    queryFn: () => apiClient.get<AuditLogDto>(`${basePath}/${id}`).then((r) => r.data),
     enabled: !!id,
   });
+};
 
 // Countries
 export const useCountries = () =>

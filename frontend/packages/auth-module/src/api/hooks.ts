@@ -128,8 +128,8 @@ export const useDeleteRole = () => {
 export const useSetRolePermissions = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ roleId, permissionIds }: { roleId: string; permissionIds: string[] }) =>
-      apiClient.put<RoleDto>(`/roles/${roleId}/permissions`, permissionIds).then((r) => r.data),
+    mutationFn: ({ roleId, permissionIds, rowVersion }: { roleId: string; permissionIds: string[]; rowVersion: number }) =>
+      apiClient.put<RoleDto>(`/roles/${roleId}/permissions`, { permissionIds, rowVersion }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["roles"] }),
     meta: { successMessage: "Permissions updated" },
   });

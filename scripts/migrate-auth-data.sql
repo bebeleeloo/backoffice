@@ -1,6 +1,6 @@
 -- One-time migration script: copy identity data from dbo to auth schema
 -- Run AFTER auth service has created its tables via EF migrations
--- Run BEFORE removing identity tables from the monolith
+-- Run BEFORE removing identity tables from the core
 
 -- Important: This preserves all GUIDs so existing JWT tokens remain valid
 

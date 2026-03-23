@@ -5,11 +5,12 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useRoles, useDeleteRole } from "../api/hooks";
 import type { RoleDto } from "../api/types";
-import { Box, Tooltip } from "@mui/material";
-import { ConfirmDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineBooleanFilter, InlineTextFilter, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
+import { Tooltip } from "@mui/material";
+import { ConfirmDialog, EntityHistoryDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineBooleanFilter, InlineTextFilter, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateRoleDialog, EditRoleDialog } from "./RoleDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -33,17 +34,19 @@ function readParams(sp: URLSearchParams) {
   };
 }
 
-export function RolesTab() {
+export function RolesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const params = readParams(searchParams);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleDto | null>(null);
+  const [historyEntityId, setHistoryEntityId] = useState<string | null>(null);
 
   const canCreate = useHasPermission("roles.create");
   const canUpdate = useHasPermission("roles.update");
   const canDelete = useHasPermission("roles.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useRoles(params);
   const deleteRole = useDeleteRole();
@@ -117,12 +120,17 @@ export function RolesTab() {
       renderCell: ({ value }) => <Chip label={`${(value as string[]).length} perms`} size="small" variant="outlined" />,
     },
     {
-      field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
+      field: "actions", headerName: "", width: 150, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/roles/${row.id}`)}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryEntityId(row.id)}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditRole(row)} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
@@ -188,18 +196,20 @@ export function RolesTab() {
   }, [params]);
 
   return (
-    <PageContainer title="Roles" variant="list">
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-        <GlobalSearchBar
-          placeholder="Search roles..."
-          value={params.q ?? ""}
-          onChange={(v) => setFilterParam("q", v || undefined)}
-        />
-        <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
+    <PageContainer
+      variant="list"
+      title="Roles"
+      actions={
+        <>
           {hasActiveFilters && (
             <Tooltip title="Clear all filters">
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
+          )}
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => { window.location.href = "/audit?entityType=Role"; }}>
+              History
+            </Button>
           )}
           <ExportButton fetchData={fetchAllRoles} columns={exportColumns} filename="roles" />
           {canCreate && (
@@ -207,8 +217,16 @@ export function RolesTab() {
               Create Role
             </Button>
           )}
-        </Box>
-      </Box>
+        </>
+      }
+      subheaderLeft={
+        <GlobalSearchBar
+          placeholder="Search roles..."
+          value={params.q ?? ""}
+          onChange={(v) => setFilterParam("q", v || undefined)}
+        />
+      }
+    >
       <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <FilteredDataGrid
           rows={data?.items ?? []}
@@ -228,8 +246,11 @@ export function RolesTab() {
         />
       </Paper>
       <CreateRoleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <EditRoleDialog open={!!editRole} onClose={() => setEditRole(null)} role={editRole} />
+      {editRole && (
+        <EditRoleDialog open onClose={() => setEditRole(null)} role={editRole} />
+      )}
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteRole.isPending} />
+      <EntityHistoryDialog entityType="Role" entityId={historyEntityId ?? ""} open={historyEntityId !== null} onClose={() => setHistoryEntityId(null)} />
     </PageContainer>
   );
 }

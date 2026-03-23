@@ -5,10 +5,11 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import { useTradeOrders, useDeleteTradeOrder, useAccounts, useInstruments } from "../api/hooks";
 import type { TradeOrderListItemDto, OrderStatus, TradeSide, TradeOrderType, TimeInForce } from "../api/types";
-import { CompactMultiSelect, ConfirmDialog, DateRangePopover, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, NumericRangePopover, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
+import { CompactMultiSelect, ConfirmDialog, DateRangePopover, EntityHistoryDialog, ExportButton, FilteredDataGrid, GlobalSearchBar, InlineTextFilter, NumericRangePopover, PageContainer, apiClient, useConfirm, useHasPermission } from "@broker/ui-kit";
 import type { ExcelColumn } from "@broker/ui-kit";
 import { CreateTradeOrderDialog, EditTradeOrderDialog } from "./TradeOrderDialogs";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -114,10 +115,12 @@ export function TradeOrdersPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOrder, setEditOrder] = useState<{ id: string } | null>(null);
+  const [historyEntityId, setHistoryEntityId] = useState<string | null>(null);
 
   const canCreate = useHasPermission("orders.create");
   const canUpdate = useHasPermission("orders.update");
   const canDelete = useHasPermission("orders.delete");
+  const canAudit = useHasPermission("audit.read");
 
   const { data, isLoading } = useTradeOrders(params);
   const { data: accountsData } = useAccounts({ page: 1, pageSize: 200 });
@@ -261,12 +264,17 @@ export function TradeOrdersPage() {
       renderCell: ({ value }) => new Date(value as string).toLocaleString(),
     },
     {
-      field: "actions", headerName: "", width: 120, sortable: false, filterable: false, disableColumnMenu: true,
+      field: "actions", headerName: "", width: 150, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
           <IconButton size="small" onClick={() => navigate(`/trade-orders/${row.id}`)} data-testid={`action-view-${row.id}`}>
             <VisibilityIcon fontSize="small" />
           </IconButton>
+          {canAudit && (
+            <IconButton size="small" onClick={() => setHistoryEntityId(row.id)}>
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          )}
           {canUpdate && (
             <IconButton size="small" onClick={() => setEditOrder({ id: row.id })} data-testid={`action-edit-${row.id}`}>
               <EditIcon fontSize="small" />
@@ -454,6 +462,11 @@ export function TradeOrdersPage() {
               <IconButton size="small" aria-label="Clear all filters" onClick={clearAllFilters}><FilterListOffIcon /></IconButton>
             </Tooltip>
           )}
+          {canAudit && (
+            <Button variant="outlined" startIcon={<HistoryIcon />} onClick={() => navigate("/audit?entityType=Order")}>
+              History
+            </Button>
+          )}
           <ExportButton fetchData={fetchAllTradeOrders} columns={exportColumns} filename="trade-orders" />
           {canCreate && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
@@ -501,6 +514,7 @@ export function TradeOrdersPage() {
       <CreateTradeOrderDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditTradeOrderDialog onClose={() => setEditOrder(null)} order={editOrder} />
       <ConfirmDialog {...confirmDialogProps} isLoading={deleteTradeOrder.isPending} />
+      <EntityHistoryDialog entityType="Order" entityId={historyEntityId ?? ""} open={historyEntityId !== null} onClose={() => setHistoryEntityId(null)} />
     </PageContainer>
   );
 }

@@ -123,7 +123,9 @@ export function RoleDetailsPage() {
         </CardContent>
       </Card>
 
-      <EditRoleDialog open={editOpen} onClose={() => setEditOpen(false)} role={role} />
+      {editOpen && (
+        <EditRoleDialog key={role.id} open onClose={() => setEditOpen(false)} role={role} />
+      )}
       <EntityHistoryDialog entityType="Role" entityId={role.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </PageContainer>
   );

@@ -66,7 +66,7 @@ export function CreateUserDialog({ open, onClose }: CreateProps) {
   );
 }
 
-interface ResetPasswordProps { open: boolean; onClose: () => void; user: UserDto | null }
+interface ResetPasswordProps { open: boolean; onClose: () => void; user: UserDto }
 
 export function ResetPasswordDialog({ open, onClose, user }: ResetPasswordProps) {
   const [newPassword, setNewPassword] = useState("");
@@ -125,10 +125,11 @@ export function ResetPasswordDialog({ open, onClose, user }: ResetPasswordProps)
   );
 }
 
-interface EditProps { open: boolean; onClose: () => void; user: UserDto | null }
+interface EditProps { open: boolean; onClose: () => void; user: UserDto }
 
 export function EditUserDialog({ open, onClose, user }: EditProps) {
-  const [form, setForm] = useState({ email: "", fullName: "", isActive: true, roleIds: [] as string[] });
+  const [form, setForm] = useState({ email: user.email, fullName: user.fullName ?? "", isActive: user.isActive, roleIds: [] as string[] });
+  const [rolesSynced, setRolesSynced] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const update = useUpdateUser();
   const roles = useRoles({ page: 1, pageSize: 100 });
@@ -136,17 +137,12 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
   const deletePhoto = useDeleteUserPhoto();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [prevUser, setPrevUser] = useState(user);
-  const [prevRolesData, setPrevRolesData] = useState(roles.data);
-  if (user && (user !== prevUser || roles.data !== prevRolesData)) {
-    setPrevUser(user);
-    setPrevRolesData(roles.data);
-    setForm({
-      email: user.email, fullName: user.fullName ?? "",
-      isActive: user.isActive,
-      roleIds: (roles.data?.items ?? []).filter((r) => user.roles.includes(r.name)).map((r) => r.id),
-    });
-    setErrors({});
+  if (!rolesSynced && roles.data) {
+    setRolesSynced(true);
+    setForm((f) => ({
+      ...f,
+      roleIds: roles.data.items.filter((r) => user.roles.includes(r.name)).map((r) => r.id),
+    }));
   }
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

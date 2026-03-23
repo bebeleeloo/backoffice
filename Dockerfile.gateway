@@ -20,10 +20,11 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 RUN adduser --disabled-password --gecos "" appuser
-USER appuser
 
 COPY --from=build /app/publish .
-COPY gateway/config/ config/
+COPY --chown=appuser:appuser gateway/config/ config/
+
+USER appuser
 
 EXPOSE 8090
 ENV ASPNETCORE_URLS=http://+:8090

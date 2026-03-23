@@ -11,10 +11,10 @@ namespace Broker.Auth.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v1/auth/entity-changes")]
+[HasPermission(Permissions.AuditRead)]
 public sealed class EntityChangesController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    [HasPermission(Permissions.AuditRead)]
     public async Task<ActionResult<PagedResult<OperationDto>>> GetEntityChanges(
         [FromQuery] string entityType, [FromQuery] Guid entityId,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
@@ -23,5 +23,12 @@ public sealed class EntityChangesController(ISender mediator) : ControllerBase
         var result = await mediator.Send(
             new GetEntityChangesQuery(entityType, entityId, page, pageSize), ct);
         return Ok(result);
+    }
+
+    [HttpGet("all")]
+    public async Task<ActionResult<PagedResult<GlobalOperationDto>>> All(
+        [FromQuery] GetAllEntityChangesQuery query, CancellationToken ct)
+    {
+        return Ok(await mediator.Send(query, ct));
     }
 }

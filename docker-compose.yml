@@ -106,12 +106,15 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=BrokerBackoffice;Username=postgres;Password=${PG_PASSWORD}"
       Jwt__Secret: "${JWT_SECRET:?Set JWT_SECRET in .env}"
       ConfigDir: "config"
       Cors__Origins__0: "${CORS_ORIGIN:-http://localhost:3000}"
     ports:
       - "8090:8090"
     depends_on:
+      postgres:
+        condition: service_healthy
       api:
         condition: service_healthy
       auth:

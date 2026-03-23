@@ -32,6 +32,9 @@ public sealed class UpdateRoleCommandHandler(
         if (role.IsSystem)
             throw new InvalidOperationException("Cannot modify a system role");
 
+        if (await db.Roles.AnyAsync(r => r.Name == request.Name && r.Id != request.Id, ct))
+            throw new InvalidOperationException($"Role '{request.Name}' already exists");
+
         var before = JsonSerializer.Serialize(new { role.Id, role.Name, role.Description });
         db.Roles.Entry(role).Property(r => r.RowVersion).OriginalValue = request.RowVersion;
 
