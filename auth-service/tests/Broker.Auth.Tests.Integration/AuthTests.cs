@@ -343,10 +343,9 @@ public class AuthTests(CustomWebApplicationFactory factory) : IntegrationTestBas
     /// </summary>
     private static byte[] CreateMinimalJpeg()
     {
-        // Minimal JPEG: SOI marker + APP0 + minimal frame + EOI
-        // This is a valid JPEG structure that image parsers accept
-        return
-        [
+        // Minimal JPEG ≥ 100 bytes: SOI + APP0 + comment padding + EOI
+        var header = new byte[]
+        {
             0xFF, 0xD8, // SOI (Start of Image)
             0xFF, 0xE0, // APP0 marker
             0x00, 0x10, // APP0 length (16)
@@ -356,7 +355,16 @@ public class AuthTests(CustomWebApplicationFactory factory) : IntegrationTestBas
             0x00, 0x01, // X density
             0x00, 0x01, // Y density
             0x00, 0x00, // Thumbnail dimensions
-            0xFF, 0xD9  // EOI (End of Image)
-        ];
+            0xFF, 0xFE, // COM (Comment) marker
+            0x00, 0x52, // Comment length (82 = 80 data + 2 length bytes)
+        };
+        var padding = new byte[80]; // 80 zero bytes as comment payload
+        var footer = new byte[] { 0xFF, 0xD9 }; // EOI
+
+        var result = new byte[header.Length + padding.Length + footer.Length]; // 24 + 80 + 2 = 106 bytes
+        header.CopyTo(result, 0);
+        padding.CopyTo(result, header.Length);
+        footer.CopyTo(result, header.Length + padding.Length);
+        return result;
     }
 }
