@@ -7,8 +7,10 @@ public sealed class GatewayDbContextFactory : IDesignTimeDbContextFactory<Gatewa
 {
     public GatewayDbContext CreateDbContext(string[] args)
     {
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+            ?? "Host=localhost;Port=5432;Database=BrokerBackoffice;Username=postgres;Password=postgres";
         var optionsBuilder = new DbContextOptionsBuilder<GatewayDbContext>();
-        optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=BrokerBackoffice;Username=postgres;Password=postgres");
+        optionsBuilder.UseNpgsql(connectionString);
         return new GatewayDbContext(optionsBuilder.Options);
     }
 }

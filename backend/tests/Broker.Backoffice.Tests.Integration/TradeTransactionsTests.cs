@@ -393,4 +393,38 @@ public class TradeTransactionsTests(CustomWebApplicationFactory factory) : Integ
         result.Should().NotBeNull();
         result!.Items.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task GetById_ExistingTradeTransaction_Returns200()
+    {
+        await AuthenticateAsync();
+        var (orderId, instrumentId) = await CreateTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-transactions", new
+        {
+            OrderId = orderId,
+            InstrumentId = instrumentId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            Quantity = 150,
+            Price = 75.50m,
+            Commission = 5.99m,
+            Comment = "GetById test transaction",
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
+
+        var getResp = await _client.GetAsync($"/api/v1/trade-transactions/{created!.Id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await getResp.Content.ReadFromJsonAsync<TradeTransactionDto>();
+        fetched!.Id.Should().Be(created.Id);
+        fetched.OrderId.Should().Be(orderId);
+        fetched.InstrumentId.Should().Be(instrumentId);
+        fetched.Quantity.Should().Be(150);
+        fetched.Price.Should().Be(75.50m);
+        fetched.Commission.Should().Be(5.99m);
+        fetched.Comment.Should().Be("GetById test transaction");
+        fetched.TransactionNumber.Should().StartWith("TT-");
+        fetched.Status.Should().Be(TransactionStatus.Pending);
+    }
 }

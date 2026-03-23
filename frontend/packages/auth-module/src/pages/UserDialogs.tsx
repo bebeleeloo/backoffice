@@ -45,7 +45,7 @@ export function CreateUserDialog({ open, onClose }: CreateProps) {
         <TextField label="Username" value={form.username} onChange={(e) => updateField("username", e.target.value)} required error={!!errors.username} helperText={errors.username} />
         <TextField label="Email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required error={!!errors.email} helperText={errors.email} />
         <TextField label="Password" type="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} required error={!!errors.password} helperText={errors.password} />
-        <TextField label="Full Name" value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} />
+        <TextField label="Full Name" value={form.fullName} onChange={(e) => updateField("fullName", e.target.value)} />
         <FormControlLabel control={<Switch checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />} label="Active" />
         <Autocomplete
           multiple
@@ -218,7 +218,7 @@ export function EditUserDialog({ open, onClose, user }: EditProps) {
           />
         </Box>
         <TextField label="Email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required error={!!errors.email} helperText={errors.email} />
-        <TextField label="Full Name" value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} />
+        <TextField label="Full Name" value={form.fullName} onChange={(e) => updateField("fullName", e.target.value)} />
         <FormControlLabel control={<Switch checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />} label="Active" />
         <Autocomplete
           multiple

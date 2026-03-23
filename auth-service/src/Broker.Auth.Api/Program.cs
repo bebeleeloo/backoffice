@@ -146,6 +146,13 @@ try
 
     var app = builder.Build();
 
+    // ForwardedHeaders (nginx → gateway → auth)
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+    });
+
     app.UseMiddleware<BasicAuthMiddleware>();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseResponseCompression();

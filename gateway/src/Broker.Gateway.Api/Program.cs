@@ -9,6 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Yarp.ReverseProxy.Configuration;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
@@ -118,6 +120,13 @@ try
         db.Database.Migrate();
     }
 
+    // ForwardedHeaders (nginx → gateway)
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+    });
+
     // Wire up YARP config reload when upstreams change
     var configLoader = app.Services.GetRequiredService<ConfigLoader>();
     var proxyConfigProvider = app.Services.GetRequiredService<IProxyConfigProvider>() as YamlProxyConfigProvider;
@@ -165,3 +174,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+namespace Broker.Gateway.Api { public partial class Program; }

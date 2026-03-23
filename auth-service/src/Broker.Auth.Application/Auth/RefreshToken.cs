@@ -1,4 +1,5 @@
 using Broker.Auth.Application.Abstractions;
+using Broker.Auth.Application.Common;
 using Broker.Auth.Domain.Identity;
 using FluentValidation;
 using MediatR;
@@ -49,7 +50,7 @@ public sealed class RefreshTokenCommandHandler(
         if (!stored.User.IsActive)
             throw new UnauthorizedAccessException("Account is disabled");
 
-        var permissions = LoginCommandHandler.GetEffectivePermissions(stored.User);
+        var permissions = EffectivePermissionsResolver.GetEffectivePermissions(stored.User);
         var tokens = jwt.GenerateTokens(stored.User, permissions);
 
         stored.RevokedAt = clock.UtcNow;

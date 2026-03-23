@@ -336,4 +336,35 @@ public class NonTradeTransactionsTests(CustomWebApplicationFactory factory) : In
         result.Should().NotBeNull();
         result!.Items.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task GetById_ExistingNonTradeTransaction_Returns200()
+    {
+        await AuthenticateAsync();
+        var (orderId, currencyId) = await CreateNonTradeOrderAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-transactions", new
+        {
+            OrderId = orderId,
+            TransactionDate = DateTime.UtcNow.ToString("O"),
+            Amount = 3500.00m,
+            CurrencyId = currencyId,
+            Description = "GetById test description",
+            Comment = "GetById test transaction",
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<NonTradeTransactionDto>();
+
+        var getResp = await _client.GetAsync($"/api/v1/non-trade-transactions/{created!.Id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await getResp.Content.ReadFromJsonAsync<NonTradeTransactionDto>();
+        fetched!.Id.Should().Be(created.Id);
+        fetched.OrderId.Should().Be(orderId);
+        fetched.CurrencyId.Should().Be(currencyId);
+        fetched.Amount.Should().Be(3500.00m);
+        fetched.Description.Should().Be("GetById test description");
+        fetched.Comment.Should().Be("GetById test transaction");
+        fetched.TransactionNumber.Should().StartWith("NTT-");
+        fetched.Status.Should().Be(TransactionStatus.Pending);
+    }
 }

@@ -560,6 +560,82 @@ public class ClientsTests(CustomWebApplicationFactory factory) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    [Fact]
+    public async Task GetClients_FilterWithSpecialChars_ReturnsEmpty()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        // Create a client with a normal name
+        var uniqueName = $"LikeEsc_{Guid.NewGuid():N}"[..15];
+        await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = $"like_{Guid.NewGuid():N}@test.com",
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = uniqueName,
+            LastName = "Client",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 St", City = "City", CountryId = countryId }
+            }
+        });
+
+        // Search with % wildcard in query — should NOT match all clients
+        // If LIKE escaping is broken, `%` would match everything
+        var response = await _client.GetAsync(
+            "/api/v1/clients?page=1&pageSize=10&q=%25");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<ClientListItemDto>>();
+        result.Should().NotBeNull();
+
+        // The % character in the search should be escaped, so it should not match our client
+        // whose name does not contain a literal % character
+        var matchedOurClient = result!.Items.Any(c =>
+            c.DisplayName != null && c.DisplayName.Contains(uniqueName));
+        matchedOurClient.Should().BeFalse(
+            "searching with '%' should not match clients without literal '%' in their name");
+    }
+
+    [Fact]
+    public async Task GetById_ExistingClient_Returns200()
+    {
+        await AuthenticateAsync();
+        var countriesResp = await _client.GetAsync("/api/v1/countries");
+        var countries = await countriesResp.Content.ReadFromJsonAsync<List<CountryListItem>>();
+        var countryId = countries!.First().Id;
+
+        var email = $"getby_{Guid.NewGuid():N}@test.com";
+        var createResp = await _client.PostAsJsonAsync("/api/v1/clients", new
+        {
+            ClientType = "Individual",
+            Status = "Active",
+            Email = email,
+            PepStatus = false,
+            KycStatus = "NotStarted",
+            FirstName = "GetById",
+            LastName = "TestClient",
+            Addresses = new[]
+            {
+                new { Type = "Legal", Line1 = "1 Main St", City = "TestCity", CountryId = countryId }
+            }
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<ClientDto>();
+
+        var getResp = await _client.GetAsync($"/api/v1/clients/{created!.Id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await getResp.Content.ReadFromJsonAsync<ClientDto>();
+        fetched!.Id.Should().Be(created.Id);
+        fetched.FirstName.Should().Be("GetById");
+        fetched.LastName.Should().Be("TestClient");
+        fetched.Email.Should().Be(email);
+    }
+
     // Lightweight DTOs for deserialization
     private record CountryListItem(Guid Id, string Iso2, string Name);
     private record AccountListItem(Guid Id, string Number);

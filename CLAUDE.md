@@ -41,6 +41,7 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 - JWT Bearer authentication with refresh token rotation
 - ASP.NET Core Rate Limiting (fixed window on login, auth, sensitive endpoints)
 - ASP.NET Core Response Compression (Gzip, CompressionLevel.Fastest)
+- ForwardedHeaders middleware (XForwardedFor + XForwardedProto) in all 3 services for correct client IP/scheme behind reverse proxy
 
 ### Frontend
 - pnpm monorepo + Turborepo (5 packages: ui-kit, auth-module, backoffice, auth, config)
@@ -213,12 +214,14 @@ gateway/
 │   ├── menu.yaml        # Sidebar menu structure + permissions
 │   ├── entities.yaml    # Entity field visibility by role
 │   └── upstreams.yaml   # Backend service routing
+├── tests/
+│   └── Broker.Gateway.Tests.Integration/  # Integration tests (Testcontainers)
 └── Dockerfile.gateway
 ```
 
 API Gateway serves config (menu, entities, upstreams), proxies REST via YARP to backend services, and provides CRUD endpoints for config editing (`settings.manage` permission). YARP routes reload dynamically when `upstreams.yaml` changes or `POST /reload` is called (`ConfigLoader.OnUpstreamsChanged` event → `YamlProxyConfigProvider.Update()`).
 
-Auth service owns: users, roles, permissions, authentication (login, refresh, change password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS).
+Auth service owns: users, roles, permissions, authentication (login, refresh, logout, change password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS). Logout endpoint (`POST /auth/logout`) hashes the refresh token, finds and revokes it.
 
 Core validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
 
@@ -683,11 +686,11 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Location: `backend/tests/Broker.Backoffice.Tests.Unit/`
 - Validators covered: Clients (Create/Update, SetAccounts), Accounts (Create/Update, SetHolders), Instruments (Create/Update), Orders (TradeOrder Create/Update, NonTradeOrder Create/Update), Transactions (TradeTransaction Create/Update, NonTradeTransaction Create/Update), Reference data (Clearer, Currency, Exchange, TradePlatform — Create/Update each)
 
-### Auth Service Unit Tests (44 tests, ~1s)
+### Auth Service Unit Tests (49 tests, ~1s)
 
 - Same stack: xUnit, FluentValidation.TestHelper, NSubstitute
 - Location: `auth-service/tests/Broker.Auth.Tests.Unit/`
-- Validators covered: Auth (Login, ChangePassword, UpdateProfile), Users (Create/Update), Roles (Create/Update, FullName MaxLength)
+- Validators covered: Auth (Login, Logout, ChangePassword, UpdateProfile), Users (Create/Update), Roles (Create/Update, FullName MaxLength)
 
 ### Core Integration Tests (145 tests, ~10s)
 - Testcontainers (real PostgreSQL 17 in Docker)
@@ -700,10 +703,10 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Location: `backend/tests/Broker.Backoffice.Tests.Integration/`
 - Coverage: Health, Swagger, Clients (CRUD + Update + GetAccounts + SetClientAccounts + InvalidAccountId + Filters + DateFilter + SortByDisplayName + DuplicateEmail + DeleteLinkedToAccount + RouteBodyIdMismatch + StaleRowVersion), Accounts (CRUD + Update + SetAccountHolders + InvalidClientId + Filters + SortByClearerName + DuplicateNumber + RouteBodyIdMismatch), Instruments (CRUD + Update + Filters + DuplicateSymbol + RouteBodyIdMismatch), TradeOrders (CRUD + Update + Filters + SortByInstrumentSymbol + InvalidAccount + LimitWithoutPrice + StopWithoutStopPrice + GTDWithoutExpiration + RouteBodyIdMismatch), NonTradeOrders (CRUD + Update + Filters + InvalidCurrencyId + InvalidAccountId + RouteBodyIdMismatch), TradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + SideMismatch + InvalidInstrumentId + InvalidOrderId + RouteBodyIdMismatch), NonTradeTransactions (CRUD + Update + StaleRowVersion + GetByOrder + InvalidOrder + Filters + WithoutOrder + InvalidCurrencyId + InvalidOrderId + RouteBodyIdMismatch), Clearers/Currencies/Exchanges/TradePlatforms (CRUD + DuplicateName), Dashboard (stats), Audit (list + getById + Filters), EntityChanges (list + listAll + Filters), Countries (list), Permission denial (403 for limited users), Concurrency (409 for stale RowVersion)
 
-### Auth Service Integration Tests (36 tests, ~5s)
+### Auth Service Integration Tests (38 tests, ~5s)
 - Same Testcontainers pattern as core
 - Location: `auth-service/tests/Broker.Auth.Tests.Integration/`
-- Coverage: Health, Auth (login, refresh, me, change-password, update-profile, photo CRUD + unauth + cache-control), Users (CRUD + GetById + Update + Delete + duplicate-username/email + photo + route mismatch), Roles (CRUD + GetById + Update + Delete + duplicate-name + set-permissions + system-role-protection), Permissions (list)
+- Coverage: Health, Auth (login, refresh, me, change-password, update-profile, logout, photo CRUD + unauth + cache-control), Users (CRUD + GetById + Update + Delete + duplicate-username/email + photo + route mismatch), Roles (CRUD + GetById + Update + Delete + duplicate-name + set-permissions + system-role-protection), Permissions (list), BasicAuth (login via Basic header)
 
 ### Integration test patterns
 - All update tests must include `Id` in the request body (controllers check `id != command.Id`)
@@ -713,16 +716,24 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Prerequisites helper methods (e.g., `CreatePrerequisitesAsync()`) create Account + Instrument/Currency for Order/Transaction tests
 - Core integration tests use `TestJwtTokenHelper.GenerateAdminToken()` (all 31 permissions) or `AuthenticateWithPermissions()` for limited permission tests
 
-### Frontend Tests (109 tests, ~6s)
+### Gateway Integration Tests (32 tests, ~1s)
+- Testcontainers (real PostgreSQL 17 in Docker)
+- `CustomWebApplicationFactory` with in-memory YAML configs
+- Location: `gateway/tests/Broker.Gateway.Tests.Integration/`
+- Coverage: Health (live, ready), Menu (GET filtered/raw, PUT valid/invalid, auth 401, perm 403), Entities (GET filtered/raw, PUT valid/invalid, GET by name, 404), Upstreams (GET, PUT valid/invalid URI/empty routes, perm 403, reload), EntityChanges (GET by entityType/all, filters, pagination, sort, changeType), Audit (PUT creates audit, before/after JSON)
+
+### Frontend Tests (167 tests, ~10s)
 - Vitest with jsdom environment
 - React Testing Library + user-event
 - MSW for network-level API mocking
 - Test factories with @faker-js/faker
 - `renderWithProviders()` wraps with QueryClient, Theme, Auth, Router
-- Tests split across monorepo packages: `@broker/ui-kit` (51 tests), `@broker/backoffice` (58 tests)
+- Tests split across monorepo packages: `@broker/ui-kit` (51 tests), `@broker/backoffice` (58 tests), `@broker/auth-module` (38 tests), `@broker/config-app` (20 tests)
 - Run all: `pnpm turbo test`
 - Utility/hook tests (ui-kit): `validateFields.test.ts`, `extractErrorMessage.test.ts`, `useConfirm.test.ts`, `usePermission.test.tsx`, `useDebounce.test.tsx`
 - Page smoke tests (backoffice): 7 list pages (Clients, Accounts, Instruments, TradeOrders, NonTradeOrders, TradeTransactions, NonTradeTransactions) — title, search bar, create button permission gating, export button
+- Auth-module tests: UsersPage, RolesPage, LoginPage, ProfileTab, RoleDetailsPage, UserDialogs, RoleDialogs — rendering, validation, permission gating
+- Config SPA tests: MenuEditorPage, UpstreamsPage, EntityFieldsPage, NotFoundPage — rendering, loading states, permission gating, empty states
 - Component tests (ui-kit): `ConfirmDialog`, `ErrorBoundary`, `UserAvatar`, `PageContainer`
 - Coverage excludes `src/test/**` and `src/types/**` (test infra/type augmentations)
 

@@ -180,7 +180,7 @@ export function InstrumentsPage() {
     try { await deleteInstrument.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
-  const columns: GridColDef<InstrumentListItemDto>[] = [
+  const columns: GridColDef<InstrumentListItemDto>[] = useMemo(() => [
     { field: "symbol", headerName: "Symbol", width: 110 },
     { field: "name", headerName: "Name", flex: 1, minWidth: 180 },
     {
@@ -241,7 +241,7 @@ export function InstrumentsPage() {
         </div>
       ),
     },
-  ];
+  ], [navigate, canAudit, canUpdate, canDelete, handleDelete]);
 
   const filterDefs = useMemo(() => {
     const m = new Map<string, () => ReactNode>();

@@ -258,7 +258,7 @@ export function ClientsPage() {
 
   /* ── Columns ── */
 
-  const columns: GridColDef<ClientListItemDto>[] = [
+  const columns: GridColDef<ClientListItemDto>[] = useMemo(() => [
     { field: "displayName", headerName: "Name", flex: 1, minWidth: 180 },
     {
       field: "clientType", headerName: "Type", width: 130,
@@ -338,7 +338,7 @@ export function ClientsPage() {
         </div>
       ),
     },
-  ];
+  ], [navigate, canAudit, canUpdate, canDelete, handleDelete]);
 
   const columnVisibilityModel: Record<string, boolean> = {
     phone: false,

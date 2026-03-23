@@ -25,6 +25,11 @@ public sealed class ConfigController(
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
+    private const string EntityTypeMenu = "MenuConfig";
+    private const string EntityTypeEntities = "EntitiesConfig";
+    private const string EntityTypeUpstreams = "UpstreamsConfig";
+    private const string EntityTypeConfig = "Config";
+
     [HttpGet("menu")]
     public IActionResult GetMenu()
     {
@@ -58,7 +63,7 @@ public sealed class ConfigController(
         if (validationError != null)
             return BadRequest(new { type = "validation", title = "Validation error", detail = validationError });
 
-        auditContext.EntityType = "MenuConfig";
+        auditContext.EntityType = EntityTypeMenu;
         auditContext.EntityId = "config";
         auditContext.BeforeJson = JsonSerializer.Serialize(configLoader.Menu.Menu, JsonOptions);
 
@@ -103,7 +108,7 @@ public sealed class ConfigController(
         if (config.Entities == null)
             return BadRequest(new { type = "validation", title = "Validation error", detail = "Entities list is required." });
 
-        auditContext.EntityType = "EntitiesConfig";
+        auditContext.EntityType = EntityTypeEntities;
         auditContext.EntityId = "config";
         auditContext.BeforeJson = JsonSerializer.Serialize(configLoader.Entities.Entities, JsonOptions);
 
@@ -152,7 +157,7 @@ public sealed class ConfigController(
             }
         }
 
-        auditContext.EntityType = "UpstreamsConfig";
+        auditContext.EntityType = EntityTypeUpstreams;
         auditContext.EntityId = "config";
         auditContext.BeforeJson = JsonSerializer.Serialize(configLoader.Upstreams.Upstreams, JsonOptions);
 
@@ -167,10 +172,24 @@ public sealed class ConfigController(
     [ServiceFilter(typeof(AuditActionFilter))]
     public IActionResult Reload()
     {
-        auditContext.EntityType = "Config";
+        auditContext.EntityType = EntityTypeConfig;
         auditContext.EntityId = "reload";
+        auditContext.BeforeJson = JsonSerializer.Serialize(new
+        {
+            menu = configLoader.Menu.Menu.Count,
+            entities = configLoader.Entities.Entities.Count,
+            upstreams = configLoader.Upstreams.Upstreams.Count,
+        }, JsonOptions);
 
         configLoader.Load();
+
+        auditContext.AfterJson = JsonSerializer.Serialize(new
+        {
+            menu = configLoader.Menu.Menu.Count,
+            entities = configLoader.Entities.Entities.Count,
+            upstreams = configLoader.Upstreams.Upstreams.Count,
+        }, JsonOptions);
+
         return Ok(new { message = "Config reloaded" });
     }
 
@@ -202,13 +221,7 @@ public sealed class ConfigController(
             a.CreatedAt,
             a.UserId,
             a.UserName,
-            a.EntityType switch
-            {
-                "MenuConfig" => "Menu Configuration",
-                "EntitiesConfig" => "Entity Fields",
-                "UpstreamsConfig" => "Upstreams",
-                _ => a.EntityType ?? "Configuration",
-            },
+            GetEntityDisplayName(a.EntityType),
             diffService.DetermineChangeType(a.BeforeJson, a.AfterJson),
             diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson)
         )).ToList();
@@ -262,53 +275,69 @@ public sealed class ConfigController(
                 EF.Functions.ILike(a.EntityType!, pattern));
         }
 
-        var totalCount = await query.CountAsync(ct);
-
         query = ApplySort(query, sort);
 
-        var logs = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-
-        var items = logs
-            .Select(a =>
-            {
-                var ct2 = diffService.DetermineChangeType(a.BeforeJson, a.AfterJson);
-                return new GlobalOperationDto(
+        if (!string.IsNullOrWhiteSpace(changeType))
+        {
+            // changeType is computed in-memory, so load all matching logs and filter/paginate manually
+            var allLogs = await query.ToListAsync(ct);
+            var allItems = allLogs
+                .Select(a => new GlobalOperationDto(
                     a.Id.ToString(),
                     a.CreatedAt,
                     a.UserId,
                     a.UserName,
-                    a.EntityType ?? "Config",
+                    a.EntityType ?? EntityTypeConfig,
                     a.EntityId ?? "config",
-                    a.EntityType switch
-                    {
-                        "MenuConfig" => "Menu Configuration",
-                        "EntitiesConfig" => "Entity Fields",
-                        "UpstreamsConfig" => "Upstreams",
-                        _ => "Configuration",
-                    },
-                    ct2,
-                    diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson));
-            })
-            .Where(op => string.IsNullOrWhiteSpace(changeType) || op.ChangeType == changeType)
-            .ToList();
+                    GetEntityDisplayName(a.EntityType),
+                    diffService.DetermineChangeType(a.BeforeJson, a.AfterJson),
+                    diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson)))
+                .Where(op => op.ChangeType == changeType)
+                .ToList();
 
-        // Adjust totalCount if changeType filter applied in-memory
-        if (!string.IsNullOrWhiteSpace(changeType))
-        {
-            totalCount = items.Count;
+            var totalCount = allItems.Count;
+            var items = allItems.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Ok(new
+            {
+                items,
+                totalCount,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+            });
         }
-
-        return Ok(new
+        else
         {
-            items,
-            totalCount,
-            page,
-            pageSize,
-            totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
-        });
+            var totalCount = await query.CountAsync(ct);
+
+            var logs = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            var items = logs
+                .Select(a => new GlobalOperationDto(
+                    a.Id.ToString(),
+                    a.CreatedAt,
+                    a.UserId,
+                    a.UserName,
+                    a.EntityType ?? EntityTypeConfig,
+                    a.EntityId ?? "config",
+                    GetEntityDisplayName(a.EntityType),
+                    diffService.DetermineChangeType(a.BeforeJson, a.AfterJson),
+                    diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson)))
+                .ToList();
+
+            return Ok(new
+            {
+                items,
+                totalCount,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+            });
+        }
     }
 
     private static IQueryable<AuditLog> ApplySort(IQueryable<AuditLog> query, string? sort)
@@ -337,14 +366,22 @@ public sealed class ConfigController(
 
         if (roles.Count == 0)
         {
-            logger.LogWarning(
-                "No role claims found for user {UserId}, falling back to default role 'Viewer'",
-                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown");
-            return ["Viewer"];
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+            logger.LogWarning("No role claims found for user {UserId}", userId);
+            throw new UnauthorizedAccessException("No role claims found in token");
         }
 
         return roles;
     }
+
+    private static string GetEntityDisplayName(string? entityType) => entityType switch
+    {
+        EntityTypeMenu => "Menu Configuration",
+        EntityTypeEntities => "Entity Fields",
+        EntityTypeUpstreams => "Upstreams",
+        EntityTypeConfig => "Configuration",
+        _ => entityType ?? "Configuration",
+    };
 
     private static string? ValidateMenuItems(IReadOnlyList<MenuItemConfig> items)
     {

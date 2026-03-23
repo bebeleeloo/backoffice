@@ -29,10 +29,18 @@ public sealed class YamlProxyConfigProvider : IProxyConfigProvider
     {
         var oldCts = _cts;
         var newCts = new CancellationTokenSource();
-        _config = BuildConfig(_configLoader, newCts);
+        var newConfig = BuildConfig(_configLoader, newCts);
         _cts = newCts;
-        oldCts.Cancel();
-        oldCts.Dispose();
+        _config = newConfig;
+        try
+        {
+            oldCts.Cancel();
+            oldCts.Dispose();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed, safe to ignore
+        }
     }
 
     private static YamlProxyConfig BuildConfig(ConfigLoader configLoader, CancellationTokenSource cts)
@@ -57,6 +65,7 @@ public sealed class YamlProxyConfigProvider : IProxyConfigProvider
             for (var i = 0; i < upstream.Routes.Count; i++)
             {
                 var prefix = upstream.Routes[i];
+                if (string.IsNullOrWhiteSpace(prefix)) continue;
                 var routeId = $"{name}-{i}";
                 var route = new RouteConfig
                 {

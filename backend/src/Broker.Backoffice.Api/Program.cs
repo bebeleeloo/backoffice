@@ -156,6 +156,13 @@ try
 
     var app = builder.Build();
 
+    // ForwardedHeaders (nginx → gateway → api)
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+    });
+
     // Middleware pipeline
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseResponseCompression();

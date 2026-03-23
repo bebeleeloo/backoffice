@@ -66,9 +66,9 @@ public sealed class ConfigLoader : IDisposable
             _logger.LogInformation(
                 "Config loaded: {MenuItems} menu items, {Entities} entities, {Upstreams} upstreams",
                 _menu.Menu.Count, _entities.Entities.Count, _upstreams.Upstreams.Count);
-        }
 
-        OnUpstreamsChanged?.Invoke();
+            OnUpstreamsChanged?.Invoke();
+        }
     }
 
     public void SaveMenu(MenuConfig config)
@@ -98,9 +98,9 @@ public sealed class ConfigLoader : IDisposable
             SaveFile("upstreams.yaml", config);
             _upstreams = config;
             _logger.LogInformation("Upstreams config saved: {Count} upstreams", config.Upstreams.Count);
-        }
 
-        OnUpstreamsChanged?.Invoke();
+            OnUpstreamsChanged?.Invoke();
+        }
     }
 
     private T? LoadFile<T>(string filename)
@@ -112,8 +112,16 @@ public sealed class ConfigLoader : IDisposable
             return default;
         }
 
-        var content = File.ReadAllText(path);
-        return _yaml.Deserialize<T>(content);
+        try
+        {
+            var content = File.ReadAllText(path);
+            return _yaml.Deserialize<T>(content);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize config file: {Path}", path);
+            return default;
+        }
     }
 
     private void SaveFile<T>(string filename, T data)
@@ -166,9 +174,11 @@ public sealed class ConfigLoader : IDisposable
         _logger.LogInformation("Config file changed: {File}, reloading...", e.Name);
 
         // Debounce: file system may fire multiple events
-        _debounceCts?.Cancel();
+        var oldCts = _debounceCts;
+        oldCts?.Cancel();
         var cts = new CancellationTokenSource();
         _debounceCts = cts;
+        oldCts?.Dispose();
 
         Task.Delay(300, cts.Token).ContinueWith(_ =>
         {

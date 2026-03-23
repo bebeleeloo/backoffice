@@ -33,6 +33,14 @@ public sealed class AuthController(ISender mediator) : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout(LogoutCommand command, CancellationToken ct)
+    {
+        await mediator.Send(command, ct);
+        return NoContent();
+    }
+
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<UserProfileResponse>> Me(CancellationToken ct)

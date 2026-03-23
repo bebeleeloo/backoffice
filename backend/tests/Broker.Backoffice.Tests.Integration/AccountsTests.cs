@@ -329,6 +329,51 @@ public class AccountsTests(CustomWebApplicationFactory factory) : IntegrationTes
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    [Fact]
+    public async Task UpdateAccount_StaleRowVersion_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var number = $"SRV-{Guid.NewGuid():N}"[..20];
+        var createResp = await _client.PostAsJsonAsync("/api/v1/accounts", new
+        {
+            Number = number,
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<AccountDto>();
+        var staleRowVersion = created!.RowVersion;
+
+        // First update succeeds — changes RowVersion
+        await _client.PutAsJsonAsync($"/api/v1/accounts/{created.Id}", new
+        {
+            Id = created.Id,
+            Number = number,
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "MarginX2",
+            OptionLevel = "Level0",
+            Tariff = "Basic",
+            RowVersion = staleRowVersion,
+        });
+
+        // Second update with stale RowVersion — should fail
+        var response = await _client.PutAsJsonAsync($"/api/v1/accounts/{created.Id}", new
+        {
+            Id = created.Id,
+            Number = number,
+            Status = "Active",
+            AccountType = "Individual",
+            MarginType = "Cash",
+            OptionLevel = "Level1",
+            Tariff = "Premium",
+            RowVersion = staleRowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
     // Lightweight DTOs for deserialization
     private record CountryListItem(Guid Id, string Iso2, string Name);
     private record ClientItem(Guid Id, string Email);

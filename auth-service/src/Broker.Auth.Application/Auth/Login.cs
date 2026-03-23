@@ -1,4 +1,5 @@
 using Broker.Auth.Application.Abstractions;
+using Broker.Auth.Application.Common;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -39,7 +40,7 @@ public sealed class LoginCommandHandler(
         if (!user.IsActive)
             throw new UnauthorizedAccessException("Account is disabled");
 
-        var permissions = GetEffectivePermissions(user);
+        var permissions = EffectivePermissionsResolver.GetEffectivePermissions(user);
         var tokens = jwt.GenerateTokens(user, permissions);
 
         db.UserRefreshTokens.Add(new UserRefreshToken
@@ -56,19 +57,4 @@ public sealed class LoginCommandHandler(
         return new AuthResponse(tokens.AccessToken, tokens.RefreshToken, tokens.AccessTokenExpires);
     }
 
-    public static List<string> GetEffectivePermissions(User user)
-    {
-        var rolePerms = user.UserRoles
-            .SelectMany(ur => ur.Role.RolePermissions)
-            .Select(rp => rp.Permission.Code)
-            .ToHashSet();
-
-        foreach (var ov in user.PermissionOverrides)
-        {
-            if (ov.IsAllowed) rolePerms.Add(ov.Permission.Code);
-            else rolePerms.Remove(ov.Permission.Code);
-        }
-
-        return rolePerms.ToList();
-    }
 }

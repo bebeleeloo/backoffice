@@ -224,4 +224,78 @@ public class NonTradeOrdersTests(CustomWebApplicationFactory factory) : Integrat
         result.Should().NotBeNull();
         result!.Items.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task GetById_ExistingNonTradeOrder_Returns200()
+    {
+        await AuthenticateAsync();
+        var (accountId, currencyId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-orders", new
+        {
+            AccountId = accountId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            NonTradeType = "Withdrawal",
+            Amount = 750.00m,
+            CurrencyId = currencyId,
+            Comment = "GetById test order",
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<NonTradeOrderDto>();
+
+        var getResp = await _client.GetAsync($"/api/v1/non-trade-orders/{created!.Id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await getResp.Content.ReadFromJsonAsync<NonTradeOrderDto>();
+        fetched!.Id.Should().Be(created.Id);
+        fetched.AccountId.Should().Be(accountId);
+        fetched.CurrencyId.Should().Be(currencyId);
+        fetched.Amount.Should().Be(750.00m);
+        fetched.Comment.Should().Be("GetById test order");
+        fetched.OrderNumber.Should().StartWith("NTO-");
+    }
+
+    [Fact]
+    public async Task UpdateNonTradeOrder_StaleRowVersion_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var (accountId, currencyId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/non-trade-orders", new
+        {
+            AccountId = accountId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            NonTradeType = "Deposit",
+            Amount = 1000.00m,
+            CurrencyId = currencyId,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<NonTradeOrderDto>();
+        var staleRowVersion = created!.RowVersion;
+
+        // First update succeeds — changes RowVersion
+        await _client.PutAsJsonAsync($"/api/v1/non-trade-orders/{created.Id}", new
+        {
+            Id = created.Id,
+            AccountId = accountId,
+            OrderDate = created.OrderDate.ToString("O"),
+            Status = "InProgress",
+            NonTradeType = "Deposit",
+            Amount = 2000.00m,
+            CurrencyId = currencyId,
+            RowVersion = staleRowVersion,
+        });
+
+        // Second update with stale RowVersion — should fail
+        var response = await _client.PutAsJsonAsync($"/api/v1/non-trade-orders/{created.Id}", new
+        {
+            Id = created.Id,
+            AccountId = accountId,
+            OrderDate = created.OrderDate.ToString("O"),
+            Status = "InProgress",
+            NonTradeType = "Deposit",
+            Amount = 3000.00m,
+            CurrencyId = currencyId,
+            RowVersion = staleRowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

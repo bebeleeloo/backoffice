@@ -18,7 +18,7 @@ export function UserAvatar({ userId, name, hasPhoto, size = 36, sx }: UserAvatar
   return (
     <Avatar
       src={src}
-      sx={{ width: size, height: size, fontSize: size * 0.45, ...sx as object }}
+      sx={{ width: size, height: size, fontSize: size * 0.45, ...(sx ?? {}) } as SxProps<Theme>}
     >
       {(name || "U").charAt(0).toUpperCase()}
     </Avatar>

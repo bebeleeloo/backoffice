@@ -34,9 +34,14 @@ public sealed class JwtTokenService(IConfiguration config) : IJwtTokenService
         foreach (var ur in user.UserRoles)
             claims.Add(new Claim(ClaimTypes.Role, ur.Role.Name));
 
+        var issuer = config["Jwt:Issuer"]
+            ?? throw new InvalidOperationException("Jwt:Issuer is not configured");
+        var audience = config["Jwt:Audience"]
+            ?? throw new InvalidOperationException("Jwt:Audience is not configured");
+
         var token = new JwtSecurityToken(
-            issuer: config["Jwt:Issuer"],
-            audience: config["Jwt:Audience"],
+            issuer: issuer,
+            audience: audience,
             claims: claims,
             expires: expires,
             signingCredentials: credentials);

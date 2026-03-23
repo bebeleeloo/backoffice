@@ -6,7 +6,11 @@ namespace Broker.Auth.Application.Users;
 
 public sealed record DeleteUserPhotoCommand(Guid UserId) : IRequest;
 
-internal sealed class DeleteUserPhotoCommandHandler(IAuthDbContext db, IAuditContext audit)
+internal sealed class DeleteUserPhotoCommandHandler(
+    IAuthDbContext db,
+    IAuditContext audit,
+    IDateTimeProvider clock,
+    ICurrentUser currentUser)
     : IRequestHandler<DeleteUserPhotoCommand>
 {
     public async Task Handle(DeleteUserPhotoCommand request, CancellationToken ct)
@@ -19,6 +23,8 @@ internal sealed class DeleteUserPhotoCommandHandler(IAuthDbContext db, IAuditCon
 
         user.Photo = null;
         user.PhotoContentType = null;
+        user.UpdatedAt = clock.UtcNow;
+        user.UpdatedBy = currentUser.UserName;
         await db.SaveChangesAsync(ct);
     }
 }

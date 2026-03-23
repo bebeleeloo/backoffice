@@ -110,7 +110,7 @@ export function UsersPage() {
     try { await deleteUser.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
-  const columns: GridColDef<UserDto>[] = [
+  const columns: GridColDef<UserDto>[] = useMemo(() => [
     {
       field: "avatar", headerName: "", width: 60, sortable: false, filterable: false,
       renderCell: ({ row }) => (
@@ -159,7 +159,7 @@ export function UsersPage() {
         </div>
       ),
     },
-  ];
+  ], [canAudit, canResetPassword, canUpdate, canDelete, handleDelete]);
 
   const filterDefs = useMemo(() => {
     const m = new Map<string, () => ReactNode>();

@@ -108,7 +108,7 @@ export function RolesPage() {
     try { await deleteRole.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
-  const columns: GridColDef<RoleDto>[] = [
+  const columns: GridColDef<RoleDto>[] = useMemo(() => [
     { field: "name", headerName: "Name", flex: 1, minWidth: 150 },
     { field: "description", headerName: "Description", flex: 2, minWidth: 200 },
     {
@@ -144,7 +144,7 @@ export function RolesPage() {
         </div>
       ),
     },
-  ];
+  ], [navigate, canAudit, canUpdate, canDelete, handleDelete]);
 
   const filterDefs = useMemo(() => {
     const m = new Map<string, () => ReactNode>();

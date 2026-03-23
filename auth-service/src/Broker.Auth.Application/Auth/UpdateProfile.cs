@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Broker.Auth.Application.Abstractions;
+using Broker.Auth.Application.Common;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +44,7 @@ public sealed class UpdateProfileCommandHandler(IAuthDbContext db, IAuditContext
 
         audit.AfterJson = JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName });
 
-        var permissions = LoginCommandHandler.GetEffectivePermissions(user);
+        var permissions = EffectivePermissionsResolver.GetEffectivePermissions(user);
         return new UserProfileResponse(
             user.Id, user.Username, user.Email, user.FullName,
             user.Photo != null,

@@ -224,4 +224,82 @@ public class InstrumentsTests(CustomWebApplicationFactory factory) : Integration
         result.Should().NotBeNull();
         result!.Items.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task GetById_ExistingInstrument_Returns200()
+    {
+        await AuthenticateAsync();
+        var symbol = $"GBI-{Guid.NewGuid():N}"[..10];
+        var createResp = await _client.PostAsJsonAsync("/api/v1/instruments", new
+        {
+            Symbol = symbol,
+            Name = "GetById Test Instrument",
+            Type = "Bond",
+            AssetClass = "FixedIncome",
+            Status = "Active",
+            LotSize = 10,
+            IsMarginEligible = true,
+            Description = "test description",
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<InstrumentDto>();
+
+        var getResp = await _client.GetAsync($"/api/v1/instruments/{created!.Id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await getResp.Content.ReadFromJsonAsync<InstrumentDto>();
+        fetched!.Id.Should().Be(created.Id);
+        fetched.Symbol.Should().Be(symbol);
+        fetched.Name.Should().Be("GetById Test Instrument");
+        fetched.Description.Should().Be("test description");
+        fetched.LotSize.Should().Be(10);
+        fetched.IsMarginEligible.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateInstrument_StaleRowVersion_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var symbol = $"SRV-{Guid.NewGuid():N}"[..10];
+        var createResp = await _client.PostAsJsonAsync("/api/v1/instruments", new
+        {
+            Symbol = symbol,
+            Name = "Stale RV Instrument",
+            Type = "Stock",
+            AssetClass = "Equities",
+            Status = "Active",
+            LotSize = 1,
+            IsMarginEligible = false,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<InstrumentDto>();
+        var staleRowVersion = created!.RowVersion;
+
+        // First update succeeds — changes RowVersion
+        await _client.PutAsJsonAsync($"/api/v1/instruments/{created.Id}", new
+        {
+            Id = created.Id,
+            Symbol = symbol,
+            Name = "First Update",
+            Type = "Stock",
+            AssetClass = "Equities",
+            Status = "Active",
+            LotSize = 50,
+            IsMarginEligible = false,
+            RowVersion = staleRowVersion,
+        });
+
+        // Second update with stale RowVersion — should fail
+        var response = await _client.PutAsJsonAsync($"/api/v1/instruments/{created.Id}", new
+        {
+            Id = created.Id,
+            Symbol = symbol,
+            Name = "Should Fail",
+            Type = "Stock",
+            AssetClass = "Equities",
+            Status = "Active",
+            LotSize = 100,
+            IsMarginEligible = false,
+            RowVersion = staleRowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

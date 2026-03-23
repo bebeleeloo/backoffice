@@ -212,7 +212,7 @@ export function TradeOrdersPage() {
     try { await deleteTradeOrder.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
-  const columns: GridColDef<TradeOrderListItemDto>[] = [
+  const columns: GridColDef<TradeOrderListItemDto>[] = useMemo(() => [
     { field: "orderNumber", headerName: "Order #", flex: 1, minWidth: 130 },
     { field: "accountNumber", headerName: "Account", flex: 1, minWidth: 130 },
     {
@@ -288,7 +288,7 @@ export function TradeOrdersPage() {
         </div>
       ),
     },
-  ];
+  ], [navigate, canAudit, canUpdate, canDelete, handleDelete]);
 
   const filterDefs = useMemo(() => {
     const m = new Map<string, () => ReactNode>();

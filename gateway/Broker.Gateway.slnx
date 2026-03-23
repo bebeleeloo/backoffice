@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Broker.Gateway.Api/Broker.Gateway.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Broker.Gateway.Tests.Integration/Broker.Gateway.Tests.Integration.csproj" />
+  </Folder>
 </Solution>

@@ -1,4 +1,5 @@
 using Broker.Auth.Application.Abstractions;
+using Broker.Auth.Application.Common;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,7 @@ public sealed class GetMeQueryHandler(IAuthDbContext db) : IRequestHandler<GetMe
             .FirstOrDefaultAsync(u => u.Id == request.UserId, ct)
             ?? throw new KeyNotFoundException("User not found");
 
-        var permissions = LoginCommandHandler.GetEffectivePermissions(user);
+        var permissions = EffectivePermissionsResolver.GetEffectivePermissions(user);
 
         return new UserProfileResponse(
             user.Id,

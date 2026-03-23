@@ -231,6 +231,113 @@ public class AuthTests(CustomWebApplicationFactory factory) : IntegrationTestBas
         resp.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    [Fact]
+    public async Task Logout_ValidToken_RevokesRefreshToken()
+    {
+        // Login to get tokens
+        var loginResp = await _client.PostAsJsonAsync("/api/v1/auth/login",
+            new { Username = "admin", Password = "Admin123!" });
+        loginResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await loginResp.Content.ReadFromJsonAsync<AuthResponse>();
+
+        // Set access token for the logout call (requires [Authorize])
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+
+        // Logout with the refresh token
+        var logoutResp = await _client.PostAsJsonAsync("/api/v1/auth/logout",
+            new { RefreshToken = auth.RefreshToken });
+        logoutResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Try to use the revoked refresh token — should fail
+        _client.DefaultRequestHeaders.Authorization = null;
+        var refreshResp = await _client.PostAsJsonAsync("/api/v1/auth/refresh",
+            new { RefreshToken = auth.RefreshToken });
+        refreshResp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Logout_InvalidToken_Returns401()
+    {
+        await AuthenticateAsync();
+
+        var resp = await _client.PostAsJsonAsync("/api/v1/auth/logout",
+            new { RefreshToken = "non-existent-refresh-token-value" });
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Logout_Unauthenticated_Returns401()
+    {
+        // No auth header set — logout requires [Authorize]
+        var resp = await _client.PostAsJsonAsync("/api/v1/auth/logout",
+            new { RefreshToken = "some-token" });
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Login_ViaBasicAuth_Succeeds()
+    {
+        // Send Basic Auth header with empty JSON body
+        var credentials = Convert.ToBase64String(
+            System.Text.Encoding.UTF8.GetBytes("admin:Admin123!"));
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+
+        var resp = await _client.SendAsync(request);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var auth = await resp.Content.ReadFromJsonAsync<AuthResponse>();
+        auth!.AccessToken.Should().NotBeNullOrEmpty();
+        auth.RefreshToken.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Login_ViaBasicAuth_InvalidCredentials_Returns401()
+    {
+        var credentials = Convert.ToBase64String(
+            System.Text.Encoding.UTF8.GetBytes("admin:WrongPassword!"));
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+
+        var resp = await _client.SendAsync(request);
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GetPhoto_Unauthenticated_Returns401()
+    {
+        // GET /auth/photo requires [Authorize], unlike GET /users/{id}/photo
+        var resp = await _client.GetAsync("/api/v1/auth/photo");
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GetPhoto_CacheControl_ReturnsPrivateHeader()
+    {
+        await AuthenticateAsync();
+
+        // Upload a photo first
+        var jpegBytes = CreateMinimalJpeg();
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(jpegBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(fileContent, "file", "photo.jpg");
+        var uploadResp = await _client.PutAsync("/api/v1/auth/photo", content);
+        uploadResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Get the photo and check cache headers
+        var resp = await _client.GetAsync("/api/v1/auth/photo");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        resp.Headers.CacheControl.Should().NotBeNull();
+        resp.Headers.CacheControl!.Private.Should().BeTrue();
+        resp.Headers.CacheControl.MaxAge.Should().Be(TimeSpan.FromSeconds(3600));
+    }
+
     /// <summary>
     /// Creates a minimal valid JPEG byte array for testing photo upload.
     /// </summary>

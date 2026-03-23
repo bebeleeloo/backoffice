@@ -164,7 +164,7 @@ export function AccountsPage() {
     try { await deleteAccount.mutateAsync(id); } catch { /* handled by MutationCache */ }
   };
 
-  const columns: GridColDef<AccountListItemDto>[] = [
+  const columns: GridColDef<AccountListItemDto>[] = useMemo(() => [
     { field: "number", headerName: "Number", flex: 1, minWidth: 120 },
     {
       field: "status", headerName: "Status", width: 120,
@@ -215,7 +215,7 @@ export function AccountsPage() {
         </div>
       ),
     },
-  ];
+  ], [navigate, canAudit, canUpdate, canDelete, handleDelete]);
 
   const filterDefs = useMemo(() => {
     const m = new Map<string, () => ReactNode>();

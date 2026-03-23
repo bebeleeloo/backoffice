@@ -36,7 +36,7 @@ public sealed record GlobalOperationDto(
     string ChangeType,
     List<EntityChangeGroupDto> Changes);
 
-public sealed class ConfigDiffService
+public sealed class ConfigDiffService(ILogger<ConfigDiffService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -55,8 +55,9 @@ public sealed class ConfigDiffService
                 _ => [],
             };
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
+            logger.LogWarning(ex, "Failed to compute diff for entity type {EntityType}", entityType);
             return [];
         }
     }
@@ -70,7 +71,7 @@ public sealed class ConfigDiffService
         return "Modified";
     }
 
-    private static List<EntityChangeGroupDto> DiffUpstreams(string? beforeJson, string? afterJson)
+    private List<EntityChangeGroupDto> DiffUpstreams(string? beforeJson, string? afterJson)
     {
         var before = Deserialize<Dictionary<string, UpstreamEntry>>(beforeJson) ?? [];
         var after = Deserialize<Dictionary<string, UpstreamEntry>>(afterJson) ?? [];
@@ -115,7 +116,7 @@ public sealed class ConfigDiffService
         return changes;
     }
 
-    private static List<EntityChangeGroupDto> DiffMenu(string? beforeJson, string? afterJson)
+    private List<EntityChangeGroupDto> DiffMenu(string? beforeJson, string? afterJson)
     {
         var before = FlattenMenu(Deserialize<List<MenuItemConfig>>(beforeJson) ?? []);
         var after = FlattenMenu(Deserialize<List<MenuItemConfig>>(afterJson) ?? []);
@@ -164,7 +165,7 @@ public sealed class ConfigDiffService
         return changes;
     }
 
-    private static List<EntityChangeGroupDto> DiffEntities(string? beforeJson, string? afterJson)
+    private List<EntityChangeGroupDto> DiffEntities(string? beforeJson, string? afterJson)
     {
         var before = (Deserialize<List<EntityConfig>>(beforeJson) ?? []).ToDictionary(e => e.Name);
         var after = (Deserialize<List<EntityConfig>>(afterJson) ?? []).ToDictionary(e => e.Name);
@@ -279,9 +280,17 @@ public sealed class ConfigDiffService
         return true;
     }
 
-    private static T? Deserialize<T>(string? json) where T : class
+    private T? Deserialize<T>(string? json) where T : class
     {
         if (string.IsNullOrEmpty(json)) return null;
-        return JsonSerializer.Deserialize<T>(json, JsonOptions);
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to deserialize {Type} from JSON", typeof(T).Name);
+            return null;
+        }
     }
 }

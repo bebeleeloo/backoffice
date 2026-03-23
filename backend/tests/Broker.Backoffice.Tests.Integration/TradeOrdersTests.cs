@@ -323,4 +323,93 @@ public class TradeOrdersTests(CustomWebApplicationFactory factory) : Integration
         var result = await response.Content.ReadFromJsonAsync<PagedResult<TradeOrderListItemDto>>();
         result.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task GetById_ExistingTradeOrder_Returns200()
+    {
+        await AuthenticateAsync();
+        var (accountId, instrumentId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-orders", new
+        {
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "Day",
+            Quantity = 75,
+            Price = 42.50m,
+            Comment = "GetById test order",
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<TradeOrderDto>();
+
+        var getResp = await _client.GetAsync($"/api/v1/trade-orders/{created!.Id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await getResp.Content.ReadFromJsonAsync<TradeOrderDto>();
+        fetched!.Id.Should().Be(created.Id);
+        fetched.AccountId.Should().Be(accountId);
+        fetched.InstrumentId.Should().Be(instrumentId);
+        fetched.Quantity.Should().Be(75);
+        fetched.Price.Should().Be(42.50m);
+        fetched.Comment.Should().Be("GetById test order");
+        fetched.OrderNumber.Should().StartWith("TO-");
+    }
+
+    [Fact]
+    public async Task UpdateTradeOrder_StaleRowVersion_ShouldReturn409()
+    {
+        await AuthenticateAsync();
+        var (accountId, instrumentId) = await CreatePrerequisitesAsync();
+
+        var createResp = await _client.PostAsJsonAsync("/api/v1/trade-orders", new
+        {
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = DateTime.UtcNow.ToString("O"),
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "Day",
+            Quantity = 100,
+            Price = 50.00m,
+        });
+        var created = await createResp.Content.ReadFromJsonAsync<TradeOrderDto>();
+        var staleRowVersion = created!.RowVersion;
+
+        // First update succeeds — changes RowVersion
+        await _client.PutAsJsonAsync($"/api/v1/trade-orders/{created.Id}", new
+        {
+            Id = created.Id,
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = created.OrderDate.ToString("O"),
+            Status = "InProgress",
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "Day",
+            Quantity = 200,
+            Price = 55.00m,
+            ExecutedQuantity = 0,
+            RowVersion = staleRowVersion,
+        });
+
+        // Second update with stale RowVersion — should fail
+        var response = await _client.PutAsJsonAsync($"/api/v1/trade-orders/{created.Id}", new
+        {
+            Id = created.Id,
+            AccountId = accountId,
+            InstrumentId = instrumentId,
+            OrderDate = created.OrderDate.ToString("O"),
+            Status = "InProgress",
+            Side = "Buy",
+            OrderType = "Market",
+            TimeInForce = "Day",
+            Quantity = 300,
+            Price = 60.00m,
+            ExecutedQuantity = 0,
+            RowVersion = staleRowVersion,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

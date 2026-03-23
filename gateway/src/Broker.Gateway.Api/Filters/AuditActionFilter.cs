@@ -33,12 +33,18 @@ public sealed class AuditActionFilter(
             var userName = context.HttpContext.User.Identity?.Name;
             var statusCode = context.HttpContext.Response.StatusCode;
 
+            if (string.IsNullOrEmpty(auditContext.EntityType))
+                logger.LogWarning("AuditContext.EntityType not set for {Method} {Path}", method, context.HttpContext.Request.Path);
+
+            var controller = context.RouteData.Values["controller"]?.ToString() ?? "unknown";
+            var action = context.RouteData.Values["action"]?.ToString() ?? "unknown";
+
             var entry = new AuditLog
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 UserName = userName,
-                Action = $"{context.RouteData.Values["controller"]}.{context.RouteData.Values["action"]}",
+                Action = $"{controller}.{action}",
                 EntityType = auditContext.EntityType,
                 EntityId = auditContext.EntityId,
                 BeforeJson = auditContext.BeforeJson,
