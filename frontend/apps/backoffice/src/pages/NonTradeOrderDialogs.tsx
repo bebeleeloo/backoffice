@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, Button, TextField,
   MenuItem, Box,
@@ -162,12 +162,12 @@ export function CreateNonTradeOrderDialog({ open, onClose, currentAccount }: Cre
   const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateNonTradeOrder();
 
-  useEffect(() => {
-    if (open) {
-      setForm({ ...emptyForm(), ...(currentAccount ? { accountId: currentAccount.id } : {}) });
-      setErrors({});
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setForm({ ...emptyForm(), ...(currentAccount ? { accountId: currentAccount.id } : {}) });
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   const set = <K extends keyof CreateNonTradeOrderRequest>(key: K, value: CreateNonTradeOrderRequest[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -227,15 +227,15 @@ export function EditNonTradeOrderDialog({ order, onClose }: EditProps) {
 
   const [populated, setPopulated] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setPopulated(false);
-      setForm(emptyForm());
-      setStatus("New");
-      setProcessedAt(undefined);
-      setErrors({});
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setPopulated(false);
+    setForm(emptyForm());
+    setStatus("New");
+    setProcessedAt(undefined);
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   if (open && !populated && fullOrder) {
     setPopulated(true);

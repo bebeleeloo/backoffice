@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   MenuItem, Box, Autocomplete,
@@ -172,12 +172,12 @@ export function CreateTradeOrderDialog({ open, onClose, currentAccount }: Create
   const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateTradeOrder();
 
-  useEffect(() => {
-    if (open) {
-      setForm({ ...emptyForm(), ...(currentAccount ? { accountId: currentAccount.id } : {}) });
-      setErrors({});
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setForm({ ...emptyForm(), ...(currentAccount ? { accountId: currentAccount.id } : {}) });
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   const set = (key: string, value: unknown) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -254,13 +254,13 @@ export function EditTradeOrderDialog({ order, onClose }: EditProps) {
 
   const [populated, setPopulated] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setPopulated(false);
-      setForm(emptyEditForm());
-      setErrors({});
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setPopulated(false);
+    setForm(emptyEditForm());
+    setErrors({});
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   if (open && !populated && fullOrder) {
     setPopulated(true);

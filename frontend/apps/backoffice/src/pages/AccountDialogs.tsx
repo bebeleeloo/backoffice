@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   MenuItem, Box, Typography, IconButton, Table, TableBody, TableCell,
@@ -174,14 +174,14 @@ export function EditAccountDialog({ open, onClose, account }: EditProps) {
 
   const [populated, setPopulated] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setPopulated(false);
-      setForm(emptyForm());
-      setErrors({});
-      setHolders([]);
-    }
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open && !prevOpen) {
+    setPopulated(false);
+    setForm(emptyForm());
+    setErrors({});
+    setHolders([]);
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   if (open && !populated && fullAccount) {
     setPopulated(true);
