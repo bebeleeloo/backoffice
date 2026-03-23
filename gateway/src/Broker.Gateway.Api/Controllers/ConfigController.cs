@@ -279,70 +279,48 @@ public sealed class ConfigController(
                 EF.Functions.ILike(a.EntityType!, pattern));
         }
 
-        query = ApplySort(query, sort);
-
+        // changeType filter translates to DB-level null checks on BeforeJson/AfterJson
         if (!string.IsNullOrWhiteSpace(changeType))
         {
-            // changeType is computed in-memory, so load matching logs and filter/paginate manually
-            // Safety limit to prevent unbounded memory usage
-            var allLogs = await query.Take(10000).ToListAsync(ct);
-            var allItems = allLogs
-                .Select(a => new GlobalOperationDto(
-                    a.Id.ToString(),
-                    a.CreatedAt,
-                    a.UserId,
-                    a.UserName,
-                    a.EntityType ?? EntityTypeConfig,
-                    a.EntityId ?? "config",
-                    GetEntityDisplayName(a.EntityType),
-                    diffService.DetermineChangeType(a.BeforeJson, a.AfterJson),
-                    diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson)))
-                .Where(op => op.ChangeType == changeType)
-                .ToList();
-
-            var totalCount = allItems.Count;
-            var items = allItems.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-
-            return Ok(new
+            query = changeType switch
             {
-                items,
-                totalCount,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
-            });
+                "Created" => query.Where(a => (a.BeforeJson == null || a.BeforeJson == "") && a.AfterJson != null && a.AfterJson != ""),
+                "Deleted" => query.Where(a => a.BeforeJson != null && a.BeforeJson != "" && (a.AfterJson == null || a.AfterJson == "")),
+                "Modified" => query.Where(a => a.BeforeJson != null && a.BeforeJson != "" && a.AfterJson != null && a.AfterJson != ""),
+                _ => query,
+            };
         }
-        else
+
+        query = ApplySort(query, sort);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var logs = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var items = logs
+            .Select(a => new GlobalOperationDto(
+                a.Id.ToString(),
+                a.CreatedAt,
+                a.UserId,
+                a.UserName,
+                a.EntityType ?? EntityTypeConfig,
+                a.EntityId ?? "config",
+                GetEntityDisplayName(a.EntityType),
+                diffService.DetermineChangeType(a.BeforeJson, a.AfterJson),
+                diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson)))
+            .ToList();
+
+        return Ok(new
         {
-            var totalCount = await query.CountAsync(ct);
-
-            var logs = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(ct);
-
-            var items = logs
-                .Select(a => new GlobalOperationDto(
-                    a.Id.ToString(),
-                    a.CreatedAt,
-                    a.UserId,
-                    a.UserName,
-                    a.EntityType ?? EntityTypeConfig,
-                    a.EntityId ?? "config",
-                    GetEntityDisplayName(a.EntityType),
-                    diffService.DetermineChangeType(a.BeforeJson, a.AfterJson),
-                    diffService.ComputeDiff(a.EntityType, a.BeforeJson, a.AfterJson)))
-                .ToList();
-
-            return Ok(new
-            {
-                items,
-                totalCount,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
-            });
-        }
+            items,
+            totalCount,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+        });
     }
 
     private static IQueryable<AuditLog> ApplySort(IQueryable<AuditLog> query, string? sort)
@@ -388,8 +366,11 @@ public sealed class ConfigController(
         _ => entityType ?? "Configuration",
     };
 
-    private static string? ValidateMenuItems(IReadOnlyList<MenuItemConfig> items)
+    private static string? ValidateMenuItems(IReadOnlyList<MenuItemConfig> items, int depth = 0)
     {
+        if (depth > 3)
+            return "Menu nesting exceeds maximum depth of 3.";
+
         foreach (var item in items)
         {
             if (string.IsNullOrWhiteSpace(item.Id))
@@ -398,7 +379,7 @@ public sealed class ConfigController(
                 return $"Menu item '{item.Id}' must have a non-empty Label.";
             if (item.Children is { Count: > 0 })
             {
-                var childError = ValidateMenuItems(item.Children);
+                var childError = ValidateMenuItems(item.Children, depth + 1);
                 if (childError != null) return childError;
             }
         }

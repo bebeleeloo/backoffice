@@ -10,14 +10,14 @@ public class ResetUserPasswordValidatorTests
     [Fact]
     public void ValidCommand_ShouldPass()
     {
-        var result = _validator.TestValidate(new ResetUserPasswordCommand(Guid.NewGuid(), "NewPass123"));
+        var result = _validator.TestValidate(new ResetUserPasswordCommand(Guid.NewGuid(), "NewPass123!"));
         result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
     public void UserId_Empty_ShouldFail()
     {
-        var result = _validator.TestValidate(new ResetUserPasswordCommand(Guid.Empty, "NewPass123"));
+        var result = _validator.TestValidate(new ResetUserPasswordCommand(Guid.Empty, "NewPass123!"));
         result.ShouldHaveValidationErrorFor(x => x.UserId);
     }
 

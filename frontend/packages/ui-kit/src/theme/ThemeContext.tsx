@@ -26,15 +26,20 @@ function getStoredPreference(): ThemePreference {
   return isValidPreference(stored) ? stored : "light";
 }
 
-const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+let _mediaQuery: MediaQueryList | undefined;
+function getMediaQuery() {
+  if (!_mediaQuery) _mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  return _mediaQuery;
+}
 
 function subscribeToMediaQuery(callback: () => void) {
-  mediaQuery.addEventListener("change", callback);
-  return () => mediaQuery.removeEventListener("change", callback);
+  const mq = getMediaQuery();
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
 }
 
 function getSystemDark() {
-  return mediaQuery.matches;
+  return getMediaQuery().matches;
 }
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {

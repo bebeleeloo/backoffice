@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, MenuItem, Box, FormControlLabel, Switch,
@@ -230,13 +230,13 @@ export function EditInstrumentDialog({ open, onClose, instrument }: EditProps) {
 
   const [populated, setPopulated] = useState(false);
 
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open && !prevOpen) {
-    setPopulated(false);
-    setForm(emptyForm());
-    setErrors({});
-  }
-  if (open !== prevOpen) setPrevOpen(open);
+  useEffect(() => {
+    if (open) {
+      setPopulated(false);
+      setForm(emptyForm());
+      setErrors({});
+    }
+  }, [open]);
 
   if (open && !populated && fullInstrument) {
     setPopulated(true);

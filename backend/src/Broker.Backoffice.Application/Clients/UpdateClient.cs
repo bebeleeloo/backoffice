@@ -111,6 +111,18 @@ public sealed class UpdateClientCommandHandler(
             && !await db.Countries.AnyAsync(c => c.Id == request.CitizenshipCountryId.Value, ct))
             throw new KeyNotFoundException($"Country {request.CitizenshipCountryId} not found");
 
+        var addressCountryIds = request.Addresses
+            .Where(a => a.CountryId.HasValue)
+            .Select(a => a.CountryId!.Value)
+            .Distinct()
+            .ToList();
+        if (addressCountryIds.Count > 0)
+        {
+            var found = await db.Countries.CountAsync(c => addressCountryIds.Contains(c.Id), ct);
+            if (found != addressCountryIds.Count)
+                throw new KeyNotFoundException("One or more address country IDs not found");
+        }
+
         var before = JsonSerializer.Serialize(new { client.Id, client.Email, client.ClientType, client.Status });
         db.Clients.Entry(client).Property(c => c.RowVersion).OriginalValue = request.RowVersion;
 

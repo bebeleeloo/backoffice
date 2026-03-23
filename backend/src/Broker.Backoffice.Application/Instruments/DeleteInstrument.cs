@@ -16,6 +16,13 @@ public sealed class DeleteInstrumentCommandHandler(
         var instrument = await db.Instruments.FirstOrDefaultAsync(i => i.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Instrument {request.Id} not found");
 
+        if (await db.TradeOrders.AnyAsync(o => o.InstrumentId == request.Id, ct))
+            throw new InvalidOperationException("Cannot delete instrument that has linked orders");
+
+        if (await db.TradeTransactions.AnyAsync(t => t.InstrumentId == request.Id, ct)
+            || await db.NonTradeTransactions.AnyAsync(t => t.InstrumentId == request.Id, ct))
+            throw new InvalidOperationException("Cannot delete instrument that has linked transactions");
+
         audit.EntityType = "Instrument";
         audit.EntityId = instrument.Id.ToString();
         audit.BeforeJson = JsonSerializer.Serialize(new { instrument.Id, instrument.Symbol, instrument.Name, instrument.Status });

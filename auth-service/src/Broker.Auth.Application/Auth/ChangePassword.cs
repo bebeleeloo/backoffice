@@ -14,7 +14,11 @@ public sealed class ChangePasswordCommandValidator : AbstractValidator<ChangePas
     public ChangePasswordCommandValidator()
     {
         RuleFor(x => x.CurrentPassword).NotEmpty();
-        RuleFor(x => x.NewPassword).NotEmpty().MinimumLength(6);
+        RuleFor(x => x.NewPassword).NotEmpty().MinimumLength(8)
+            .Matches("[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
+            .Matches("[a-z]").WithMessage("Password must contain at least one lowercase letter.")
+            .Matches("[0-9]").WithMessage("Password must contain at least one digit.")
+            .Matches("[^a-zA-Z0-9]").WithMessage("Password must contain at least one special character.");
     }
 }
 
@@ -37,6 +41,13 @@ public sealed class ChangePasswordCommandHandler(
         user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
         user.UpdatedAt = clock.UtcNow;
         user.UpdatedBy = currentUser.UserName;
+
+        // Revoke all refresh tokens on password change
+        var tokens = await db.UserRefreshTokens
+            .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+            .ToListAsync(ct);
+        foreach (var t in tokens) t.RevokedAt = clock.UtcNow;
+
         await db.SaveChangesAsync(ct);
 
         audit.EntityType = "User";

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Accordion, AccordionSummary, AccordionDetails,
@@ -63,6 +63,10 @@ function OperationItem({ op, entityType }: { op: OperationDto; entityType: strin
 export function EntityHistoryDialog({ entityType, entityId, open, onClose, filterRelatedEntityId }: Props) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  useEffect(() => {
+    if (open) setPage(1);
+  }, [open, entityId]);
 
   const { data, isLoading } = useEntityChanges(
     { entityType, entityId, page, pageSize },

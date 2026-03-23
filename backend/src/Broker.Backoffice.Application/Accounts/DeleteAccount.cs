@@ -16,6 +16,9 @@ public sealed class DeleteAccountCommandHandler(
         var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Account {request.Id} not found");
 
+        if (await db.Orders.AnyAsync(o => o.AccountId == request.Id, ct))
+            throw new InvalidOperationException("Cannot delete account that has linked orders");
+
         audit.EntityType = "Account";
         audit.EntityId = account.Id.ToString();
         audit.BeforeJson = JsonSerializer.Serialize(new { account.Id, account.Number, account.Status });

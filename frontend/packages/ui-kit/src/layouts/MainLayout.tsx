@@ -57,7 +57,10 @@ export function MainLayout() {
   const isSubmenuOpen = (id: string) => openSubmenus[id] ?? activeSubmenus[id] ?? false;
 
   const toggleSubmenu = (id: string) => {
-    setOpenSubmenus((prev) => ({ ...prev, [id]: !isSubmenuOpen(id) }));
+    setOpenSubmenus((prev) => ({
+      ...prev,
+      [id]: !(prev[id] ?? activeSubmenus[id] ?? false),
+    }));
   };
 
   const drawerWidth = collapsed ? DRAWER_WIDTH_COLLAPSED : DRAWER_WIDTH_EXPANDED;

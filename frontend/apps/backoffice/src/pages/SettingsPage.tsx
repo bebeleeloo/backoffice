@@ -7,19 +7,19 @@ import { ReferenceDataTab } from "./settings/ReferenceDataTab";
 
 export function SettingsPage() {
   const canManageSettings = useHasPermission("settings.manage");
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState("profile");
 
   return (
     <PageContainer title="Settings">
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab label="Profile" />
-        <Tab label="Appearance" />
-        {canManageSettings && <Tab label="Reference Data" />}
+        <Tab label="Profile" value="profile" />
+        <Tab label="Appearance" value="appearance" />
+        {canManageSettings && <Tab label="Reference Data" value="reference" />}
       </Tabs>
       <Box>
-        {tab === 0 && <ProfileTab />}
-        {tab === 1 && <AppearanceTab />}
-        {tab === 2 && canManageSettings && <ReferenceDataTab />}
+        {tab === "profile" && <ProfileTab />}
+        {tab === "appearance" && <AppearanceTab />}
+        {tab === "reference" && canManageSettings && <ReferenceDataTab />}
       </Box>
     </PageContainer>
   );

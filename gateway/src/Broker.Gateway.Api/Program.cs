@@ -117,7 +117,7 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<GatewayDbContext>();
-        db.Database.Migrate();
+        await db.Database.MigrateAsync();
     }
 
     // ForwardedHeaders (nginx → gateway)
@@ -146,9 +146,9 @@ try
         app.UseSwaggerUI();
     }
 
+    app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
-    app.UseMiddleware<CorrelationIdMiddleware>();
 
     app.UseCors();
     app.UseAuthentication();
@@ -167,7 +167,7 @@ try
     app.MapReverseProxy();
 
     Log.Information("Gateway starting on {Urls}", builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:8090");
-    app.Run();
+    await app.RunAsync();
 }
 catch (Exception ex)
 {

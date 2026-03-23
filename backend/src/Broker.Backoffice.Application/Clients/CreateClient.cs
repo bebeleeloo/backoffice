@@ -108,6 +108,18 @@ public sealed class CreateClientCommandHandler(
         if (request.CitizenshipCountryId.HasValue && !await db.Countries.AnyAsync(c => c.Id == request.CitizenshipCountryId.Value, ct))
             throw new KeyNotFoundException($"Country {request.CitizenshipCountryId} not found");
 
+        var addressCountryIds = request.Addresses
+            .Where(a => a.CountryId.HasValue)
+            .Select(a => a.CountryId!.Value)
+            .Distinct()
+            .ToList();
+        if (addressCountryIds.Count > 0)
+        {
+            var found = await db.Countries.CountAsync(c => addressCountryIds.Contains(c.Id), ct);
+            if (found != addressCountryIds.Count)
+                throw new KeyNotFoundException("One or more address country IDs not found");
+        }
+
         var client = new Client
         {
             Id = Guid.NewGuid(),

@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { IconButton, CircularProgress, Tooltip } from "@mui/material";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import { useSnackbar } from "notistack";
 import { type ExcelColumn, exportToExcel } from "../utils/exportToExcel";
 
 interface Props<T> {
@@ -11,16 +12,19 @@ interface Props<T> {
 
 export function ExportButton<T>({ fetchData, columns, filename }: Props<T>) {
   const [loading, setLoading] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
 
   const handleExport = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchData();
       await exportToExcel(data, columns, filename);
+    } catch {
+      enqueueSnackbar("Failed to export data", { variant: "error" });
     } finally {
       setLoading(false);
     }
-  }, [fetchData, columns, filename]);
+  }, [fetchData, columns, filename, enqueueSnackbar]);
 
   return (
     <Tooltip title="Export to Excel">

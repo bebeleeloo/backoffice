@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   MenuItem, Box, Autocomplete,
@@ -144,13 +144,13 @@ export function CreateTradeTransactionDialog({ open, onClose, currentOrder }: Cr
   const [errors, setErrors] = useState<FieldErrors>({});
   const create = useCreateTradeTransaction();
 
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open && !prevOpen) {
-    setForm({ ...emptyForm(), ...(currentOrder ? { orderId: currentOrder.id } : {}) });
-    setSelectedOrder(currentOrder ?? null);
-    setErrors({});
-  }
-  if (open !== prevOpen) setPrevOpen(open);
+  useEffect(() => {
+    if (open) {
+      setForm({ ...emptyForm(), ...(currentOrder ? { orderId: currentOrder.id } : {}) });
+      setSelectedOrder(currentOrder ?? null);
+      setErrors({});
+    }
+  }, [open]);
 
   const set = (key: string, value: unknown) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -210,15 +210,15 @@ export function EditTradeTransactionDialog({ transaction, onClose }: EditProps) 
   const [selectedOrder, setSelectedOrder] = useState<TradeOrderListItemDto | null>(null);
   const [populated, setPopulated] = useState(false);
 
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open && !prevOpen) {
-    setPopulated(false);
-    setForm(emptyForm());
-    setSelectedOrder(null);
-    setStatus("Pending");
-    setErrors({});
-  }
-  if (open !== prevOpen) setPrevOpen(open);
+  useEffect(() => {
+    if (open) {
+      setPopulated(false);
+      setForm(emptyForm());
+      setSelectedOrder(null);
+      setStatus("Pending");
+      setErrors({});
+    }
+  }, [open]);
 
   if (open && !populated && fullTransaction) {
     setPopulated(true);

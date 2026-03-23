@@ -40,11 +40,22 @@ public sealed class UpdateUserCommandHandler(
 
         db.Users.Entry(user).Property(u => u.RowVersion).OriginalValue = request.RowVersion;
 
+        var wasActive = user.IsActive;
+
         user.Email = request.Email;
         user.FullName = request.FullName;
         user.IsActive = request.IsActive;
         user.UpdatedAt = clock.UtcNow;
         user.UpdatedBy = currentUser.UserName;
+
+        // Revoke all refresh tokens when user is deactivated
+        if (wasActive && !request.IsActive)
+        {
+            var tokens = await db.UserRefreshTokens
+                .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+                .ToListAsync(ct);
+            foreach (var t in tokens) t.RevokedAt = clock.UtcNow;
+        }
 
         var currentRoleIds = user.UserRoles.Select(ur => ur.RoleId).ToHashSet();
         var toRemove = user.UserRoles.Where(ur => !request.RoleIds.Contains(ur.RoleId)).ToList();

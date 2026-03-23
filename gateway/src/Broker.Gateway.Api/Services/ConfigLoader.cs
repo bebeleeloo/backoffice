@@ -66,9 +66,9 @@ public sealed class ConfigLoader : IDisposable
             _logger.LogInformation(
                 "Config loaded: {MenuItems} menu items, {Entities} entities, {Upstreams} upstreams",
                 _menu.Menu.Count, _entities.Entities.Count, _upstreams.Upstreams.Count);
-
-            OnUpstreamsChanged?.Invoke();
         }
+
+        OnUpstreamsChanged?.Invoke();
     }
 
     public void SaveMenu(MenuConfig config)
@@ -98,9 +98,9 @@ public sealed class ConfigLoader : IDisposable
             SaveFile("upstreams.yaml", config);
             _upstreams = config;
             _logger.LogInformation("Upstreams config saved: {Count} upstreams", config.Upstreams.Count);
-
-            OnUpstreamsChanged?.Invoke();
         }
+
+        OnUpstreamsChanged?.Invoke();
     }
 
     private T? LoadFile<T>(string filename)

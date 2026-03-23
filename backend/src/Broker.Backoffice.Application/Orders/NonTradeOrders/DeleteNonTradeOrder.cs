@@ -19,6 +19,9 @@ public sealed class DeleteNonTradeOrderCommandHandler(
             .FirstOrDefaultAsync(o => o.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Non-trade order {request.Id} not found");
 
+        if (await db.Transactions.AnyAsync(t => t.OrderId == request.Id, ct))
+            throw new InvalidOperationException("Cannot delete order that has linked transactions");
+
         audit.EntityType = "Order";
         audit.EntityId = order.Id.ToString();
         audit.BeforeJson = JsonSerializer.Serialize(new { order.Id, order.OrderNumber, order.Status, order.Category });

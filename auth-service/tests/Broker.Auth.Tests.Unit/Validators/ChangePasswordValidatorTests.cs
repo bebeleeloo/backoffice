@@ -10,7 +10,7 @@ public class ChangePasswordValidatorTests
     [Fact]
     public void ValidCommand_ShouldPass()
     {
-        var result = _validator.TestValidate(new ChangePasswordCommand(Guid.NewGuid(), "current", "newPass"));
+        var result = _validator.TestValidate(new ChangePasswordCommand(Guid.NewGuid(), "current", "NewPass123!"));
         result.ShouldNotHaveAnyValidationErrors();
     }
 

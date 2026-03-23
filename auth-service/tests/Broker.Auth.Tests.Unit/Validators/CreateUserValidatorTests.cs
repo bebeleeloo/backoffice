@@ -10,7 +10,7 @@ public class CreateUserValidatorTests
     [Fact]
     public void ValidCommand_ShouldPass()
     {
-        var result = _validator.TestValidate(new CreateUserCommand("user1", "user@test.com", "Pass123", "Full Name", true, []));
+        var result = _validator.TestValidate(new CreateUserCommand("user1", "user@test.com", "Pass123!", "Full Name", true, []));
         result.ShouldNotHaveAnyValidationErrors();
     }
 
@@ -19,7 +19,7 @@ public class CreateUserValidatorTests
     [InlineData("")]
     public void Username_Empty_ShouldFail(string? username)
     {
-        var result = _validator.TestValidate(new CreateUserCommand(username!, "user@test.com", "Pass123", null, true, []));
+        var result = _validator.TestValidate(new CreateUserCommand(username!, "user@test.com", "Pass123!", null, true, []));
         result.ShouldHaveValidationErrorFor(x => x.Username);
     }
 
@@ -29,7 +29,7 @@ public class CreateUserValidatorTests
     [InlineData("not-an-email")]
     public void Email_Invalid_ShouldFail(string? email)
     {
-        var result = _validator.TestValidate(new CreateUserCommand("user1", email!, "Pass123", null, true, []));
+        var result = _validator.TestValidate(new CreateUserCommand("user1", email!, "Pass123!", null, true, []));
         result.ShouldHaveValidationErrorFor(x => x.Email);
     }
 
