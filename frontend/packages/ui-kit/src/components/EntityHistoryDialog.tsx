@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Accordion, AccordionSummary, AccordionDetails,
@@ -64,9 +64,12 @@ export function EntityHistoryDialog({ entityType, entityId, open, onClose, filte
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  useEffect(() => {
-    if (open) setPage(1);
-  }, [open, entityId]);
+  const [prevKey, setPrevKey] = useState("");
+  const activeKey = open ? entityId : "";
+  if (activeKey !== prevKey) {
+    setPrevKey(activeKey);
+    if (activeKey) setPage(1);
+  }
 
   const { data, isLoading } = useEntityChanges(
     { entityType, entityId, page, pageSize },
