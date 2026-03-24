@@ -118,7 +118,7 @@ echo ""
 echo "Done! Workflows imported and activated."
 echo ""
 echo "Endpoints:"
-echo "  Health Check:        runs every 5 minutes (inactive by default)"
+echo "  Health Check:        runs every 5 minutes"
 echo "  Client Onboarding:   POST http://localhost:5678/webhook/client-onboarding"
 echo "  Transaction Import:  POST http://localhost:5678/webhook/import-transactions"
 echo ""
@@ -128,4 +128,5 @@ echo '    -H "Content-Type: application/json" \'
 echo '    -d '\''{"firstName":"Test","lastName":"User","email":"test@example.com"}'\'''
 echo ""
 echo '  curl -X POST http://localhost:5678/webhook/import-transactions \'
-echo '    -F "file=@n8n/test-data/transactions.csv"'
+echo '    -H "Content-Type: text/plain" \'
+echo '    --data-binary @n8n/test-data/transactions.csv'

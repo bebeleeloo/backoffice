@@ -7,7 +7,9 @@
         "httpMethod": "POST",
         "path": "import-transactions",
         "responseMode": "lastNode",
-        "options": {}
+        "options": {
+          "rawBody": true
+        }
       },
       "id": "webhook-trigger",
       "name": "Webhook Trigger",
@@ -47,7 +49,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const csvText = $('Webhook Trigger').first().json.body;\nconst lines = csvText.trim().split('\\n');\nconst hdrs = lines[0].split(',').map(h => h.trim());\nconst rows = [];\nfor (let i = 1; i < lines.length; i++) {\n  if (!lines[i].trim()) continue;\n  const vals = lines[i].split(',');\n  const row = {};\n  hdrs.forEach((h, j) => { row[h] = (vals[j] || '').trim(); });\n  rows.push(row);\n}\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.results = [];\nstaticData.imported = 0;\nstaticData.skipped = 0;\n\nreturn rows.map(r => ({ json: r }));\n"
+        "jsCode": "const csvText = $('Webhook Trigger').first().json.body;\nif (!csvText || typeof csvText !== 'string') {\n  return [{ json: { error: 'No CSV body found', type: typeof csvText } }];\n}\nconst lines = csvText.trim().split('\\n');\nconst hdrs = lines[0].split(',').map(h => h.trim());\nconst rows = [];\nfor (let i = 1; i < lines.length; i++) {\n  if (!lines[i].trim()) continue;\n  const vals = lines[i].split(',');\n  const row = {};\n  hdrs.forEach((h, j) => { row[h] = (vals[j] || '').trim(); });\n  rows.push(row);\n}\nreturn rows.map(r => ({ json: r }));"
       },
       "id": "parse-csv",
       "name": "Parse CSV",
@@ -98,7 +100,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $('Loop Items').first().json;\nconst existingItems = $input.first().json.items || [];\nconst exists = existingItems.some(t => t.externalId === row.externalId);\n\nif (exists) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.skipped = (staticData.skipped || 0) + 1;\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': already imported');\n}\n\nreturn [{ json: { ...row, isNew: !exists } }];\n"
+        "jsCode": "const row = $('Loop Items').first().json;\nconst existingItems = $input.first().json.items || [];\nconst exists = existingItems.some(t => t.externalId === row.externalId);\nreturn [{ json: { ...row, isNew: !exists } }];\n"
       },
       "id": "evaluate",
       "name": "Evaluate",
@@ -166,7 +168,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $('Loop Items').first().json;\nconst items = $input.first().json.items || [];\nconst account = items.find(a => a.number === row.accountNumber);\n\nif (!account) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': account ' + row.accountNumber + ' not found');\n}\n\nreturn [{ json: { ...row, accountFound: !!account, accountId: account ? account.id : null } }];\n"
+        "jsCode": "const row = $('Loop Items').first().json;\nconst items = $input.first().json.items || [];\nconst account = items.find(a => a.number === row.accountNumber);\nreturn [{ json: { ...row, accountFound: !!account, accountId: account ? account.id : null } }];\n"
       },
       "id": "check-account",
       "name": "Check Account",
@@ -265,7 +267,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $('Loop Items').first().json;\nconst items = $input.first().json.items || [];\nconst inst = items.find(i => i.symbol === row.instrumentSymbol);\n\nif (!inst) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': instrument ' + row.instrumentSymbol + ' not found');\n}\n\nconst today = new Date().toISOString().split('T')[0];\nconst payload = inst ? {\n  instrumentId: inst.id,\n  transactionDate: today,\n  side: row.side,\n  quantity: parseFloat(row.quantity),\n  price: parseFloat(row.price),\n  commission: row.commission ? parseFloat(row.commission) : null,\n  venue: row.venue || null,\n  comment: row.comment || null,\n  externalId: row.externalId\n} : null;\n\nreturn [{ json: { found: !!inst, payload } }];\n"
+        "jsCode": "const row = $('Loop Items').first().json;\nconst items = $input.first().json.items || [];\nconst inst = items.find(i => i.symbol === row.instrumentSymbol);\nconst today = new Date().toISOString().split('T')[0];\nconst payload = inst ? {\n  instrumentId: inst.id,\n  transactionDate: today,\n  side: row.side,\n  quantity: parseFloat(row.quantity),\n  price: parseFloat(row.price),\n  commission: row.commission ? parseFloat(row.commission) : null,\n  venue: row.venue || null,\n  comment: row.comment || null,\n  externalId: row.externalId\n} : null;\nreturn [{ json: { found: !!inst, payload } }];\n"
       },
       "id": "build-trade",
       "name": "Build Trade",
@@ -373,7 +375,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $('Loop Items').first().json;\nconst currencies = $input.first().json.body || [];\nconst curr = currencies.find(c => c.code === row.currencyCode);\n\nif (!curr) {\n  const staticData = $getWorkflowStaticData('global');\n  staticData.results = staticData.results || [];\n  staticData.results.push(row.externalId + ': currency ' + row.currencyCode + ' not found');\n}\n\nconst today = new Date().toISOString().split('T')[0];\nconst payload = curr ? {\n  transactionDate: today,\n  amount: parseFloat(row.amount),\n  currencyId: curr.id,\n  referenceNumber: row.referenceNumber || null,\n  description: row.description || null,\n  comment: row.comment || null,\n  externalId: row.externalId\n} : null;\n\nreturn [{ json: { found: !!curr, payload } }];\n"
+        "jsCode": "const row = $('Loop Items').first().json;\nconst currencies = $input.first().json.body || [];\nconst curr = currencies.find(c => c.code === row.currencyCode);\nconst today = new Date().toISOString().split('T')[0];\nconst payload = curr ? {\n  transactionDate: today,\n  amount: parseFloat(row.amount),\n  currencyId: curr.id,\n  referenceNumber: row.referenceNumber || null,\n  description: row.description || null,\n  comment: row.comment || null,\n  externalId: row.externalId\n} : null;\nreturn [{ json: { found: !!curr, payload } }];\n"
       },
       "id": "build-non-trade",
       "name": "Build Non-Trade",
@@ -451,7 +453,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $('Loop Items').first().json;\nconst response = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.results = staticData.results || [];\n\nconst statusCode = response.statusCode || 0;\nif (statusCode === 201) {\n  staticData.imported = (staticData.imported || 0) + 1;\n  staticData.results.push(row.externalId + ': created');\n} else {\n  const msg = response.body?.detail || response.body?.title || response.error?.message || ('HTTP ' + statusCode);\n  staticData.results.push(row.externalId + ': failed (' + msg + ')');\n}\n\nreturn [{ json: { done: true } }];\n"
+        "jsCode": "const row = $('Loop Items').first().json;\nconst response = $input.first().json;\nconst statusCode = response.statusCode || 0;\nlet log;\nif (statusCode === 201) {\n  log = row.externalId + ': created';\n} else {\n  const msg = response.body?.detail || response.body?.title || response.error?.message || ('HTTP ' + statusCode);\n  log = row.externalId + ': failed (' + msg + ')';\n}\nreturn [{ json: { done: true, log, created: statusCode === 201 } }];\n"
       },
       "id": "record-result",
       "name": "Record Result",
@@ -464,7 +466,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst imported = staticData.imported || 0;\nconst skipped = staticData.skipped || 0;\nconst details = staticData.results || [];\n\nlet message;\nif (imported > 0) {\n  message = 'Transaction import complete';\n} else if (skipped > 0) {\n  message = 'All transactions already imported';\n} else {\n  message = 'No valid transactions found';\n}\n\ndelete staticData.results;\ndelete staticData.imported;\ndelete staticData.skipped;\n\nreturn [{ json: { imported, skipped, message, details } }];\n"
+        "jsCode": "const totalRows = $('Parse CSV').all().length;\nlet results = [];\ntry {\n  results = $('Record Result').all();\n} catch (e) {\n  // Record Result never executed \u2014 all items were skipped\n}\nconst imported = results.filter(r => r.json.created).length;\nconst details = results.map(r => r.json.log);\nconst skipped = totalRows - results.length;\n\nlet message;\nif (imported > 0) {\n  message = 'Transaction import complete';\n} else if (skipped > 0) {\n  message = 'All transactions already imported';\n} else {\n  message = 'No valid transactions found';\n}\nreturn [{ json: { imported, skipped, message, details } }];"
       },
       "id": "build-summary",
       "name": "Build Summary",
