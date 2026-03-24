@@ -6,14 +6,17 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "client-onboarding",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
       "id": "webhook-trigger",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "client-onboarding"
     },
     {
@@ -37,7 +40,10 @@
       "name": "Login to API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -67,39 +73,406 @@
       "name": "Create Client",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "const resp = $input.first().json;\nconst statusCode = resp.statusCode || 0;\nif (statusCode === 201) {\n  return [{ json: { status: 'created', clientId: resp.body.id, clientName: resp.body.firstName + ' ' + resp.body.lastName } }];\n} else {\n  const msg = resp.body?.detail || resp.body?.title || ('HTTP ' + statusCode);\n  return [{ json: { status: 'failed', error: msg, statusCode } }];\n}\n"
+        "jsCode": "const resp = $input.first().json;\nconst statusCode = resp.statusCode || 0;\nif (statusCode !== 201) {\n  const msg = resp.body?.detail || resp.body?.title || ('HTTP ' + statusCode);\n  return [{ json: { status: 'failed', error: msg, statusCode } }];\n}\nconst client = resp.body;\nconst resumeUrl = $execution.resumeUrl;\nreturn [{ json: {\n  status: 'pending_approval',\n  clientId: client.id,\n  clientName: client.firstName + ' ' + client.lastName,\n  rowVersion: client.rowVersion,\n  approvalUrl: resumeUrl + '?action=approve',\n  rejectionUrl: resumeUrl + '?action=reject',\n  message: 'Client created in PendingKyc status. Use approvalUrl to approve or rejectionUrl to reject.'\n} }];\n"
       },
       "id": "build-response",
       "name": "Build Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-created",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "pending_approval",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-created",
+      "name": "Created OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-fail",
+      "name": "Respond Failure",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-created",
+      "name": "Respond Created",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "id": "wait-approval",
+      "name": "Wait for Approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $input.first().json.query || {};\nconst approved = query.action === 'approve';\nreturn [{ json: { approved } }];\n"
+      },
+      "id": "check-action",
+      "name": "Check Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-approved",
+              "leftValue": "={{ $json.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-approved",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "method": "POST",
+        "url": "http://gateway:8090/api/v1/auth/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Broker API Auth"
+        }
+      },
+      "id": "login-2",
+      "name": "Login Again",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=http://gateway:8090/api/v1/clients/{{ $('Build Response').first().json.clientId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: $('Build Response').first().json.clientId, clientType: 'Individual', status: 'Active', firstName: $('Webhook Trigger').first().json.body.firstName, lastName: $('Webhook Trigger').first().json.body.lastName, email: $('Webhook Trigger').first().json.body.email, addresses: [], rowVersion: $('Build Response').first().json.rowVersion }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "approve-client",
+      "name": "Approve Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        -240
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result",
+              "name": "result",
+              "value": "={{ 'Client ' + $('Build Response').first().json.clientName + ' approved and activated' }}",
+              "type": "string"
+            },
+            {
+              "id": "client-id",
+              "name": "clientId",
+              "value": "={{ $('Build Response').first().json.clientId }}",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "name": "newStatus",
+              "value": "Active",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "approved-result",
+      "name": "Approved",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2420,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result",
+              "name": "result",
+              "value": "={{ 'Client ' + $('Build Response').first().json.clientName + ' rejected' }}",
+              "type": "string"
+            },
+            {
+              "id": "client-id",
+              "name": "clientId",
+              "value": "={{ $('Build Response').first().json.clientId }}",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "name": "newStatus",
+              "value": "Rejected",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "rejected-result",
+      "name": "Rejected",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2420,
+        0
+      ]
     }
   ],
   "connections": {
     "Webhook Trigger": {
       "main": [
         [
-          { "node": "Login to API", "type": "main", "index": 0 }
+          {
+            "node": "Login to API",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Login to API": {
       "main": [
         [
-          { "node": "Create Client", "type": "main", "index": 0 }
+          {
+            "node": "Create Client",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Create Client": {
       "main": [
         [
-          { "node": "Build Response", "type": "main", "index": 0 }
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Created OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Created OK?": {
+      "main": [
+        [
+          {
+            "node": "Respond Created",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Created": {
+      "main": [
+        [
+          {
+            "node": "Wait for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Approval": {
+      "main": [
+        [
+          {
+            "node": "Check Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Action": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Login Again",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login Again": {
+      "main": [
+        [
+          {
+            "node": "Approve Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve Client": {
+      "main": [
+        [
+          {
+            "node": "Approved",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
@@ -108,7 +481,9 @@
     "executionOrder": "v1"
   },
   "tags": [
-    { "name": "onboarding" }
+    {
+      "name": "onboarding"
+    }
   ],
   "active": false
 }
