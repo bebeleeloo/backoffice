@@ -9,11 +9,11 @@
 # Environment variables (optional):
 #   BROKER_API_USERNAME  — API username for credential (default: admin)
 #   ADMIN_PASSWORD       — API password for credential (default: Admin123!)
-#   N8N_CONTAINER        — n8n container name (default: new-back-n8n-1)
+#   N8N_CONTAINER        — n8n container name (default: broker-n8n)
 
 set -euo pipefail
 
-N8N_CONTAINER="${N8N_CONTAINER:-new-back-n8n-1}"
+N8N_CONTAINER="${N8N_CONTAINER:-broker-n8n}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKFLOWS_DIR="$SCRIPT_DIR/workflows"
 BROKER_USER="${BROKER_API_USERNAME:-admin}"
