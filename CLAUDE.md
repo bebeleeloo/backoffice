@@ -132,28 +132,28 @@ Frontend is a pnpm monorepo with 3 SPAs sharing `@broker/ui-kit` and `@broker/au
 | # | Backend (Core API) | Auth Service | Gateway |
 |---|-------------------|--------------|---------|
 | 1 | ForwardedHeaders | ForwardedHeaders | ForwardedHeaders |
-| 2 | CorrelationId | BasicAuth | ResponseCompression |
-| 3 | ResponseCompression | CorrelationId | Swagger (if Dev) |
-| 4 | SerilogRequestLogging | ResponseCompression | CorrelationId |
-| 5 | ExceptionHandling | SerilogRequestLogging | SerilogRequestLogging |
-| 6 | Swagger (if Dev) | ExceptionHandling | ExceptionHandling |
-| 7 | CORS | Swagger (if Dev) | CORS |
-| 8 | RateLimiter | CORS | Authentication |
-| 9 | Authentication | RateLimiter | Authorization |
-| 10 | Authorization | Authentication | MapControllers |
-| 11 | MapControllers | Authorization | Health endpoints |
-| 12 | Health endpoints | MapControllers | MapReverseProxy (YARP) |
-| 13 | — | Health endpoints | — |
+| 2 | CorrelationId | CorrelationId | ResponseCompression |
+| 3 | ResponseCompression | ResponseCompression | Swagger (if Dev) |
+| 4 | SerilogRequestLogging | SerilogRequestLogging | CorrelationId |
+| 5 | ExceptionHandling | ExceptionHandling | SerilogRequestLogging |
+| 6 | Swagger (if Dev) | Swagger (if Dev) | ExceptionHandling |
+| 7 | CORS | CORS | CORS |
+| 8 | RateLimiter | RateLimiter | RateLimiter |
+| 9 | Authentication | BasicAuth | Authentication |
+| 10 | Authorization | Authentication | Authorization |
+| 11 | MapControllers | Authorization | MapControllers |
+| 12 | Health endpoints | MapControllers | Health endpoints |
+| 13 | — | Health endpoints | MapReverseProxy (YARP) |
 
 Notes:
 - ForwardedHeaders always first (required for X-Forwarded-For/Proto behind reverse proxy)
-- Auth service: BasicAuth middleware before CORS/RateLimiter (known issue — see §16)
-- Gateway: no rate limiting configured
+- Auth service: BasicAuth middleware after RateLimiter, before Authentication (converts Basic Auth to JSON for n8n)
+- Gateway: rate limiting with "config" policy (10 req/min) on config mutation endpoints
 - Backend: rate limiting policies defined but only applied in auth-service controllers
 
 **ForwardedHeaders configuration:**
-- All 3 services use `KnownProxies.Clear()` + `KnownNetworks.Clear()` — trusts any proxy IP
-- Acceptable when behind a controlled reverse proxy (nginx), but requires network-level protection
+- All 3 services use explicit private network ranges: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`
+- `ForwardLimit = 2` (nginx → gateway → service)
 
 ## 4. Backend Structure
 
@@ -220,7 +220,7 @@ auth-service/
 │   ├── Broker.Auth.Application/    # Auth/, Users/, Roles/, Permissions/, AuditLogs/ handlers
 │   ├── Broker.Auth.Infrastructure/ # AuthDbContext (schema: auth), JWT, PasswordHasher, Seed, Configs
 │   │   └── Services/RefreshTokenCleanupService.cs  # BackgroundService: cleanup expired tokens (24h interval)
-│   └── Broker.Auth.Api/            # Controllers, Middleware (BasicAuth, CorrelationId, ExceptionHandling), Program.cs (:8082)
+│   └── Broker.Auth.Api/            # Controllers, Middleware (CorrelationId, BasicAuth, ExceptionHandling), Program.cs (:8082)
 ├── tests/
 │   ├── Broker.Auth.Tests.Unit/
 │   └── Broker.Auth.Tests.Integration/
@@ -253,7 +253,7 @@ gateway/
 
 API Gateway serves config (menu, entities, upstreams), proxies REST via YARP to backend services, and provides CRUD endpoints for config editing (`settings.manage` permission). YARP routes reload dynamically when `upstreams.yaml` changes or `POST /reload` is called (`ConfigLoader.OnUpstreamsChanged` event → `YamlProxyConfigProvider.Update()`). Menu PUT validates recursion depth (max 3 levels). `ConfigLoader.OnUpstreamsChanged` is invoked outside lock to prevent deadlocks. Middleware order: CorrelationId → ExceptionHandling → routing.
 
-Auth service owns: users, roles, permissions, authentication (login, refresh, logout, change password, reset password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS). Logout endpoint (`POST /auth/logout`) hashes the refresh token, finds and revokes it. Password change, reset, and user deactivation all revoke active refresh tokens.
+Auth service owns: users, roles, permissions, authentication (login, refresh, logout, change password, reset password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS). Login performs minimal query first, verifies password (with dummy hash for missing users to prevent timing oracle), then lazy-loads full user graph only on success. Logout endpoint (`POST /auth/logout`) is idempotent — returns 204 even if token not found. Password change, reset, user deactivation, and user deletion all revoke active refresh tokens.
 
 Core validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
 
@@ -337,6 +337,7 @@ n8n 2.12.3 runs as a Docker service with its own PostgreSQL database. Connects t
 - Enforced in FluentValidation on: CreateUser, ChangePassword, ResetUserPassword
 - On password change/reset: all user's refresh tokens are revoked (`RevokedAt = utcNow`)
 - On user deactivation (UpdateUser, `IsActive` true→false): all refresh tokens are revoked
+- On user deletion (DeleteUser): all refresh tokens are revoked before removal
 
 **Pre-delete referential integrity checks:**
 - DeleteAccount: rejects if account has linked Orders (`InvalidOperationException` → 409)
@@ -516,7 +517,7 @@ frontend/
 - `NavigationProvider` wraps MainLayout in each SPA with `internalPaths: string[]`
 - `useAppNavigation().navigateTo(path)` — if path matches internalPaths → React Router `navigate()`, else → `window.location.href` (full page reload)
 - Sidebar clicks use `navigateTo()` for automatic internal/external routing
-- Logout always uses `window.location.href = "/login"` (cross-SPA to auth app)
+- Logout calls `POST /auth/logout` (best-effort server-side token revocation), clears localStorage, then uses `window.location.href = "/login"` (cross-SPA to auth app)
 - `RequireAuth` redirects via `useEffect` → `window.location.href = "/login?returnTo=" + encodeURIComponent(path)`
 - `LoginPage` reads `returnTo` from URL search params, redirects after login via `window.location.href`
 - nginx routes: `/login`, `/users*`, `/roles*` → auth SPA; `/config*` → config SPA; rest → backoffice SPA
@@ -644,8 +645,7 @@ No repository layer. All data access via DbContext DbSets with LINQ.
 8. Modify entity
 9. SaveChangesAsync (triggers change tracking)
 10. Set audit context EntityType, EntityId, AfterJson (for creates/updates — capture state after save)
-11. Re-fetch via `mediator.Send(new GetXxxByIdQuery(...), ct)` — never instantiate handlers directly
-12. Return DTO
+11. Return `await mediator.Send(new GetXxxByIdQuery(...), ct)` — re-fetch via mediator, never instantiate handlers directly
 
 Note: All mutation handlers (aggregates, reference data, photo, profile) must inject `IAuditContext` and set at minimum EntityType + EntityId. Reference data handlers set BeforeJson/AfterJson directly since they have no field-level change tracking.
 
@@ -964,5 +964,5 @@ dotnet run
 - Use the old `-field` sort format in new code — use `"field asc"`/`"field desc"` format
 - Use `useEffect` with `setState` for dialog reset — use render-time `prevOpen` pattern (ESLint `react-hooks/set-state-in-effect` rule)
 - Delete aggregates without checking for linked child entities — add pre-delete `AnyAsync` checks
-- Skip refresh token revocation on password change/reset/deactivation
+- Skip refresh token revocation on password change/reset/deactivation/deletion
 
