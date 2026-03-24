@@ -32,9 +32,6 @@ public sealed class EntityConfigService
 
     private static EntityConfig FilterEntityFields(EntityConfig entity, IReadOnlyList<string> roles)
     {
-        if (roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
-            return entity;
-
         var visibleFields = entity.Fields
             .Where(f => f.Roles.Contains("*") || f.Roles.Any(r => roles.Contains(r, StringComparer.OrdinalIgnoreCase)))
             .ToList();

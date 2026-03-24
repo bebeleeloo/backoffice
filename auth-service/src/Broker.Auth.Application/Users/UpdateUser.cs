@@ -33,12 +33,12 @@ public sealed class UpdateUserCommandHandler(
             .FirstOrDefaultAsync(u => u.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"User {request.Id} not found");
 
+        db.Users.Entry(user).Property(u => u.RowVersion).OriginalValue = request.RowVersion;
+
         if (await db.Users.AnyAsync(u => u.Email == request.Email && u.Id != request.Id, ct))
             throw new InvalidOperationException($"Email '{request.Email}' is already in use");
 
         var before = JsonSerializer.Serialize(new { user.Id, user.Email, user.FullName, user.IsActive });
-
-        db.Users.Entry(user).Property(u => u.RowVersion).OriginalValue = request.RowVersion;
 
         var wasActive = user.IsActive;
 

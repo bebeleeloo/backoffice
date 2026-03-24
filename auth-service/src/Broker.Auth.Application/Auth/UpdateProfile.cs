@@ -45,7 +45,7 @@ public sealed class UpdateProfileCommandHandler(
         user.FullName = request.FullName;
         user.Email = request.Email;
         user.UpdatedAt = clock.UtcNow;
-        user.UpdatedBy = currentUser.UserId?.ToString();
+        user.UpdatedBy = currentUser.UserName;
         await db.SaveChangesAsync(ct);
 
         audit.AfterJson = JsonSerializer.Serialize(new { user.Id, user.Username, user.Email, user.FullName });

@@ -25,25 +25,35 @@ public sealed class LoginCommandHandler(
     IDateTimeProvider clock,
     PasswordHasher<User> hasher) : IRequestHandler<LoginCommand, AuthResponse>
 {
+    private const string DummyHash = "AQAAAAIAAYagAAAAEDummyHashForTimingProtection==";
+
     public async Task<AuthResponse> Handle(LoginCommand request, CancellationToken ct)
     {
+        // Minimal query first — only fields needed for auth check
         var user = await db.Users
-            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role).ThenInclude(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
-            .Include(u => u.PermissionOverrides).ThenInclude(po => po.Permission)
-            .FirstOrDefaultAsync(u => u.Username == request.Username, ct)
-            ?? throw new UnauthorizedAccessException("Invalid credentials");
+            .FirstOrDefaultAsync(u => u.Username == request.Username, ct);
 
-        if (!user.IsActive)
+        // Always verify password to prevent timing oracle (user enumeration)
+        var hashToVerify = user?.PasswordHash ?? DummyHash;
+        var verifyResult = hasher.VerifyHashedPassword(user ?? new User(), hashToVerify, request.Password);
+
+        if (user == null || !user.IsActive || verifyResult == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Invalid credentials");
 
-        var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
-        if (result == PasswordVerificationResult.Failed)
-            throw new UnauthorizedAccessException("Invalid credentials");
-
-        if (result == PasswordVerificationResult.SuccessRehashNeeded)
+        if (verifyResult == PasswordVerificationResult.SuccessRehashNeeded)
         {
             user.PasswordHash = hasher.HashPassword(user, request.Password);
         }
+
+        // Load full graph only after successful authentication
+        await db.Users.Entry(user)
+            .Collection(u => u.UserRoles).Query()
+            .Include(ur => ur.Role).ThenInclude(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
+            .LoadAsync(ct);
+        await db.Users.Entry(user)
+            .Collection(u => u.PermissionOverrides).Query()
+            .Include(po => po.Permission)
+            .LoadAsync(ct);
 
         var permissions = EffectivePermissionsResolver.GetEffectivePermissions(user);
         var tokens = jwt.GenerateTokens(user, permissions);

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -45,7 +46,8 @@ public sealed class BasicAuthenticationHandler(
             return AuthenticateResult.Fail("Invalid Base64 encoding");
         }
 
-        var cacheKey = $"basic-auth:{username}:{password.GetHashCode()}";
+        var passwordHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
+        var cacheKey = $"basic-auth:{username}:{passwordHash}";
 
         if (cache.TryGetValue(cacheKey, out ClaimsPrincipal? cachedPrincipal) && cachedPrincipal is not null)
             return AuthenticateResult.Success(new AuthenticationTicket(cachedPrincipal, SchemeName));

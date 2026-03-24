@@ -150,13 +150,16 @@ try
     var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
-                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 2
     };
-    forwardedHeadersOptions.KnownProxies.Clear();
     forwardedHeadersOptions.KnownNetworks.Clear();
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("10.0.0.0"), 8));
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("192.168.0.0"), 16));
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("127.0.0.0"), 8));
     app.UseForwardedHeaders(forwardedHeadersOptions);
 
-    app.UseMiddleware<BasicAuthMiddleware>();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();
@@ -170,6 +173,7 @@ try
 
     app.UseCors();
     app.UseRateLimiter();
+    app.UseMiddleware<BasicAuthMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();

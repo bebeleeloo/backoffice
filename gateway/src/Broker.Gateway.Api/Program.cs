@@ -1,9 +1,11 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Broker.Gateway.Api.Filters;
 using Broker.Gateway.Api.Middleware;
 using Broker.Gateway.Api.Persistence;
 using Broker.Gateway.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -105,6 +107,22 @@ try
         .AddCheck<Broker.Gateway.Api.HealthChecks.PostgresHealthCheck>(
             "postgres", tags: new[] { "ready" });
 
+    // Rate limiting
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        var configPermitLimit = builder.Configuration.GetValue("RateLimiting:ConfigPermitLimit", 10);
+        options.AddPolicy("config", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = configPermitLimit,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+    });
+
     // Response compression
     builder.Services.AddResponseCompression(options =>
     {
@@ -124,10 +142,14 @@ try
     var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
-                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 2
     };
-    forwardedHeadersOptions.KnownProxies.Clear();
     forwardedHeadersOptions.KnownNetworks.Clear();
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("10.0.0.0"), 8));
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("192.168.0.0"), 16));
+    forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(System.Net.IPAddress.Parse("127.0.0.0"), 8));
     app.UseForwardedHeaders(forwardedHeadersOptions);
 
     // Wire up YARP config reload when upstreams change
@@ -151,6 +173,7 @@ try
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
     app.UseCors();
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
 

@@ -91,13 +91,11 @@ public sealed class UpdateTradeTransactionCommandHandler(
 
         await db.SaveChangesAsync(ct);
 
-        var result = await mediator.Send(new GetTradeTransactionByIdQuery(transaction.Id), ct);
-
         audit.EntityType = "Transaction";
         audit.EntityId = transaction.Id.ToString();
         audit.BeforeJson = before;
         audit.AfterJson = JsonSerializer.Serialize(new { transaction.Id, transaction.TransactionNumber, transaction.Status });
 
-        return result;
+        return await mediator.Send(new GetTradeTransactionByIdQuery(transaction.Id), ct);
     }
 }

@@ -28,6 +28,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Broker.Gateway.
         builder.UseSetting("Jwt:Secret", "this-is-a-development-secret-key-min-32-chars!!");
         builder.UseSetting("Jwt:Issuer", "BrokerBackoffice");
         builder.UseSetting("Jwt:Audience", "BrokerBackoffice");
+        builder.UseSetting("RateLimiting:ConfigPermitLimit", "10000");
 
         builder.ConfigureTestServices(services =>
         {

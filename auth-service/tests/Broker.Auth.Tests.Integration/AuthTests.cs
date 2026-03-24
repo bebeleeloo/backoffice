@@ -257,13 +257,13 @@ public class AuthTests(CustomWebApplicationFactory factory) : IntegrationTestBas
     }
 
     [Fact]
-    public async Task Logout_InvalidToken_Returns401()
+    public async Task Logout_InvalidToken_ReturnsNoContent()
     {
         await AuthenticateAsync();
 
         var resp = await _client.PostAsJsonAsync("/api/v1/auth/logout",
             new { RefreshToken = "non-existent-refresh-token-value" });
-        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        resp.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     [Fact]

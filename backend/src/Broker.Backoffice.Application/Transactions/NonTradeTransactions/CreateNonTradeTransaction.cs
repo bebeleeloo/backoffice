@@ -79,12 +79,10 @@ public sealed class CreateNonTradeTransactionCommandHandler(
         db.NonTradeTransactions.Add(nonTradeTransaction);
         await db.SaveChangesAsync(ct);
 
-        var result = await mediator.Send(new GetNonTradeTransactionByIdQuery(transactionId), ct);
-
         audit.EntityType = "Transaction";
         audit.EntityId = transaction.Id.ToString();
         audit.AfterJson = JsonSerializer.Serialize(new { transaction.Id, transaction.TransactionNumber, transaction.Status, transaction.Category });
 
-        return result;
+        return await mediator.Send(new GetNonTradeTransactionByIdQuery(transactionId), ct);
     }
 }

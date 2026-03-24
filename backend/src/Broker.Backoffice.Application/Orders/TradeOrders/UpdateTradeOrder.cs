@@ -101,13 +101,11 @@ public sealed class UpdateTradeOrderCommandHandler(
 
         await db.SaveChangesAsync(ct);
 
-        var result = await mediator.Send(new GetTradeOrderByIdQuery(order.Id), ct);
-
         audit.EntityType = "Order";
         audit.EntityId = order.Id.ToString();
         audit.BeforeJson = before;
         audit.AfterJson = JsonSerializer.Serialize(new { order.Id, order.OrderNumber, order.Status });
 
-        return result;
+        return await mediator.Send(new GetTradeOrderByIdQuery(order.Id), ct);
     }
 }

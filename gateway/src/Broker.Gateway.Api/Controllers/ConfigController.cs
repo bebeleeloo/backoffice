@@ -7,6 +7,7 @@ using Broker.Gateway.Api.Persistence;
 using Broker.Gateway.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Broker.Gateway.Api.Controllers;
@@ -51,6 +52,7 @@ public sealed class ConfigController(
     [HttpPut("menu")]
     [Authorize(Policy = "settings.manage")]
     [ServiceFilter(typeof(AuditActionFilter))]
+    [EnableRateLimiting("config")]
     public IActionResult SaveMenu([FromBody] MenuConfig config)
     {
         if (config == null)
@@ -100,6 +102,7 @@ public sealed class ConfigController(
     [HttpPut("entities")]
     [Authorize(Policy = "settings.manage")]
     [ServiceFilter(typeof(AuditActionFilter))]
+    [EnableRateLimiting("config")]
     public IActionResult SaveEntities([FromBody] EntitiesConfig config)
     {
         if (config == null)
@@ -128,6 +131,7 @@ public sealed class ConfigController(
     [HttpPut("upstreams")]
     [Authorize(Policy = "settings.manage")]
     [ServiceFilter(typeof(AuditActionFilter))]
+    [EnableRateLimiting("config")]
     public IActionResult SaveUpstreams([FromBody] UpstreamsConfig config)
     {
         if (config == null)
@@ -170,6 +174,7 @@ public sealed class ConfigController(
     [HttpPost("reload")]
     [Authorize(Policy = "settings.manage")]
     [ServiceFilter(typeof(AuditActionFilter))]
+    [EnableRateLimiting("config")]
     public IActionResult Reload()
     {
         auditContext.EntityType = EntityTypeConfig;

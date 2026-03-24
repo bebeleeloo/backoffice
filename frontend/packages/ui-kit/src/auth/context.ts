@@ -7,11 +7,11 @@ export interface AuthState {
   isLoading: boolean;
   permissions: string[];
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthState>({
   user: null, isAuthenticated: false, isLoading: true, permissions: [],
-  login: async () => {}, logout: () => {}, refreshProfile: async () => {},
+  login: async () => {}, logout: async () => {}, refreshProfile: async () => {},
 });

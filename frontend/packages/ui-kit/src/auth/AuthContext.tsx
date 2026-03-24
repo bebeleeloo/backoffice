@@ -38,10 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchMe();
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     setUser(null);
+
+    // Best-effort server-side token revocation
+    if (refreshToken) {
+      try {
+        await apiClient.post("/auth/logout", { refreshToken });
+      } catch {
+        // Ignore errors — tokens already cleared client-side
+      }
+    }
   };
 
   return (
