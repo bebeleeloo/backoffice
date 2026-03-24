@@ -18,6 +18,10 @@ Broker Backoffice — internal admin panel for a brokerage firm. Manages clients
 │       ├── backoffice/       # Business SPA (clients, accounts, orders, etc.) :5173
 │       ├── auth/             # Auth SPA (login, users, roles) :5174
 │       └── config/           # Config SPA (menu editor, entity fields, upstreams) :5175
+├── n8n/              # n8n workflows, import script, test data
+│   ├── workflows/    # 3 JSON workflow files (health-check, client-onboarding, transaction-import)
+│   ├── test-data/    # Sample CSV for transaction import
+│   └── import-workflows.sh  # Automated n8n setup script
 ├── docs/             # Architecture documentation
 ├── scripts/          # Test, deployment, and data migration scripts
 ├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
@@ -123,6 +127,34 @@ Frontend is a pnpm monorepo with 3 SPAs sharing `@broker/ui-kit` and `@broker/au
 - `Dockerfile.web` runs nginx as non-root `nginx` user on port 8080
 - docker-compose maps `3000:8080` for the web service
 
+**Middleware pipeline order:**
+
+| # | Backend (Core API) | Auth Service | Gateway |
+|---|-------------------|--------------|---------|
+| 1 | ForwardedHeaders | ForwardedHeaders | ForwardedHeaders |
+| 2 | CorrelationId | BasicAuth | ResponseCompression |
+| 3 | ResponseCompression | CorrelationId | Swagger (if Dev) |
+| 4 | SerilogRequestLogging | ResponseCompression | CorrelationId |
+| 5 | ExceptionHandling | SerilogRequestLogging | SerilogRequestLogging |
+| 6 | Swagger (if Dev) | ExceptionHandling | ExceptionHandling |
+| 7 | CORS | Swagger (if Dev) | CORS |
+| 8 | RateLimiter | CORS | Authentication |
+| 9 | Authentication | RateLimiter | Authorization |
+| 10 | Authorization | Authentication | MapControllers |
+| 11 | MapControllers | Authorization | Health endpoints |
+| 12 | Health endpoints | MapControllers | MapReverseProxy (YARP) |
+| 13 | — | Health endpoints | — |
+
+Notes:
+- ForwardedHeaders always first (required for X-Forwarded-For/Proto behind reverse proxy)
+- Auth service: BasicAuth middleware before CORS/RateLimiter (known issue — see §16)
+- Gateway: no rate limiting configured
+- Backend: rate limiting policies defined but only applied in auth-service controllers
+
+**ForwardedHeaders configuration:**
+- All 3 services use `KnownProxies.Clear()` + `KnownNetworks.Clear()` — trusts any proxy IP
+- Acceptable when behind a controlled reverse proxy (nginx), but requires network-level protection
+
 ## 4. Backend Structure
 
 ```
@@ -224,6 +256,23 @@ API Gateway serves config (menu, entities, upstreams), proxies REST via YARP to 
 Auth service owns: users, roles, permissions, authentication (login, refresh, logout, change password, reset password, profile), user photos. Includes `RefreshTokenCleanupService` (BackgroundService) that deletes expired/revoked refresh tokens every 24 hours (30-day retention). `BasicAuthMiddleware` converts Basic Auth headers to JSON body on `/auth/login` for n8n integration (logs warning on non-HTTPS). Logout endpoint (`POST /auth/logout`) hashes the refresh token, finds and revokes it. Password change, reset, and user deactivation all revoke active refresh tokens.
 
 Core validates JWT locally (no roundtrip to auth). Dashboard gets user stats via `IAuthServiceClient` → `GET /api/v1/users/stats` (`[AllowAnonymous]` — internal service-to-service call).
+
+### n8n Workflow Automation
+
+n8n 2.12.3 runs as a Docker service with its own PostgreSQL database. Connects to Broker API via gateway (`http://gateway:8090`). Uses Basic Auth credentials (converted to JWT by `BasicAuthMiddleware` in auth-service).
+
+**3 workflows** (`n8n/workflows/`):
+1. **Broker Health Check** (`health-check.json`) — Cron every 5 minutes, checks `/health/ready` on gateway for both API and auth service, reports healthy/unhealthy status
+2. **Client Onboarding** (`client-onboarding.json`) — Webhook-triggered, creates client with `kycStatus: InProgress`, generates approval/rejection URLs via `$execution.resumeUrl`, waits for manual approval, then updates kycStatus to Approved/Rejected with optimistic concurrency (rowVersion)
+3. **Transaction Import** (`transaction-import.json`) — Webhook accepts raw CSV body, parses rows, checks for duplicates via `externalId`, looks up accounts/instruments/currencies, creates trade or non-trade transactions, returns summary with imported/skipped counts
+
+**Import script** (`n8n/import-workflows.sh`):
+- Waits for n8n container health (30s timeout)
+- Creates "Broker API Auth" credential (httpBasicAuth, uses `BROKER_API_USERNAME` / `ADMIN_PASSWORD` env vars)
+- Imports all workflows via `n8n import:workflow` CLI
+- Activates all 3 workflows and restarts n8n container
+
+**Test data** (`n8n/test-data/transactions.csv`): 3 sample rows (2 trade, 1 non-trade) for testing the import workflow.
 
 **Demo data seeding** (controlled by `SEED_DEMO_DATA=true` env var or `ASPNETCORE_ENVIRONMENT=Development`):
 - Auth service seeds: 10 demo users (3 Managers, 3 Viewers, 4 Operators), 3 demo roles, portrait photos from randomuser.me
@@ -743,6 +792,7 @@ Note: All mutation handlers (aggregates, reference data, photo, profile) must in
 - Testcontainers (real PostgreSQL 17 in Docker)
 - `CustomWebApplicationFactory` with in-memory YAML configs
 - Location: `gateway/tests/Broker.Gateway.Tests.Integration/`
+- **Not included in CI pipeline** — gateway CI job only runs build + vulnerability check (known gap)
 - Coverage: Health (live, ready), Menu (GET filtered/raw, PUT valid/invalid, auth 401, perm 403), Entities (GET filtered/raw, PUT valid/invalid, GET by name, 404), Upstreams (GET, PUT valid/invalid URI/empty routes, perm 403, reload), EntityChanges (GET by entityType/all, filters, pagination, sort, changeType), Audit (PUT creates audit, before/after JSON)
 
 ### Frontend Tests (167 tests, ~6s)
@@ -915,3 +965,69 @@ dotnet run
 - Use `useEffect` with `setState` for dialog reset — use render-time `prevOpen` pattern (ESLint `react-hooks/set-state-in-effect` rule)
 - Delete aggregates without checking for linked child entities — add pre-delete `AnyAsync` checks
 - Skip refresh token revocation on password change/reset/deactivation
+
+## 16. Known Issues & Technical Debt
+
+Issues identified during full project review (2026-03-24). Grouped by severity.
+
+### Critical / High
+
+**Auth Service — Security:**
+1. **Login timing oracle** — `VerifyHashedPassword` not called when user not found, enabling user enumeration via response time difference (`Auth/Login.cs`)
+2. **Logout not idempotent** — returns 401 on invalid/expired refresh token instead of accepting gracefully (`Auth/Logout.cs`)
+3. **DeleteUser doesn't revoke refresh tokens** — deleted user's existing tokens remain valid until expiry (`Users/DeleteUser.cs`)
+4. **Token family revocation incomplete** — queries only non-revoked tokens, so re-revocation of already-revoked family members skipped (`Auth/RefreshToken.cs`)
+5. **UpdateUser RowVersion assigned after duplicate-email check** — race condition window where concurrent request could pass check (`Users/UpdateUser.cs`)
+6. **UpdateProfile sets UpdatedBy = UserId** instead of UserName, inconsistent with all other handlers (`Auth/UpdateProfile.cs`)
+7. **BasicAuthMiddleware before CORS/RateLimiter** — requests processed by BasicAuth bypass rate limiting and CORS preflight (`Program.cs` middleware order)
+8. **Full user graph eager-loaded on login** — loads roles, permissions, tokens before password verification (`Auth/Login.cs`)
+
+**Backend API:**
+9. **Audit context set after mediator re-query** — in Order/Transaction create/update handlers, `IAuditContext` EntityType may be null if `SaveChangesAsync` fails partially (`TradeOrders/`, `NonTradeOrders/` handlers)
+10. **BasicAuthenticationHandler uses `GetHashCode()` for cache key** — hash collisions and non-deterministic behavior across processes (`Infrastructure/Auth/`)
+
+**Gateway:**
+11. **EntityConfigService "Admin" role bypass** — hardcoded role name check that may not match actual role names in the system (`Services/EntityConfigService.cs`)
+12. **No rate limiting on config mutation endpoints** — PUT menu/entities/upstreams/reload have no rate limits
+
+**Frontend:**
+13. **`logout()` doesn't call `POST /auth/logout`** — refresh token remains valid on server after client-side logout (`auth/AuthProvider.tsx`)
+
+**Infrastructure:**
+14. **ForwardedHeaders `KnownProxies.Clear()`** — all 3 services trust any proxy IP, potential IP spoofing if not behind controlled reverse proxy
+
+### Medium
+
+**Backend:**
+- Correlation ID middleware accepts unbounded header length (no max length validation)
+- Rate limiting policies ("login", "auth", "sensitive") defined in backend but only used in auth-service controllers
+- Synchronous DB queries in `SaveChangesAsync` change tracking override (should use async)
+- LIKE escaping in gateway `EntityChange` queries doesn't use `LikeHelper` — uses raw `$"%{value}%"`
+
+**Auth Service:**
+- Synchronous DB queries in `SaveChangesAsync` override (same as backend)
+
+**Gateway:**
+- `entityType` query param on entity-changes endpoint not validated — null value returns unexpected rows
+- JWT Issuer/Audience not validated for null at startup — fails at runtime instead
+- `FlattenMenu` only flattens 1 level of nesting (menu supports 3 levels)
+- `EntitiesEqual` comparison is order-sensitive (reordering fields counts as change)
+
+**Frontend:**
+- `readParams()` called without `useMemo` in 6 of 7 list pages (re-parses on every render)
+- Account/Instrument dropdowns in Order/Transaction dialogs limited to 200 items (hardcoded pageSize)
+
+**Docker / CI:**
+- No Docker network segmentation — all services on default bridge network
+- Gateway YAML config files not in Docker volume — changes lost on container rebuild
+- CI: integration test jobs don't depend on unit test jobs (could run on broken code)
+- CI: gateway integration tests not executed (build-only job)
+- Docker HEALTHCHECK not in individual Dockerfiles (only in docker-compose)
+- nginx `client_max_body_size 5m` vs backend photo upload limit of 2MB (inconsistent)
+
+### Low
+
+- Validator MaxLength mismatches: `Clearer.Name` validator allows 200 chars, DB column is 100
+- Dead code: `readParams` parses `residenceCountryId` in some pages but it's unused
+- Audit date filtering: some handlers use `<=` while others use `< AddDays(1)` (inconsistent)
+- `Min(ChangeType)` aggregation in entity changes — `Min` on enum is semantically unclear
