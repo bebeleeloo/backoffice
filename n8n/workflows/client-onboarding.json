@@ -60,7 +60,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ clientType: 'Individual', status: 'PendingKyc', firstName: $('Webhook Trigger').first().json.body.firstName, lastName: $('Webhook Trigger').first().json.body.lastName, email: $('Webhook Trigger').first().json.body.email, addresses: [] }) }}",
+        "jsonBody": "={{ JSON.stringify({ clientType: 'Individual', status: 'Active', kycStatus: 'InProgress', firstName: $('Webhook Trigger').first().json.body.firstName, lastName: $('Webhook Trigger').first().json.body.lastName, email: $('Webhook Trigger').first().json.body.email, addresses: [] }) }}",
         "options": {
           "response": {
             "response": {
@@ -81,7 +81,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const resp = $input.first().json;\nconst statusCode = resp.statusCode || 0;\nif (statusCode !== 201) {\n  const msg = resp.body?.detail || resp.body?.title || ('HTTP ' + statusCode);\n  return [{ json: { status: 'failed', error: msg, statusCode } }];\n}\nconst client = resp.body;\nconst resumeUrl = $execution.resumeUrl;\nreturn [{ json: {\n  status: 'pending_approval',\n  clientId: client.id,\n  clientName: client.firstName + ' ' + client.lastName,\n  rowVersion: client.rowVersion,\n  approvalUrl: resumeUrl + '?action=approve',\n  rejectionUrl: resumeUrl + '?action=reject',\n  message: 'Client created in PendingKyc status. Use approvalUrl to approve or rejectionUrl to reject.'\n} }];\n"
+        "jsCode": "const resp = $input.first().json;\nconst statusCode = resp.statusCode || 0;\nif (statusCode !== 201) {\n  const msg = resp.body?.detail || resp.body?.title || ('HTTP ' + statusCode);\n  return [{ json: { status: 'failed', error: msg, statusCode } }];\n}\nconst client = resp.body;\nconst resumeUrl = $execution.resumeUrl;\nreturn [{ json: {\n  status: 'pending_approval',\n  clientId: client.id,\n  clientName: client.firstName + ' ' + client.lastName,\n  rowVersion: client.rowVersion,\n  approvalUrl: resumeUrl + '?action=approve',\n  rejectionUrl: resumeUrl + '?action=reject',\n  message: 'Client created with kycStatus=InProgress. Use approvalUrl to approve or rejectionUrl to reject.'\n} }];\n"
       },
       "id": "build-response",
       "name": "Build Response",
@@ -250,7 +250,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ id: $('Build Response').first().json.clientId, clientType: 'Individual', status: 'Active', firstName: $('Webhook Trigger').first().json.body.firstName, lastName: $('Webhook Trigger').first().json.body.lastName, email: $('Webhook Trigger').first().json.body.email, addresses: [], rowVersion: $('Build Response').first().json.rowVersion }) }}",
+        "jsonBody": "={{ JSON.stringify({ id: $('Build Response').first().json.clientId, clientType: 'Individual', status: 'Active', kycStatus: 'Approved', firstName: $('Webhook Trigger').first().json.body.firstName, lastName: $('Webhook Trigger').first().json.body.lastName, email: $('Webhook Trigger').first().json.body.email, addresses: [], rowVersion: $('Build Response').first().json.rowVersion }) }}",
         "options": {
           "response": {
             "response": {
@@ -276,7 +276,7 @@
             {
               "id": "result",
               "name": "result",
-              "value": "={{ 'Client ' + $('Build Response').first().json.clientName + ' approved and activated' }}",
+              "value": "={{ 'Client ' + $('Build Response').first().json.clientName + ' KYC approved' }}",
               "type": "string"
             },
             {
@@ -288,7 +288,7 @@
             {
               "id": "status",
               "name": "newStatus",
-              "value": "Active",
+              "value": "KycApproved",
               "type": "string"
             }
           ]
@@ -323,7 +323,7 @@
             {
               "id": "status",
               "name": "newStatus",
-              "value": "Rejected",
+              "value": "KycRejected",
               "type": "string"
             }
           ]
@@ -338,6 +338,66 @@
         2420,
         0
       ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "method": "POST",
+        "url": "http://gateway:8090/api/v1/auth/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Broker API Auth"
+        }
+      },
+      "id": "login-reject",
+      "name": "Login for Reject",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=http://gateway:8090/api/v1/clients/{{ $('Build Response').first().json.clientId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: $('Build Response').first().json.clientId, clientType: 'Individual', status: 'Active', kycStatus: 'Rejected', firstName: $('Webhook Trigger').first().json.body.firstName, lastName: $('Webhook Trigger').first().json.body.lastName, email: $('Webhook Trigger').first().json.body.email, addresses: [], rowVersion: $('Build Response').first().json.rowVersion }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "reject-client",
+      "name": "Reject Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        0
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -447,7 +507,7 @@
         ],
         [
           {
-            "node": "Rejected",
+            "node": "Login for Reject",
             "type": "main",
             "index": 0
           }
@@ -470,6 +530,28 @@
         [
           {
             "node": "Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login for Reject": {
+      "main": [
+        [
+          {
+            "node": "Reject Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Client": {
+      "main": [
+        [
+          {
+            "node": "Rejected",
             "type": "main",
             "index": 0
           }
