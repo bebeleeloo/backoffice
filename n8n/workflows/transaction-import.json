@@ -6,14 +6,17 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "import-transactions",
-        "responseMode": "responseNode",
+        "responseMode": "lastNode",
         "options": {}
       },
       "id": "webhook-trigger",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 300],
+      "position": [
+        0,
+        300
+      ],
       "webhookId": "import-transactions"
     },
     {
@@ -21,7 +24,7 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBasicAuth",
         "method": "POST",
-        "url": "={{ $env.BROKER_AUTH_URL }}/auth/login",
+        "url": "http://gateway:8090/api/v1/auth/login",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{}",
@@ -37,7 +40,10 @@
       "name": "Login",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -47,7 +53,10 @@
       "name": "Parse CSV",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [500, 300]
+      "position": [
+        500,
+        300
+      ]
     },
     {
       "parameters": {
@@ -58,12 +67,15 @@
       "name": "Loop Items",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [750, 300]
+      "position": [
+        750,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.BROKER_API_URL }}/{{ $json.type === 'trade' ? 'trade-transactions' : 'non-trade-transactions' }}?externalId={{ encodeURIComponent($json.externalId) }}&pageSize=1",
+        "url": "=http://gateway:8090/api/v1/{{ $json.type === 'trade' ? 'trade-transactions' : 'non-trade-transactions' }}?externalId={{ encodeURIComponent($json.externalId) }}&pageSize=1",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -79,7 +91,10 @@
       "name": "Check Exists",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 300]
+      "position": [
+        1000,
+        300
+      ]
     },
     {
       "parameters": {
@@ -89,7 +104,10 @@
       "name": "Evaluate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 300]
+      "position": [
+        1250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -117,12 +135,15 @@
       "name": "Should Create?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1500, 300]
+      "position": [
+        1500,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.BROKER_API_URL }}/accounts?q={{ encodeURIComponent($('Loop Items').first().json.accountNumber) }}&pageSize=10",
+        "url": "=http://gateway:8090/api/v1/accounts?q={{ encodeURIComponent($('Loop Items').first().json.accountNumber) }}&pageSize=10",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -138,7 +159,10 @@
       "name": "Lookup Account",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1750, 300]
+      "position": [
+        1750,
+        300
+      ]
     },
     {
       "parameters": {
@@ -148,7 +172,10 @@
       "name": "Check Account",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300]
+      "position": [
+        2000,
+        300
+      ]
     },
     {
       "parameters": {
@@ -176,7 +203,10 @@
       "name": "Account OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2250, 300]
+      "position": [
+        2250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -204,12 +234,15 @@
       "name": "Is Trade?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2500, 300]
+      "position": [
+        2500,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.BROKER_API_URL }}/instruments?q={{ encodeURIComponent($('Loop Items').first().json.instrumentSymbol) }}&pageSize=10",
+        "url": "=http://gateway:8090/api/v1/instruments?q={{ encodeURIComponent($('Loop Items').first().json.instrumentSymbol) }}&pageSize=10",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -225,7 +258,10 @@
       "name": "Lookup Instrument",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2750, 100]
+      "position": [
+        2750,
+        100
+      ]
     },
     {
       "parameters": {
@@ -235,7 +271,10 @@
       "name": "Build Trade",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3000, 100]
+      "position": [
+        3000,
+        100
+      ]
     },
     {
       "parameters": {
@@ -263,12 +302,15 @@
       "name": "Instrument OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [3250, 100]
+      "position": [
+        3250,
+        100
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BROKER_API_URL }}/trade-transactions",
+        "url": "http://gateway:8090/api/v1/trade-transactions",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.payload) }}",
@@ -293,13 +335,16 @@
       "name": "Create Trade",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3500, 100],
+      "position": [
+        3500,
+        100
+      ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.BROKER_API_URL }}/currencies",
+        "url": "http://gateway:8090/api/v1/currencies",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -321,7 +366,10 @@
       "name": "Lookup Currency",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2750, 500]
+      "position": [
+        2750,
+        500
+      ]
     },
     {
       "parameters": {
@@ -331,7 +379,10 @@
       "name": "Build Non-Trade",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3000, 500]
+      "position": [
+        3000,
+        500
+      ]
     },
     {
       "parameters": {
@@ -359,12 +410,15 @@
       "name": "Currency OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [3250, 500]
+      "position": [
+        3250,
+        500
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BROKER_API_URL }}/non-trade-transactions",
+        "url": "http://gateway:8090/api/v1/non-trade-transactions",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.payload) }}",
@@ -389,7 +443,10 @@
       "name": "Create Non-Trade",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3500, 500],
+      "position": [
+        3500,
+        500
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -400,7 +457,10 @@
       "name": "Record Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3750, 300]
+      "position": [
+        3750,
+        300
+      ]
     },
     {
       "parameters": {
@@ -410,184 +470,272 @@
       "name": "Build Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 700]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "id": "send-response",
-      "name": "Send Response",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1250, 700]
+      "position": [
+        1000,
+        700
+      ]
     }
   ],
   "connections": {
     "Webhook Trigger": {
       "main": [
         [
-          { "node": "Login", "type": "main", "index": 0 }
+          {
+            "node": "Login",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Login": {
       "main": [
         [
-          { "node": "Parse CSV", "type": "main", "index": 0 }
+          {
+            "node": "Parse CSV",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Parse CSV": {
       "main": [
         [
-          { "node": "Loop Items", "type": "main", "index": 0 }
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Loop Items": {
       "main": [
         [
-          { "node": "Build Summary", "type": "main", "index": 0 }
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Check Exists", "type": "main", "index": 0 }
+          {
+            "node": "Check Exists",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Check Exists": {
       "main": [
         [
-          { "node": "Evaluate", "type": "main", "index": 0 }
+          {
+            "node": "Evaluate",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Evaluate": {
       "main": [
         [
-          { "node": "Should Create?", "type": "main", "index": 0 }
+          {
+            "node": "Should Create?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Should Create?": {
       "main": [
         [
-          { "node": "Lookup Account", "type": "main", "index": 0 }
+          {
+            "node": "Lookup Account",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Loop Items", "type": "main", "index": 0 }
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Lookup Account": {
       "main": [
         [
-          { "node": "Check Account", "type": "main", "index": 0 }
+          {
+            "node": "Check Account",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Check Account": {
       "main": [
         [
-          { "node": "Account OK?", "type": "main", "index": 0 }
+          {
+            "node": "Account OK?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Account OK?": {
       "main": [
         [
-          { "node": "Is Trade?", "type": "main", "index": 0 }
+          {
+            "node": "Is Trade?",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Loop Items", "type": "main", "index": 0 }
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Is Trade?": {
       "main": [
         [
-          { "node": "Lookup Instrument", "type": "main", "index": 0 }
+          {
+            "node": "Lookup Instrument",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Lookup Currency", "type": "main", "index": 0 }
+          {
+            "node": "Lookup Currency",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Lookup Instrument": {
       "main": [
         [
-          { "node": "Build Trade", "type": "main", "index": 0 }
+          {
+            "node": "Build Trade",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Build Trade": {
       "main": [
         [
-          { "node": "Instrument OK?", "type": "main", "index": 0 }
+          {
+            "node": "Instrument OK?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Instrument OK?": {
       "main": [
         [
-          { "node": "Create Trade", "type": "main", "index": 0 }
+          {
+            "node": "Create Trade",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Loop Items", "type": "main", "index": 0 }
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Create Trade": {
       "main": [
         [
-          { "node": "Record Result", "type": "main", "index": 0 }
+          {
+            "node": "Record Result",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Lookup Currency": {
       "main": [
         [
-          { "node": "Build Non-Trade", "type": "main", "index": 0 }
+          {
+            "node": "Build Non-Trade",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Build Non-Trade": {
       "main": [
         [
-          { "node": "Currency OK?", "type": "main", "index": 0 }
+          {
+            "node": "Currency OK?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Currency OK?": {
       "main": [
         [
-          { "node": "Create Non-Trade", "type": "main", "index": 0 }
+          {
+            "node": "Create Non-Trade",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Loop Items", "type": "main", "index": 0 }
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Create Non-Trade": {
       "main": [
         [
-          { "node": "Record Result", "type": "main", "index": 0 }
+          {
+            "node": "Record Result",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Record Result": {
       "main": [
         [
-          { "node": "Loop Items", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "Build Summary": {
-      "main": [
-        [
-          { "node": "Send Response", "type": "main", "index": 0 }
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
@@ -599,5 +747,6 @@
     {
       "name": "import"
     }
-  ]
+  ],
+  "active": false
 }

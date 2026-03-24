@@ -1,135 +1,131 @@
 #!/bin/bash
-# Import n8n workflow JSON files via the n8n REST API.
-# Usage: ./n8n/import-workflows.sh [n8n_base_url]
+# Import n8n workflows and credentials via docker exec + n8n CLI.
+# Usage: ./n8n/import-workflows.sh
 #
 # Prerequisites:
-#   - n8n must be running and healthy
-#   - curl and jq must be installed
-#   - First-time setup: create an owner account at http://localhost:5678 before running
+#   - Docker Compose services must be running (docker compose up -d)
+#   - n8n container must be healthy
+#
+# Environment variables (optional):
+#   BROKER_API_USERNAME  — API username for credential (default: admin)
+#   ADMIN_PASSWORD       — API password for credential (default: Admin123!)
+#   N8N_CONTAINER        — n8n container name (default: new-back-n8n-1)
 
 set -euo pipefail
 
-N8N_URL="${1:-http://localhost:5678}"
+N8N_CONTAINER="${N8N_CONTAINER:-new-back-n8n-1}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKFLOWS_DIR="$SCRIPT_DIR/workflows"
+BROKER_USER="${BROKER_API_USERNAME:-admin}"
+BROKER_PASS="${ADMIN_PASSWORD:-Admin123!}"
 
-echo "Waiting for n8n to be ready at $N8N_URL ..."
+# --- Wait for n8n to be healthy ---
+echo "Waiting for n8n container '$N8N_CONTAINER' to be healthy ..."
 for i in $(seq 1 30); do
-  if curl -sf "$N8N_URL/healthz" > /dev/null 2>&1; then
-    echo "n8n is ready."
+  status=$(docker inspect --format='{{.State.Health.Status}}' "$N8N_CONTAINER" 2>/dev/null || echo "not found")
+  if [ "$status" = "healthy" ]; then
+    echo "n8n is healthy."
     break
   fi
   if [ "$i" -eq 30 ]; then
-    echo "ERROR: n8n did not become ready within 30 attempts."
+    echo "ERROR: n8n did not become healthy within 60s (status: $status)."
     exit 1
   fi
   sleep 2
 done
 
-# n8n requires an API key for REST API access.
-# Set N8N_API_KEY env var, or the script will prompt for it.
-if [ -z "${N8N_API_KEY:-}" ]; then
-  echo ""
-  echo "To import workflows via API, you need an n8n API key."
-  echo "Generate one in n8n UI: Settings > API > Create API Key"
-  echo ""
-  read -rp "Enter your n8n API key: " N8N_API_KEY
-fi
+# --- Create temp dir inside container ---
+docker exec "$N8N_CONTAINER" mkdir -p /tmp/n8n-import
 
-if [ -z "$N8N_API_KEY" ]; then
-  echo "ERROR: No API key provided. Aborting."
-  exit 1
-fi
-
-# Create "Broker API Auth" credential (httpBasicAuth) for login nodes.
-# Uses BROKER_API_USERNAME / ADMIN_PASSWORD env vars, or prompts.
-create_credential() {
-  local user="${BROKER_API_USERNAME:-admin}"
-  local pass="${ADMIN_PASSWORD:-}"
-
-  if [ -z "$pass" ]; then
-    read -rsp "Enter Broker API password for n8n credential (admin user): " pass
-    echo ""
-  fi
-
-  echo "Creating 'Broker API Auth' credential ..."
-
-  local payload
-  payload=$(jq -n --arg u "$user" --arg p "$pass" \
-    '{name:"Broker API Auth",type:"httpBasicAuth",data:{user:$u,password:$p}}')
-
-  local response
-  response=$(curl -sf -X POST "$N8N_URL/api/v1/credentials" \
-    -H "Content-Type: application/json" \
-    -H "X-N8N-API-KEY: $N8N_API_KEY" \
-    -d "$payload" 2>&1) || {
-    echo "  WARNING: Could not create credential (may already exist): $response"
-    return 0
-  }
-
-  local cred_id
-  cred_id=$(echo "$response" | jq -r '.id')
-  echo "  Created credential id: $cred_id"
-
-  # Patch workflow files so credential ID matches the one n8n assigned
-  CRED_ID="$cred_id"
-}
-
-CRED_ID=""
-create_credential
-
-import_workflow() {
-  local file="$1"
-  local name
-  name=$(jq -r '.name' "$file")
-
-  echo "Importing workflow: $name ..."
-
-  # Patch credential IDs to match the one created above
-  local import_data
-  if [ -n "$CRED_ID" ]; then
-    import_data=$(jq --arg id "$CRED_ID" \
-      '(.nodes[] | .credentials?.httpBasicAuth?.id?) = $id' "$file")
-  else
-    import_data=$(cat "$file")
-  fi
-
-  local response
-  response=$(echo "$import_data" | curl -sf -X POST "$N8N_URL/api/v1/workflows" \
-    -H "Content-Type: application/json" \
-    -H "X-N8N-API-KEY: $N8N_API_KEY" \
-    -d @- 2>&1) || {
-    echo "  FAILED to import $name: $response"
-    return 1
-  }
-
-  local workflow_id
-  workflow_id=$(echo "$response" | jq -r '.id')
-  echo "  Imported: $name (id: $workflow_id)"
-}
-
+# --- Copy workflow files into container ---
 echo ""
-echo "Importing workflows from $WORKFLOWS_DIR ..."
-echo ""
-
-imported=0
-failed=0
-
-for workflow_file in "$WORKFLOWS_DIR"/*.json; do
-  [ -f "$workflow_file" ] || continue
-  if import_workflow "$workflow_file"; then
-    imported=$((imported + 1))
-  else
-    failed=$((failed + 1))
-  fi
+echo "Copying workflow files to container ..."
+for f in "$WORKFLOWS_DIR"/*.json; do
+  [ -f "$f" ] || continue
+  docker cp "$f" "$N8N_CONTAINER:/tmp/n8n-import/$(basename "$f")"
+  echo "  Copied $(basename "$f")"
 done
 
+# --- Import credentials (httpBasicAuth for Broker API) ---
 echo ""
-echo "Done. Imported: $imported, Failed: $failed"
+echo "Creating 'Broker API Auth' credential ..."
+
+# Build credential JSON (array format required by n8n CLI)
+CRED_JSON=$(cat <<EOF
+[{
+  "id": "1",
+  "name": "Broker API Auth",
+  "type": "httpBasicAuth",
+  "data": {
+    "user": "$BROKER_USER",
+    "password": "$BROKER_PASS"
+  }
+}]
+EOF
+)
+
+# Write credential to container and import
+echo "$CRED_JSON" | docker exec -i "$N8N_CONTAINER" sh -c 'cat > /tmp/n8n-import/credentials.json'
+docker exec "$N8N_CONTAINER" n8n import:credentials --input=/tmp/n8n-import/credentials.json 2>/dev/null && \
+  echo "  Credential imported." || \
+  echo "  WARNING: Credential import failed (may already exist)."
+
+# --- Import workflows ---
 echo ""
-echo "Next steps:"
-echo "  1. Open $N8N_URL and review the imported workflows"
-echo "  2. Activate workflows you want to run"
-echo "  3. Health Check: runs automatically every 5 minutes"
-echo "  4. Client Onboarding: POST to $N8N_URL/webhook/client-onboarding"
-echo "  5. Transaction Import: POST to $N8N_URL/webhook/import-transactions"
+echo "Importing workflows ..."
+docker exec "$N8N_CONTAINER" n8n import:workflow --separate --input=/tmp/n8n-import/ 2>/dev/null && \
+  echo "  Workflows imported." || {
+  echo "  ERROR: Workflow import failed."
+  exit 1
+}
+
+# --- Activate workflows (client-onboarding and transaction-import) ---
+echo ""
+echo "Activating workflows ..."
+
+# List workflows to find IDs
+WORKFLOW_LIST=$(docker exec "$N8N_CONTAINER" n8n list:workflow 2>/dev/null || true)
+echo "$WORKFLOW_LIST"
+
+# Activate by name — find ID from list output (format: "│ id │ name │ ...")
+activate_workflow() {
+  local name="$1"
+  local wf_id
+  wf_id=$(echo "$WORKFLOW_LIST" | grep "$name" | head -1 | awk -F'│' '{gsub(/[ \t]+/,"",$2); print $2}')
+  if [ -n "$wf_id" ]; then
+    docker exec "$N8N_CONTAINER" n8n update:workflow --id="$wf_id" --active=true 2>/dev/null && \
+      echo "  Activated: $name (id: $wf_id)" || \
+      echo "  WARNING: Could not activate $name"
+  else
+    echo "  WARNING: Workflow '$name' not found in list"
+  fi
+}
+
+activate_workflow "Broker Health Check"
+activate_workflow "Client Onboarding"
+activate_workflow "Transaction Import"
+
+# --- Cleanup temp files ---
+docker exec "$N8N_CONTAINER" rm -rf /tmp/n8n-import
+
+# --- Restart n8n to pick up activated workflows ---
+echo ""
+echo "Restarting n8n container ..."
+docker restart "$N8N_CONTAINER" > /dev/null
+echo "  Restarted."
+
+echo ""
+echo "Done! Workflows imported and activated."
+echo ""
+echo "Endpoints:"
+echo "  Health Check:        runs every 5 minutes (inactive by default)"
+echo "  Client Onboarding:   POST http://localhost:5678/webhook/client-onboarding"
+echo "  Transaction Import:  POST http://localhost:5678/webhook/import-transactions"
+echo ""
+echo "Test commands:"
+echo '  curl -X POST http://localhost:5678/webhook/client-onboarding \'
+echo '    -H "Content-Type: application/json" \'
+echo '    -d '\''{"firstName":"Test","lastName":"User","email":"test@example.com"}'\'''
+echo ""
+echo '  curl -X POST http://localhost:5678/webhook/import-transactions \'
+echo '    -F "file=@n8n/test-data/transactions.csv"'
